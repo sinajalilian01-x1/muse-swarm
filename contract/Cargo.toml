@@ -1,0 +1,24 @@
+[package]
+name = "muse-swarm"
+description = "Muse Swarm: four AI robots (Curator, Painter, Critic, Seller) run an art business on NEAR. Per-robot budgets, owner rules (floor, daily cap, budget cap, score gate, kill switch), NEP-171 mint, sale and on-chain earnings split."
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "5.30"
+near-contract-standards = "5.30"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
+
+[dev-dependencies]
+near-sdk = { version = "5.30", features = ["unit-testing"] }
