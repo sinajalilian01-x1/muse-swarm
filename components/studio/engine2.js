@@ -574,8 +574,13 @@ export function runStudio2(cfg) {
   // camera
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 }; let focus = 0, focusT = 0, W = 1, H = 1;
   addEventListener('pointermove', (e) => { mouse.tx = (e.clientX / innerWidth - 0.5) * 2; mouse.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
-  function resize() { W = container.clientWidth; H = container.clientHeight; renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+  function resize() { W = Math.max(1, container.clientWidth); H = Math.max(1, container.clientHeight); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
   new ResizeObserver(resize).observe(container); resize();
+  const onFsResize = () => resize();
+  addEventListener('fullscreenchange', onFsResize);
+  addEventListener('webkitfullscreenchange', onFsResize);
+  addEventListener('orientationchange', onFsResize);
+  visualViewport?.addEventListener('resize', onFsResize);
   function updateCamera(dt) {
     mouse.x = damp(mouse.x, mouse.tx, 2.5, dt); mouse.y = damp(mouse.y, mouse.ty, 2.5, dt); focus = damp(focus, focusT, 2.2, dt);
     const az = C.azimuth + Math.sin(time * 0.08) * (C.orbitAmp ?? 0.1) + mouse.x * (C.parallax ?? 0.07), el = C.elevation - mouse.y * 0.035 - 0.05 * focus, rad = lerp(C.radius, C.focusRadius, focus);
@@ -604,5 +609,5 @@ export function runStudio2(cfg) {
   let last = performance.now(), started = false;
   function frame(now) { const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)) * speed; last = now; logic(dt); renderer.render(scene, camera); if (!started) { started = true; cfg.onReady?.(); } requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
-  return { setFocus(v) { focusT = v ? 1 : 0; } };
+  return { setFocus(v) { focusT = v ? 1 : 0; }, resize };
 }

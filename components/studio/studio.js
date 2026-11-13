@@ -265,7 +265,7 @@ export function mountStudio({ container, overlay, director, hooks }) {
     container, overlay, lowpoly: true, robotScale: 1.28,
     camera: cam, buildRoom, envIntensity: 0.45, exposure: 1.0,
     lights: { sky: '#ffffff', ground: '#dfe3e6', hemi: 1.35, sun: 2.4, sunColor: '#fff6ea', sunPos: [5, 13, 9], fill: 0.55, fillPos: [-7, 5, 6], fillColor: '#e8f4ff', shadowSize: 8.5 },
-    viewShift: (W, H) => (W > 900 ? { x: 0.15, y: -0.01 } : { x: 0, y: 0.06 }),
+    viewShift: (W, H) => (document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('room-fs') ? { x: 0, y: 0 } : W > 900 ? { x: 0.15, y: -0.01 } : { x: 0, y: 0.06 }),
     robots: [
       { role: 'curator', name: 'Curator', x: home.curator[0], z: home.curator[1], ry: Math.PI / 4 + 0.1, body: white, head: C.teal, accent: C.teal, tag: C.teal, bubble: C.teal, bubbleText: '#ffffff', eye: '#BFFFF6' },
       { role: 'painter', name: 'Painter', x: home.painter[0], z: home.painter[1], ry: Math.PI / 4 - 0.05, body: white, head: C.tang, accent: C.tang, tag: C.tang, bubble: C.tang, bubbleText: '#ffffff', eye: '#FFE9D6' },
@@ -288,7 +288,17 @@ export function mountStudio({ container, overlay, director, hooks }) {
     };
   };
   hookFloor();
-  const fit = () => { const a = innerWidth / innerHeight; const need = 6.3 / (Math.tan((26 / 2) * Math.PI / 180) * a); cam.radius = Math.max(32.5, need); cam.focusRadius = cam.radius * 0.667; };
+  const fit = () => {
+    const w = container?.clientWidth || innerWidth, h = Math.max(1, container?.clientHeight || innerHeight);
+    const need = 6.3 / (Math.tan((26 / 2) * Math.PI / 180) * (w / h));
+    cam.radius = Math.max(32.5, need); cam.focusRadius = cam.radius * 0.667;
+    studio?.resize?.();
+  };
   fit(); addEventListener('resize', fit);
-  return { studio, dispose() { removeEventListener('resize', fit); } };
+  addEventListener('fullscreenchange', fit); addEventListener('webkitfullscreenchange', fit); addEventListener('orientationchange', fit);
+  visualViewport?.addEventListener('resize', fit);
+  return { studio, dispose() {
+    removeEventListener('resize', fit); removeEventListener('fullscreenchange', fit); removeEventListener('webkitfullscreenchange', fit); removeEventListener('orientationchange', fit);
+    visualViewport?.removeEventListener('resize', fit);
+  } };
 }

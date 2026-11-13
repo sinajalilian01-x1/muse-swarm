@@ -21,6 +21,45 @@ export default function Home() {
   const [feed, setFeed] = useState<FeedTx[]>([]);
   const [acct, setAcct] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
+  const [fs, setFs] = useState(false);
+
+  const nativeFsEl = () => document.fullscreenElement || (document as any).webkitFullscreenElement || null;
+  const requestNativeFs = (el: HTMLElement) => {
+    const fn = el.requestFullscreen || (el as any).webkitRequestFullscreen || (el as any).webkitRequestFullScreen;
+    return fn ? Promise.resolve(fn.call(el)).then(() => true).catch(() => false) : Promise.resolve(false);
+  };
+  const exitNativeFs = () => {
+    const fn = document.exitFullscreen || (document as any).webkitExitFullscreen || (document as any).webkitCancelFullScreen;
+    return fn ? Promise.resolve(fn.call(document)).catch(() => {}) : Promise.resolve();
+  };
+  const syncVpVars = () => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const r = document.documentElement.style;
+    r.setProperty("--vvw", `${vv.width}px`);
+    r.setProperty("--vvh", `${vv.height}px`);
+    r.setProperty("--vvt", `${vv.offsetTop}px`);
+    r.setProperty("--vvl", `${vv.offsetLeft}px`);
+  };
+  const bumpResize = () => { studio.current?.studio?.resize?.(); window.dispatchEvent(new Event("resize")); };
+  const applyPseudoFs = (on: boolean) => {
+    document.body.classList.toggle("room-fs", on);
+    stage.current?.classList.toggle("is-fs", on);
+    setFs(on);
+    if (on) syncVpVars();
+    requestAnimationFrame(bumpResize);
+  };
+  const enterFs = async () => {
+    const el = stage.current; if (!el) return;
+    if ((await requestNativeFs(el)) && nativeFsEl()) return;
+    applyPseudoFs(true);
+  };
+  const exitFs = async () => {
+    if (nativeFsEl()) { await exitNativeFs(); return; }
+    applyPseudoFs(false);
+  };
+  const toggleFs = () => { if (fs || nativeFsEl() || document.body.classList.contains("room-fs")) exitFs(); else enterFs(); };
+
 
   const pushTx = useCallback((t: FeedTx) => setFeed((f) => [{ ...t, fresh: true }, ...f.filter((x) => x.hash !== t.hash).map((x) => ({ ...x, fresh: false }))].slice(0, 5)), []);
   const loadFeed = useCallback(async () => {
@@ -74,7 +113,33 @@ export default function Home() {
   }, [loadFeed, pushTx]);
 
   useEffect(() => { document.body.classList.toggle("focus", focus); studio.current?.studio?.setFocus(focus); }, [focus]);
-  useEffect(() => { const k = (e: KeyboardEvent) => e.key === "Escape" && setFocus(false); addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, []);
+  useEffect(() => {
+    const sync = () => {
+      const on = !!nativeFsEl() || document.body.classList.contains("room-fs");
+      setFs(on);
+      if (on) syncVpVars();
+      bumpResize();
+    };
+    const evs = ["fullscreenchange", "webkitfullscreenchange", "orientationchange"] as const;
+    evs.forEach((e) => addEventListener(e, sync));
+    visualViewport?.addEventListener("resize", sync);
+    return () => { evs.forEach((e) => removeEventListener(e, sync)); visualViewport?.removeEventListener("resize", sync); };
+  }, []);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (e.key === "Escape") {
+        if (nativeFsEl() || document.body.classList.contains("room-fs")) { e.preventDefault(); exitFs(); return; }
+        setFocus(false);
+        return;
+      }
+      if ((e.key === "f" || e.key === "F") && !e.metaKey && !e.ctrlKey && !e.altKey && !e.repeat) { e.preventDefault(); toggleFs(); }
+    };
+    addEventListener("keydown", k);
+    return () => removeEventListener("keydown", k);
+  }, [fs]);
+
 
   const run = () => { if (!dir.current) return; setStatus("Curator is reading live trends…"); dir.current.run({ autoSell }); };
   const collect = async () => {
@@ -105,7 +170,16 @@ export default function Home() {
   const m = mode.mode;
   return (
     <>
-      <div className="stage" ref={stage}><div className="overlay" ref={overlay}></div></div>
+      <div className="stage" ref={stage}>
+        <div className="overlay" ref={overlay}></div>
+        <button type="button" className="fs-btn" aria-pressed={fs} aria-label={fs ? "Exit fullscreen" : "Enter fullscreen"} title={fs ? "Exit fullscreen (Esc)" : "Fullscreen (F)"} onClick={toggleFs}>
+          {fs ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h5V4M15 4v5h5M3 15h5v5M15 20v-5h5" /></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M21 8V3h-5M8 21H3v-5M21 16v5h-5" /></svg>
+          )}
+        </button>
+      </div>
       <main className="hero-copy">
         <p className="eyebrow">AI swarm art studio on NEAR <i></i></p>
         <h1><span>Muse</span><span className="grad">Swarm</span></h1>
