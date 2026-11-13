@@ -62,6 +62,8 @@ export async function advance(token?: string): Promise<StepResult> {
   const lockKey = job ? `${job.id}:${job.status}` : "open";
   if (inflight.has(lockKey)) return { stage: "busy", txs: [], job, say: "Already working on it." };
   inflight.add(lockKey);
+  // Whoever may advance this job (its driver, or anyone after the grace period) becomes its driver.
+  const take = (r: StepResult): StepResult => (job && !r.driver ? { ...r, driver: driverToken(job.id) } : r);
   try {
     const txs: TxInfo[] = [];
     if (!job) {
@@ -83,7 +85,7 @@ export async function advance(token?: string): Promise<StepResult> {
       const tx = await robotCall("painter", "painter_submit", { job_id: job.id, title: art.title, media: pinned.cid, fee: art.feeYocto, model: art.model });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
-      return { stage: "painted", job: tx.returnValue as Job, txs, say: "Done! Isn't it lovely?", extra: { media: pinned.cid, mime: art.mime, ai: art.ai, model: art.model, aiError: art.error } };
+      return take({ stage: "painted", job: tx.returnValue as Job, txs, say: "Done! Isn't it lovely?", extra: { media: pinned.cid, mime: art.mime, ai: art.ai, model: art.model, aiError: art.error } });
     }
     if (job.status === "painted") {
       const img = await fetchIpfs(job.media);
@@ -94,7 +96,7 @@ export async function advance(token?: string): Promise<StepResult> {
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
       const j = tx.returnValue as Job;
-      return { stage: j.status === "minted" ? "minted" : "rejected", job: j, txs, say: rv.line, extra: { score: rv.score, note: rv.note, threshold: sw.rules.score_threshold, ai: rv.ai, model: rv.model, aiError: rv.error } };
+      return take({ stage: j.status === "minted" ? "minted" : "rejected", job: j, txs, say: rv.line, extra: { score: rv.score, note: rv.note, threshold: sw.rules.score_threshold, ai: rv.ai, model: rv.model, aiError: rv.error } });
     }
     if (job.status === "minted") {
       const recent = await getJobs(undefined, 12);
@@ -103,7 +105,7 @@ export async function advance(token?: string): Promise<StepResult> {
       const tx = await robotCall("seller", "seller_list", { job_id: job.id, price: nearToYocto(p.price) });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
-      return { stage: "listed", job: tx.returnValue as Job, txs, say: `Listed for ${p.price} NEAR`, extra: { price: p.price, reason: p.reason } };
+      return take({ stage: "listed", job: tx.returnValue as Job, txs, say: `Listed for ${p.price} NEAR`, extra: { price: p.price, reason: p.reason } });
     }
     return { stage: "error", txs, error: `Unexpected job status ${job.status}`, job };
   } finally {
