@@ -1,5 +1,5 @@
 import { NETWORK } from "@/lib/config";
-import { advance, nextCommission } from "@/lib/swarm";
+import { advance, nextCommission, getSwarm, DRIVER_GRACE_MS } from "@/lib/swarm";
 import { json, rateLimit, chainPace } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
 
@@ -16,7 +16,13 @@ export async function POST(req: Request) {
   const raw = await req.json().catch(() => ({}));
   const body = { driver: typeof raw?.driver === "string" && raw.driver.length <= 64 ? raw.driver : undefined };
   // Opening a job is the expensive part; the other stages just continue it.
-  const opening = !body.driver;
+  // A visitor without a driver token who continues an abandoned job (past the driver's grace period)
+  // is not opening anything new, so the free-demo pacing does not apply; only the per-IP step limit does.
+  let opening = !body.driver;
+  if (opening) {
+    const active = (await getSwarm().catch(() => null))?.active_job;
+    if (active && Date.now() - Number(active.updated_at_ms) >= DRIVER_GRACE_MS) opening = false;
+  }
   if (opening) {
     // Mainnet spends real NEAR on gas and AI: much tighter free-demo limits (the contract's daily caps hold regardless).
     const MAIN = NETWORK === "mainnet";

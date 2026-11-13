@@ -27,10 +27,15 @@ export async function GET(req: Request) {
   const steps: { stage: string; txs: string[]; error?: string }[] = [];
   let driver: string | undefined;
   const t0 = Date.now();
-  for (let i = 0; i < 6 && Date.now() - t0 < 100_000; i++) {
+  // If a visitor abandoned a job half-way, this slot finishes it first and then, time permitting,
+  // still opens its own job, so an abandoned cycle never costs the swarm a cron slot.
+  let opened = false;
+  for (let i = 0; i < 10 && Date.now() - t0 < 100_000; i++) {
     const r = await advance(driver).catch((e) => ({ stage: "error" as const, txs: [], error: String(e?.message || e), driver: undefined, job: null }));
     if (r.driver) driver = r.driver;
+    if (r.stage === "briefed") opened = true;
     steps.push({ stage: r.stage, txs: r.txs.map((t) => t.hash), error: r.error });
+    if (["listed", "rejected"].includes(r.stage) && !opened && Date.now() - t0 < 50_000) { driver = undefined; continue; }
     if (["listed", "rejected", "paused", "busy", "error"].includes(r.stage)) break;
   }
   const rp = Date.now() - t0 < 105_000 ? await maybeReprice().catch(() => null) : null;
