@@ -3,25 +3,28 @@ import { useEffect, useState } from "react";
 import { ROBOT_META } from "@/lib/config";
 import { who, label, txUrl, short } from "@/lib/ui";
 
-interface Thought { id: string; role: keyof typeof ROBOT_META | "buyer"; verdict: string; text: string; reason?: string; model?: string; ai?: boolean; tx: string; at: number; job?: string; doc?: string }
+interface Thought { id: string; role: keyof typeof ROBOT_META | "buyer"; verdict: string; text: string; reason?: string; model?: string; ai?: boolean; tx: string; at: number; job?: string; doc?: string; link?: string }
+interface OpenBounty { id: string; job: string; token_id: string; title: string; deadline: number; entries: number; payout: string }
 interface Tok { job: string; title: string; status: string; palette: string | null; price: number; views: number; clicks: number; collects: number; sold: boolean; markdowns: number; listedHours: number }
 interface Learned { status: "learning" | "learned"; summary: string; lessons: { kind: string; text: string }[]; totals: { views: number; clicks: number; collects: number; sales: number; markdowns: number; listings: number }; tokens: Tok[]; signalsSince: number | null; rules: { minViews: number }; hash: string }
 export interface FreshTx { hash: string; signer: string; method?: string; ok: boolean; error?: string }
 
 const ago = (ms: number, now: number) => { if (!now) return ""; const s = Math.max(0, (now - ms) / 1000); return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)} min ago` : s < 86400 ? `${Math.floor(s / 3600)} h ago` : `${Math.floor(s / 86400)} d ago`; };
-const tone = (t: Thought) => (/rejected/.test(t.verdict) ? "bad" : /minted|sold|listed|delivered/.test(t.verdict) ? "good" : /marked down|test/.test(t.verdict) ? "warn" : "");
+const left = (ms: number, now: number) => { if (!now) return "soon"; const m = Math.max(0, (ms - now) / 60000); return m < 60 ? `in ${Math.ceil(m)} min` : m < 2880 ? `in ${Math.round(m / 60)} h` : `in ${Math.round(m / 1440)} d`; };
+const tone = (t: Thought) => (/rejected/.test(t.verdict) ? "bad" : /minted|sold|listed|delivered|paid|picked|hiring/.test(t.verdict) ? "good" : /marked down|test/.test(t.verdict) ? "warn" : "");
 
 /** Feature: live reasoning. Every robot's real decision and the reason it gave, straight from its signed tx and the IPFS docs it points to. */
 export default function Reasoning({ fresh, bump, acct }: { fresh: FreshTx[]; bump: number; acct: string | null }) {
   const [tab, setTab] = useState<"why" | "learned">("why");
   const [items, setItems] = useState<Thought[] | null>(null);
   const [err, setErr] = useState(false);
+  const [bounty, setBounty] = useState<OpenBounty | null>(null);
   const [learned, setLearned] = useState<Learned | null>(null);
   const [now, setNow] = useState(0);
   useEffect(() => { const tick = () => setNow(Date.now()); tick(); const t = setInterval(tick, 30000); return () => clearInterval(t); }, []);
   useEffect(() => {
     let alive = true;
-    const load = async () => { try { const d = await (await fetch("/api/feed?limit=12", { cache: "no-store" })).json(); if (!alive) return; if (d.items) { setItems(d.items); setErr(false); } else setErr(true); } catch { if (alive) setErr(true); } };
+    const load = async () => { try { const d = await (await fetch("/api/feed?limit=12", { cache: "no-store" })).json(); if (!alive) return; if (d.items) { setItems(d.items); setBounty(d.bounty || null); setErr(false); } else setErr(true); } catch { if (alive) setErr(true); } };
     load(); const t = setInterval(load, 15000);
     const later = bump ? [setTimeout(load, 2500), setTimeout(load, 7000)] : [];
     return () => { alive = false; clearInterval(t); later.forEach(clearTimeout); };
@@ -44,6 +47,12 @@ export default function Reasoning({ fresh, bump, acct }: { fresh: FreshTx[]; bum
       </div>
       {tab === "why" ? (
         <ul className="tf-list" aria-live="polite">
+          {bounty && bounty.deadline > now && (
+            <li className="tf tf-hire"><span className="tf-av" style={{ ["--c" as any]: ROBOT_META.critic.color }} aria-hidden="true" /><div className="tf-b" style={{ ["--c" as any]: ROBOT_META.critic.color }}>
+              <p className="tf-h"><b>Critic</b><em data-t="good">hiring · {bounty.payout} NEAR</em></p>
+              <p className="tf-t">Write a caption for “{bounty.title}” (#{bounty.token_id}). The best one gets {bounty.payout} NEAR.</p>
+              <p className="tf-f"><span>{bounty.entries} entr{bounty.entries === 1 ? "y" : "ies"}</span><span>closes {left(bounty.deadline, now)}</span><a className="tf-go" href="/bounty">Enter the bounty →</a></p>
+            </div></li>)}
           {pending.map((t) => { const w = who(t.signer === "you" ? acct || "you" : t.signer); return (
             <li key={t.hash} className="tf new"><span className="tf-av" style={{ ["--c" as any]: w.color }} /><div className="tf-b"><p className="tf-h"><b>{w.name}</b><em>{t.ok ? label(t.method) : "failed"}</em></p><p className="tf-r">{t.ok ? "Reading its reasoning from the chain…" : short(t.error || "", 60)}</p><p className="tf-f"><a href={txUrl(t.hash)} target="_blank" rel="noreferrer">tx ↗</a></p></div></li>); })}
           {(items || []).map((t, i) => { const meta = t.role === "buyer" ? { name: "Buyer", color: "#13243F" } : ROBOT_META[t.role]; return (
@@ -53,7 +62,7 @@ export default function Reasoning({ fresh, bump, acct }: { fresh: FreshTx[]; bum
                 <p className="tf-h"><b>{meta.name}</b><em data-t={tone(t)}>{t.verdict}</em></p>
                 <p className="tf-t">{t.text}</p>
                 {t.reason && <p className="tf-r">{t.role === "critic" ? "“" : ""}{t.reason}{t.role === "critic" ? "”" : ""}</p>}
-                <p className="tf-f">{t.job && <a href={`/gallery#job-${t.job}`}>job #{t.job}</a>}{t.model && <span title={t.ai ? "NEAR AI Cloud model" : "labeled fallback"}>{t.ai ? t.model : t.model.replace(/^fallback-/, "fallback ")}</span>}{t.doc && <a href={`https://gateway.pinata.cloud/ipfs/${t.doc}`} target="_blank" rel="noreferrer">why (IPFS) ↗</a>}<span>{ago(t.at, now)}</span><a href={txUrl(t.tx)} target="_blank" rel="noreferrer">tx ↗</a></p>
+                <p className="tf-f">{t.job && <a href={`/gallery#job-${t.job}`}>job #{t.job}</a>}{t.model && <span title={t.ai ? "NEAR AI Cloud model" : "labeled fallback"}>{t.ai ? t.model : t.model.replace(/^fallback-/, "fallback ")}</span>}{t.doc && <a href={`https://gateway.pinata.cloud/ipfs/${t.doc}`} target="_blank" rel="noreferrer">why (IPFS) ↗</a>}{t.link && <a href={t.link}>bounty</a>}<span>{ago(t.at, now)}</span>{t.tx && <a href={txUrl(t.tx)} target="_blank" rel="noreferrer">tx ↗</a>}</p>
               </div>
             </li>); })}
           {!items && !err && <li className="tf-empty">Reading the robots&apos; decisions from NEAR…</li>}

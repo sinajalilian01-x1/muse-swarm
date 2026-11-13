@@ -6,7 +6,7 @@ import { connect, disconnect, hasSession, initWallet, onAccount } from "@/lib/wa
 import { NETWORK } from "@/lib/config";
 import ThemeToggle from "./ThemeToggle";
 
-const LINKS = [["/", "Studio"], ["/how", "How it works"], ["/gallery", "Gallery"], ["/robots", "Robots"], ["/ledger", "Ledger"]] as const;
+const LINKS = [["/", "Studio"], ["/how", "How it works"], ["/gallery", "Gallery"], ["/robots", "Robots"], ["/bounty", "Bounty"], ["/ledger", "Ledger"]] as const;
 
 export default function Nav() {
   const path = usePathname();

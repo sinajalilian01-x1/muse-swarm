@@ -12,6 +12,10 @@ export const ROLES: Role[] = ["curator", "painter", "critic", "seller"];
 export const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID || `sina.${ROOT}`;
 export const TREASURY_ID = process.env.NEXT_PUBLIC_TREASURY_ID || `treasury.${ROOT}`;
 export const GUARDIAN_ID = process.env.NEXT_PUBLIC_GUARDIAN_ID || `guardian.${ROOT}`;
+/** The Critic's bounty purse: pays outside helpers. Funded from the Critic's contract budget, holds at most one payout. */
+export const BOUNTY_ID = process.env.NEXT_PUBLIC_BOUNTY_ID || `bounty.${ROOT}`;
+/** Hard payout per bounty: 0.02 NEAR. */
+export const BOUNTY_PAYOUT = 20_000_000_000_000_000_000_000n;
 export const COLLECTOR_ID = process.env.NEXT_PUBLIC_COLLECTOR_ID || `collector.${ROOT}`;
 /** "NEAR testnet" or "NEAR", for user-facing text. */
 export const NET_NAME = NETWORK === "mainnet" ? "NEAR" : "NEAR testnet";

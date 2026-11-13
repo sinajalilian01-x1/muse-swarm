@@ -2,7 +2,7 @@ import { accountBalance, accessKeys } from "@/lib/near";
 import { getSwarm, getJobs } from "@/lib/swarm";
 import { ledger } from "@/lib/ledger";
 import { json } from "@/lib/ratelimit";
-import { COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, OWNER_ID, ROBOT_IDS, ROLES, TREASURY_ID, isTestBuyer } from "@/lib/config";
+import { BOUNTY_ID, COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, OWNER_ID, ROBOT_IDS, ROLES, TREASURY_ID, isTestBuyer } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ const acctCache = new Map<string, { t: number; v: { id: string; balance: string;
 export async function GET() {
   try {
     const [swarm, led, jobs] = await Promise.all([getSwarm(), ledger(100, 0), getJobs(undefined, 50)]);
-    const accounts = [...ROLES.map((r) => ROBOT_IDS[r]), GUARDIAN_ID, TREASURY_ID, OWNER_ID, COLLECTOR_ID, CONTRACT_ID];
+    const accounts = [...ROLES.map((r) => ROBOT_IDS[r]), GUARDIAN_ID, TREASURY_ID, OWNER_ID, COLLECTOR_ID, CONTRACT_ID, BOUNTY_ID];
     // Read accounts in small batches (public RPCs rate-limit bursts) and reuse a warm instance's reads for a few seconds.
     const info: { id: string; balance: string; keys: Awaited<ReturnType<typeof accessKeys>> }[] = [];
     for (let i = 0; i < accounts.length; i += 3) {

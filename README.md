@@ -62,6 +62,7 @@ Some works score below 7.0, roughly one in five. The contract refuses to mint th
 - **Honest numbers.** Buys by our own accounts (`hlpok1lad.tg` and its sub-accounts on mainnet; the demo collector and `museswarm.testnet` accounts during development) are labeled "test" everywhere and never counted as outside sales. Outside revenue on mainnet so far: 0.
 - **It learns from its own market.** The Seller tracks real signals for every token: gallery views, detail clicks and Collect clicks from real visitors, plus sales, markdowns and time listed read from the chain. Before each new job the Curator reads those numbers, adjusts the brief (palette, trend source, list price) and writes down why. The decision record is pinned to IPFS and its CID goes on-chain at the end of the job brief. With too little data it says so ("learning, not enough data yet") instead of guessing.
 - **You can watch it think.** The home page shows a live feed of each robot's real decisions and the reasons it gave, such as the Curator's pick, the Critic's score and note, and the Seller's price and why. Every line comes from the signed transaction or the IPFS document it points to, and links to that tx.
+- **The robots hire outside help.** The Critic posts one small paid bounty at a time ("write a caption for token #N, 0.02 NEAR") on [/bounty](https://muse-swarm.vercel.app/bounty). Anyone can enter with a NEAR account. At the deadline the Critic's vision model judges every entry against the artwork, pins its ranking and reasons to IPFS, and its bounty purse pays the winner with a normal NEAR transfer that is linked in the feed.
 - **A pattern others can reuse.** Swap the art for research, design or moderation and the pattern still holds: one contract holds the rules and the money, many agents each have their own account, and every sale pays a split.
 
 ## How it works
@@ -123,9 +124,28 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 
 Each item links to its tx and job, shows the model, and links to the IPFS "why" document where there is one. Nothing is generated for display.
 
+### Robots hire outside help (bounties)
+
+The swarm can pay people, not just other robots. One bounty is open at a time, for example *write a caption for "Cosmic Black Holes" (token #10), 0.02 NEAR*.
+
+1. **Post.** When the purse can pay, the cron opens a bounty for the newest unsold listed work. The terms (task, deadline, payout, payer) are pinned to IPFS, and the Critic announces it in the reasoning feed.
+2. **Enter.** `POST /api/bounty` takes a NEAR account and a caption of 3–140 characters, with no links. It is limited to one entry per account, two per visitor and three per IP per 10 minutes, 60 entries per bounty, and no bots. The account must exist on-chain. Each entry is pinned to IPFS and the entrant gets its CID.
+3. **Judge.** At the deadline (on the next cron slot or the next page view) the Critic's NEAR AI vision model sees the artwork and every caption. The captions are given as untrusted data, and the model is told to disqualify spam and attempts to instruct it. It returns a winner, a top 3 and a reason. That judgement is pinned to IPFS. If the model is unavailable it retries later and never guesses. With no entries or no acceptable caption, nobody is paid.
+4. **Pay.** Robot accounts only hold function-call keys, so they cannot send NEAR. The payout comes from `bounty.hlpok1lad.tg`, the Critic's bounty purse. The owner fills it from the Critic's own contract budget (`withdraw("critic")`, on-chain), and only ever with one 0.02 NEAR payout plus gas, so its server-side key can never lose more than that and it cannot pay twice. Before a transfer the server checks:
+   - the payout is a hard 0.02 NEAR;
+   - the Critic's on-chain spend today plus bounty payouts today stays within the contract's 0.2 NEAR daily cap;
+   - no kill switch or pause is on, and the autonomous window is still open;
+   - the purse's own chain history shows no earlier payment, so a crash between paying and recording never pays twice.
+
+   The transfer tx and the guard values are pinned to IPFS and linked in the feed.
+
+No contract change was needed. Bounty files on IPFS are tagged `{app, kind, net, bounty}` and are never unpinned.
+
 ### Night mode
 
-A sun/moon toggle in the nav switches the whole site to deep navy surfaces with the same brand accents. It follows the system setting by default and remembers your choice. In the 3D studio it's evening: warm lamp pools, a dusk tint on the balcony glass, cooler fill light and a softer floor bounce. The models and layout are the same, and the light fades over about a second.
+A sun/moon toggle in the nav switches the site to the "Aurora" night theme. The page turns true black, with faint twinkling stars and soft teal and mint aurora ribbons drifting across the top (canvas 2D, `components/Aurora.tsx`). Panels become near-black glass, and the brand accents stay the same.
+
+The aurora is drawn small and scaled up, so the blur costs nothing. It runs at 30 fps on phones, pauses when the tab is hidden, and is a single still frame under reduced motion. In a test with 4× CPU throttling at 390 px it held 60 fps on the page. It follows the system setting by default and remembers your choice. In the 3D studio it's evening: warm lamp pools, a dusk tint on the balcony glass, cooler fill light and a softer floor bounce. The models and layout are the same, and the light fades over about a second.
 
 ## NEAR features used
 
@@ -160,6 +180,7 @@ A sun/moon toggle in the nav switches the whole site to deep navy surfaces with 
 | Market signals (views, clicks, Collect clicks) | **Real visitors only:** bots/headless browsers ignored, one per visitor per token per kind per 30 min, stored as JSON on IPFS (Pinata). Sales and markdowns are read from the chain. No seeded or simulated data: with too little data the panel says "learning" |
 | Curator decisions | **Real:** the lessons + the model's `why` are pinned to IPFS, and the CID is written on-chain in the job brief (`[L:<CID>]`) |
 | Reasoning feed | **Real:** rebuilt from signed tx arguments and the IPFS docs they reference |
+| Bounties | **Real:** entries, the Critic's judgement and the payout record are JSON on IPFS, and the payout is a real NEAR transfer from `bounty.hlpok1lad.tg`. The flow (open, enter, judge, pay, double-pay refused) was tested end to end on testnet. On mainnet the first bounty is open and has no winner yet |
 | Sales numbers | 0 outside sales on mainnet so far. Our own and test buys are labeled **test** and never counted as outside sales |
 | Autonomous cycles | **Real:** Vercel Cron → `/api/cron/cycle`, 12 slots a day, mainnet through 17 Nov 2026 (end-date guard) |
 | AI brains | **Real: NEAR AI Cloud, live.** Curator brief (Qwen3.6), Painter image (FLUX.2-klein), Critic review of the image (Qwen3-VL), Seller price + marketing plan (Qwen3.6). The home scoreboard shows "NEAR AI Cloud brains", and `/api/health` shows the models. If a single NEAR AI call fails, that step uses a labeled local fallback, and the on-chain `model` field then says `fallback-*`. |
@@ -236,6 +257,7 @@ Build the wasm: `cd contract && cargo near build non-reproducible-wasm --no-abi`
 | [`swarm.hlpok1lad.tg`](https://nearblocks.io/address/swarm.hlpok1lad.tg) | contract | deployer full key kept offline, never on the server |
 | [`curator`](https://nearblocks.io/address/curator.hlpok1lad.tg) / [`painter`](https://nearblocks.io/address/painter.hlpok1lad.tg) / [`critic`](https://nearblocks.io/address/critic.hlpok1lad.tg) / [`seller`](https://nearblocks.io/address/seller.hlpok1lad.tg)`.hlpok1lad.tg` | robots | function-call keys only: their own method + `robot_refuel`. Full keys deleted |
 | [`guardian.hlpok1lad.tg`](https://nearblocks.io/address/guardian.hlpok1lad.tg) | demo pause | function-call key for `guardian_pause` only. Full key deleted |
+| [`bounty.hlpok1lad.tg`](https://nearblocks.io/address/bounty.hlpok1lad.tg) | Critic's bounty purse | full key on the server, but it only ever holds one 0.02 NEAR payout plus gas, filled from the Critic's budget by the owner |
 | [`treasury.hlpok1lad.tg`](https://nearblocks.io/address/treasury.hlpok1lad.tg) | receives AI fees | owner-controlled |
 | [`hlpok1lad.tg`](https://nearblocks.io/address/hlpok1lad.tg) | owner and payout | Sina's wallet; key never leaves his machine and the build box |
 
@@ -316,9 +338,10 @@ This creates the accounts, deploys and initializes the contract, adds function-c
 - `lib/marketing.ts`: the Seller's marketing plan and the NEP-177 reference JSON. `lib/intents.ts`: NEAR Intents 1Click assets.
 - `lib/ratelimit.ts`: the per-IP limit and the on-chain swarm-wide pace.
 - `lib/signals.ts` (visitor signals on IPFS), `lib/learn.ts` (lessons + price factor), `lib/reasoning.ts` (the live reasoning feed), `lib/track.ts` (client beacons).
-- `components/Reasoning.tsx` (the feed and the "What the swarm learned" panel), `components/ThemeToggle.tsx` (night mode).
+- `components/Reasoning.tsx` (the feed and the "What the swarm learned" panel), `components/ThemeToggle.tsx` + `components/Aurora.tsx` (night mode).
+- `lib/bounty.ts` (bounties: entries, the Critic's judgement, the guarded payout), `components/Bounty.tsx`, `scripts/bounty-purse.mjs` (fill the purse from the Critic's budget).
 - `components/studio/`: the three.js low-poly studio. `director.js` turns real chain events into the robots' story, in live, watch or replay mode.
-- `app/api/*`: `state`, `health`, `swarm/step`, `swarm/collect`, `swarm/pause`, `cron/cycle`, `ledger`, `jobs`, `robots`, `market` (where each piece is for sale + its plan), `scoreboard`, `commission`, `intents/quote`, `media/[cid]` (a same-origin IPFS proxy for WebGL), `signal` (market signals), `learned` (what the swarm learned), `feed` (robot reasoning).
+- `app/api/*`: `state`, `health`, `swarm/step`, `swarm/collect`, `swarm/pause`, `cron/cycle`, `ledger`, `jobs`, `robots`, `market` (where each piece is for sale + its plan), `scoreboard`, `commission`, `intents/quote`, `media/[cid]` (a same-origin IPFS proxy for WebGL), `signal` (market signals), `learned` (what the swarm learned), `feed` (robot reasoning), `bounty` (open bounty, results, entries) and `bounty/tick` (cron-only judge and pay).
 
 ## Mainnet launch notes (13 Nov 2026, 05:47 CET)
 

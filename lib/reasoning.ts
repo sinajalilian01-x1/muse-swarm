@@ -3,6 +3,7 @@ import { ledger, type LedgerTx } from "./ledger";
 import { readPlan } from "./marketing";
 import { fetchIpfs } from "./ipfs";
 import { cleanBrief, memoCid, paletteOf, sourceOf } from "./learn";
+import { bountyThoughts } from "./bounty";
 import { ROBOT_IDS, nearNum, isTestBuyer, type Role } from "./config";
 
 /**
@@ -12,7 +13,7 @@ import { ROBOT_IDS, nearNum, isTestBuyer, type Role } from "./config";
  */
 export interface Thought {
   id: string; role: Role | "buyer"; verdict: string; text: string; reason?: string; model?: string; ai?: boolean;
-  tx: string; at: number; job?: string; doc?: string;
+  tx: string; at: number; job?: string; doc?: string; link?: string;
 }
 
 const roleOf = (signer: string): Role | null => (Object.entries(ROBOT_IDS).find(([, a]) => a === signer)?.[0] as Role) || null;
@@ -78,8 +79,10 @@ async function toThought(t: LedgerTx): Promise<Thought | null> {
 let cache: { t: number; v: Thought[] } | null = null;
 export async function thoughts(limit = 12): Promise<Thought[]> {
   if (cache && Date.now() - cache.t < 8000) return cache.v.slice(0, limit);
-  const { txs } = await ledger(40, 0);
+  const [{ txs }, hired] = await Promise.all([ledger(40, 0), bountyThoughts().catch(() => [])]);
   const out = (await Promise.all(txs.map((t) => toThought(t).catch(() => null)))).filter((x): x is Thought => !!x);
+  out.push(...hired);
+  out.sort((a, b) => b.at - a.at);
   cache = { t: Date.now(), v: out };
   return out.slice(0, limit);
 }

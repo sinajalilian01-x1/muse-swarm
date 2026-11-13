@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast, short } from "@/lib/ui";
 import { fund, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
-import { toNear, txUrl, accountUrl, ROBOT_META, ROLES, CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, NET_NAME, NETWORK } from "@/lib/config";
+import { toNear, txUrl, accountUrl, ROBOT_META, ROLES, CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, BOUNTY_ID, NET_NAME, NETWORK } from "@/lib/config";
 
 const n = (y: string | bigint, d = 4) => toNear(String(y), d).replace(/\.?0+$/, "") || "0";
 const pct = (a: string, b: string) => Math.min(100, Number((BigInt(a) * 10000n) / (BigInt(b) || 1n)) / 100);
@@ -135,7 +135,7 @@ export default function Robots() {
         <section className="sec">
           <h2>Other accounts</h2>
           <div className="grid g2">
-            {[[CONTRACT_ID, "Swarm contract", "Holds rules, budgets, jobs and the NFTs. Robots' budgets live here."], [OWNER_ID, "Owner", "Sets rules, funds and withdraws, gets the owner share. Its full key never touches the server."], [TREASURY_ID, "Treasury", "Receives every AI fee, so nothing gets stranded on function-call-only robot accounts."], [GUARDIAN_ID, "Guardian", "Can only pause the swarm for up to 120 s."], ...(NETWORK === "mainnet" ? [] : [[COLLECTOR_ID, "Demo collector", "Testnet buyer for visitors without a wallet. Max 0.25 NEAR per buy, rate-limited."]])].map(([id, t, txt]) => { const a = acc(id); return (
+            {[[CONTRACT_ID, "Swarm contract", "Holds rules, budgets, jobs and the NFTs. Robots' budgets live here."], [OWNER_ID, "Owner", "Sets rules, funds and withdraws, gets the owner share. Its full key never touches the server."], [TREASURY_ID, "Treasury", "Receives every AI fee, so nothing gets stranded on function-call-only robot accounts."], [GUARDIAN_ID, "Guardian", "Can only pause the swarm for up to 120 s."], [BOUNTY_ID, "Critic's bounty purse", "Pays outside helpers who win a bounty. Funded from the Critic's contract budget with one 0.02 NEAR payout plus gas at a time, so its server-side key can never lose more than that."], ...(NETWORK === "mainnet" ? [] : [[COLLECTOR_ID, "Demo collector", "Testnet buyer for visitors without a wallet. Max 0.25 NEAR per buy, rate-limited."]])].map(([id, t, txt]) => { const a = acc(id); return (
               <div className="card" key={id}><b>{t}</b> · <a className="lnk mono" href={accountUrl(id)} target="_blank" rel="noreferrer">{id}</a><div className="k" style={{ marginTop: 4 }}>{txt} Balance {n(a?.balance || "0", 3)} NEAR.</div><KeyList keys={a?.keys || []} /></div>); })}
           </div>
         </section>

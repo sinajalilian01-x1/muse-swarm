@@ -621,15 +621,15 @@ export function runStudio2(cfg) {
     const placed = roles.map((k) => { const r = R[k]; return { l: r.cx - r.cw / 2, r: r.cx + r.cw / 2, t: r.cy, b: r.cy + r.ch, chip: r }; });
     for (const r of live) {
       const w = r.bw, h = r.bh, half = w / 2;
-      const clampX = (x) => Math.min(W - BUB_PAD - half, Math.max(BUB_PAD + half, x));
-      let x = clampX(r.ax), y = Math.max(r.ay, BUB_PAD + 12 + h);
+      const clampX = (x, yy = r.ay) => Math.min(rightEdge(yy - 12 - h, yy) - BUB_PAD - half, Math.max(BUB_PAD + half, x));
+      let y = Math.max(r.ay, BUB_PAD + 12 + h), x = clampX(r.ax, y);
       const box = (x, y) => ({ l: x - half, r: x + half, t: y - 12 - h, b: y - 6 });
       const hit = (b) => placed.find((o) => o.chip !== r && b.l < o.r + BUB_GAP && b.r > o.l - BUB_GAP && b.t < o.b + BUB_GAP && b.b > o.t - BUB_GAP);
       if (hit(box(x, y))) {
         // nearest free spot: slide sideways first, then lift by up to two bubble heights
         let best = null, bd = 1e9;
         for (let dy = 0, maxDy = W < 600 ? 0 : 2; dy <= maxDy; dy++) for (let k = -6; k <= 6; k++) {
-          const cx = clampX(r.ax + k * w / 4), cy = y - dy * (h + BUB_GAP + 4);
+          const cy = y - dy * (h + BUB_GAP + 4), cx = clampX(r.ax + k * w / 4, cy);
           if (cy - 12 - h < BUB_PAD || hit(box(cx, cy))) continue;
           const d = Math.hypot(cx - r.ax, (cy - r.ay) * 1.6); if (d < bd) { bd = d; best = [cx, cy]; }
         }
@@ -648,14 +648,26 @@ export function runStudio2(cfg) {
     }
     for (const k of roles) R[k].bWas = R[k].bubble.classList.contains('show');
   }
+  // Floating panels over the stage (the desktop reasoning feed): labels and bubbles keep clear of them.
+  let avoid = null;
+  function readAvoid() {
+    if (frameNo % 20 !== 1 && avoid !== undefined) return;
+    const f = document.querySelector('.think-feed'); avoid = null;
+    if (!f || focus > 0.05 || W < 900) return;
+    const fr = f.getBoundingClientRect(), cr = container.getBoundingClientRect();
+    if (!fr.width || getComputedStyle(f).display === 'none' || getComputedStyle(f).position !== 'fixed') return;
+    avoid = { l: fr.left - cr.left, t: fr.top - cr.top, b: fr.bottom - cr.top };
+  }
+  const rightEdge = (top, bottom) => (avoid && bottom > avoid.t - 4 && top < avoid.b + 4 ? Math.min(W, avoid.l) : W);
   function updateOverlay() {
+    readAvoid();
     for (const k of roles) { const r = R[k];
       pv.copy(wp(r.headTop)); pv.y += 0.42 * S; pv.project(camera); r.ax = (pv.x * 0.5 + 0.5) * W; r.ay = (-pv.y * 0.5 + 0.5) * H;
       const s = r.status + (r.progress != null ? ` ${Math.round(r.progress * 100)}%` : ''); if (s !== r.lastChip) { r.chipT.textContent = s; r.lastChip = s; r.cKey = null; }
       r.chipBarWrap.style.display = r.progress != null ? '' : 'none'; if (r.progress != null) r.chipBar.style.width = (r.progress * 100).toFixed(0) + '%';
       r.chip.classList.toggle('active', r.busy);
       const ck = r.lastChip + '|' + (r.progress != null) + '|' + W; if (ck !== r.cKey) { r.cKey = ck; r.cw = r.chip.offsetWidth; r.ch = r.chip.offsetHeight; }
-      r.cx = Math.min(W - 6 - r.cw / 2, Math.max(6 + r.cw / 2, r.ax)); r.cy = r.ay;
+      r.cx = Math.min(rightEdge(r.ay, r.ay + r.ch) - 6 - r.cw / 2, Math.max(6 + r.cw / 2, r.ax)); r.cy = r.ay;
       r.chip.style.transform = `translate3d(${r.cx.toFixed(1)}px, ${r.cy.toFixed(1)}px, 0)`;
       if (r.bubble.classList.contains('show')) { if (time > r.typedAt) r.bubble.classList.add('typed'); if (time > r.bubbleHide) r.bubble.classList.remove('show'); } }
     layoutBubbles();

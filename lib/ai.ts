@@ -5,7 +5,7 @@ import type { Trend } from "./trends";
 const BASE = process.env.NEAR_AI_BASE_URL || "https://cloud-api.near.ai/v1";
 export const TEXT_MODEL = process.env.NEAR_AI_TEXT_MODEL || "Qwen/Qwen3.6-35B-A3B-FP8";
 const IMAGE_MODEL = process.env.NEAR_AI_IMAGE_MODEL || "black-forest-labs/FLUX.2-klein-4B";
-const VISION_MODEL = process.env.NEAR_AI_VISION_MODEL || "Qwen/Qwen3-VL-30B-A3B-Instruct";
+export const VISION_MODEL = process.env.NEAR_AI_VISION_MODEL || "Qwen/Qwen3-VL-30B-A3B-Instruct";
 export const key = () => process.env.NEAR_AI_API_KEY || "";
 /** Flat compute fees (NEAR, paid to the treasury) when the local fallback brains run instead of NEAR AI. */
 const FALLBACK_FEE = { curator: "500000000000000000000", painter: "2000000000000000000000", critic: "1000000000000000000000" };

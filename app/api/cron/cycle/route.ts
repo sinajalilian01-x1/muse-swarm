@@ -1,6 +1,7 @@
 import { advance, maybeReprice, maybeMarketBacklog } from "@/lib/swarm";
 import { json } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
+import { tick as bountyTick } from "@/lib/bounty";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -40,5 +41,7 @@ export async function GET(req: Request) {
   }
   const rp = Date.now() - t0 < 105_000 ? await maybeReprice().catch(() => null) : null;
   const mk = Date.now() - t0 < 105_000 ? await maybeMarketBacklog().catch(() => null) : null;
-  return json({ ok: !steps.some((s) => s.stage === "error"), slot: new URL(req.url).searchParams.get("slot"), steps, repriced: rp?.hash ?? null, marketed: mk?.hash ?? null, autonomyEnds: new Date(AUTONOMY_END_MS).toISOString() });
+  // the robots' outside help: judge and pay a due bounty, open the next when the purse can pay it
+  const bounty = Date.now() - t0 < 65_000 ? await bountyTick({ open: true }).catch((e) => ({ error: String(e?.message || e) })) : { skipped: "no time left" };
+  return json({ ok: !steps.some((s) => s.stage === "error"), bounty, slot: new URL(req.url).searchParams.get("slot"), steps, repriced: rp?.hash ?? null, marketed: mk?.hash ?? null, autonomyEnds: new Date(AUTONOMY_END_MS).toISOString() });
 }
