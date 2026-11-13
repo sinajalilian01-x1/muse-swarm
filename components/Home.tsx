@@ -306,7 +306,7 @@ export default function Home() {
           </div>
         </aside>
       </main>
-      <section className="features hero-copy">
+      <section className="features hero-copy" style={cOpen ? { display: "none" } : undefined}>
         <div><i style={{ ["--c" as any]: "#16A39C" }}><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /></svg></i><p><b>4 robot accounts</b><span>Limited keys, own budgets</span></p></div>
         <div><i style={{ ["--c" as any]: "#F48AA6" }}><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg></i><p><b>Score gate</b><span>Below 7.0 never mints</span></p></div>
         <div><i style={{ ["--c" as any]: "#F6C53E" }}><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9" /></svg></i><p><b>On-chain split</b><span>Every sale, by the contract</span></p></div>
