@@ -265,6 +265,9 @@ export function mountStudio({ container, overlay, director, hooks }) {
     container, overlay, lowpoly: true, robotScale: 1.28,
     camera: cam, buildRoom, envIntensity: 0.45, exposure: 1.0,
     lights: { sky: '#ffffff', ground: '#dfe3e6', hemi: 1.35, sun: 2.4, sunColor: '#fff6ea', sunPos: [5, 13, 9], fill: 0.55, fillPos: [-7, 5, 6], fillColor: '#e8f4ff', shadowSize: 8.5 },
+    // evening: warm lamp pools at the desk, coffee bar, sofa and balcony; cool dusk fill; softer floor bounce
+    night: { sky: '#7584b0', ground: '#3d3640', hemi: 0.7, sunColor: '#ffb27a', sun: 0.62, fillColor: '#8094d6', fill: 0.34, exposure: 0.9, envIntensity: 0.2, glass: '#f4a26e', glassOpacity: 0.24,
+      lamps: [[-2.9, 2.6, -2.0, '#ffb867', 4.5, 6], [-3.3, 2.4, 2.6, '#ffc07a', 3.5, 5], [1.4, 2.8, 1.2, '#ffb06a', 3.5, 5.5], [2.9, 2.4, -5.6, '#ffcf8a', 4, 5]] },
     viewShift: (W, H) => (document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('room-fs') ? { x: 0, y: 0 } : W > 900 ? { x: 0.15, y: -0.01 } : innerWidth <= 900 ? { x: 0.04, y: 0.03 } : { x: 0, y: 0.06 }),
     robots: [
       { role: 'curator', name: 'Curator', x: home.curator[0], z: home.curator[1], ry: Math.PI / 4 + 0.1, body: white, head: C.teal, accent: C.teal, tag: C.teal, bubble: C.teal, bubbleText: '#ffffff', eye: '#BFFFF6' },
@@ -297,9 +300,15 @@ export function mountStudio({ container, overlay, director, hooks }) {
     studio?.resize?.();
   };
   fit(); addEventListener('resize', fit);
+  // night mode follows <html data-theme>; first paint is instant, later toggles fade over ~0.9 s
+  const isDark = () => document.documentElement.dataset.theme === 'dark';
+  studio?.setNight?.(isDark(), true);
+  const themeObs = new MutationObserver(() => studio?.setNight?.(isDark(), false));
+  themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   addEventListener('fullscreenchange', fit); addEventListener('webkitfullscreenchange', fit); addEventListener('orientationchange', fit);
   visualViewport?.addEventListener('resize', fit);
   return { studio, dispose() {
+    themeObs.disconnect();
     removeEventListener('resize', fit); removeEventListener('fullscreenchange', fit); removeEventListener('webkitfullscreenchange', fit); removeEventListener('orientationchange', fit);
     visualViewport?.removeEventListener('resize', fit);
   } };

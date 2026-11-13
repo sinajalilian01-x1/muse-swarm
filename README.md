@@ -60,6 +60,8 @@ Some works score below 7.0, roughly one in five. The contract refuses to mint th
 - **It sells beyond its own website.** The Seller cross-lists every piece on Mintbase's market (NEP-178 approval + NEP-199 payout). It writes and pins a marketing plan, which is the NFT's NEP-177 `reference`, and logs it on-chain (`marketing_plan`). Proper NEP-177 metadata (description, absolute media, reference) means wallets and marketplaces show real cards.
 - **Customers, not just demos.** Commissions are paid up front in NEAR or wNEAR, or in any token through NEAR Intents on mainnet. The contract escrows the payment until the Seller delivers.
 - **Honest numbers.** Buys by our own accounts (`hlpok1lad.tg` and its sub-accounts on mainnet; the demo collector and `museswarm.testnet` accounts during development) are labeled "test" everywhere and never counted as outside sales. Outside revenue on mainnet so far: 0.
+- **It learns from its own market.** The Seller tracks real signals for every token: gallery views, detail clicks and Collect clicks from real visitors, plus sales, markdowns and time listed read from the chain. Before each new job the Curator reads those numbers, adjusts the brief (palette, trend source, list price) and writes down why. The decision record is pinned to IPFS and its CID goes on-chain at the end of the job brief. With too little data it says so ("learning, not enough data yet") instead of guessing.
+- **You can watch it think.** The home page shows a live feed of each robot's real decisions and the reasons it gave, such as the Curator's pick, the Critic's score and note, and the Seller's price and why. Every line comes from the signed transaction or the IPFS document it points to, and links to that tx.
 - **A pattern others can reuse.** Swap the art for research, design or moderation and the pattern still holds: one contract holds the rules and the money, many agents each have their own account, and every sale pays a split.
 
 ## How it works
@@ -99,6 +101,32 @@ flowchart LR
 
 On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. It sweeps anything above a robot's `budget_cap` to the owner and emits `nft_transfer`, `sold` and `split_paid`.
 
+### The swarm learns from its market (feedback loop)
+
+1. **Signals.** The Gallery sends a *view* when a listed or sold work stays at least half on screen for 1 s (once per browser session). Opening a work's details or links counts as a *click*, and pressing Collect counts as a *collect*. `/api/signal` ignores bots and headless browsers (so our own QA never counts), rate-limits each IP and counts one signal per visitor, token and kind every 30 minutes. Sales, markdowns (`repriced` events), first list price and time listed come from the chain.
+2. **Storage without a database.** The app keeps everything on NEAR or IPFS. Each server instance batches counts in memory and pins a small delta JSON to Pinata at most every 45 s. Readers add the latest snapshot to the newer deltas, and when deltas pile up they are compacted into a new snapshot.
+3. **Lessons** (`lib/learn.ts`, `GET /api/learned`):
+   - **Style and trend source.** These lessons need at least 20 real views overall and 8 views per group. A palette or trend source that gets 1.5x or more the weighted engagement per view becomes the preference, for example "Night Market pieces got 2.4x the engagement per view, so leaning Night Market."
+   - **Price.** If nothing sold in 24 h and listings are a day or more old, the next list price drops 10%, never below the owner's floor. A sale in the last 24 h raises it 10%, never above the max.
+   - Until then the panel reads "Learning, not enough data yet", with the real view count.
+4. **Decision on-chain.** Before `curator_open_job`, the Curator gets the lessons in its NEAR AI prompt (or the fallback curator applies the preferred palette) and returns a `why`. The full decision is pinned as `muse-swarm-decision-<job>.json`. It contains the lessons, per-token stats, the SHA-256 of the stats and the Curator's choice and reason. The brief ends with `[L:<CID>]`, so the reasoning is fixed on-chain with the job. The Seller gets the price lesson too, and its price, reason and the lesson it used go into the token's NEP-177 reference JSON (`pricing`).
+5. **Panel.** "What the swarm learned" on the home page shows the status, the lessons, the totals and the per-token stats.
+
+### Live reasoning feed
+
+`GET /api/feed` rebuilds the robots' thinking from the last 40 contract transactions (FastNear tx API):
+- **Curator:** the trend it picked, the title, the palette and its `why` from the decision CID.
+- **Painter:** the title and the model it used.
+- **Critic:** minted or rejected, the score out of 10 and its own note.
+- **Seller:** the list price, the AI's pricing reason, the audience and any markdowns (old → new price).
+- **Sales:** each sale, with test buys labeled as test.
+
+Each item links to its tx and job, shows the model, and links to the IPFS "why" document where there is one. Nothing is generated for display.
+
+### Night mode
+
+A sun/moon toggle in the nav switches the whole site to deep navy surfaces with the same brand accents. It follows the system setting by default and remembers your choice. In the 3D studio it's evening: warm lamp pools, a dusk tint on the balcony glass, cooler fill light and a softer floor bounce. The models and layout are the same, and the light fades over about a second.
+
 ## NEAR features used
 
 - **Named sub-accounts per agent:** `curator/painter/critic/seller/guardian/treasury.hlpok1lad.tg` on mainnet.
@@ -129,6 +157,9 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 | Mintbase marketplace listing and sales | **Real:** every mainnet NFT is listed on Mintbase's market contract `simple.market.mintbase1.near`. The mintbase.xyz website currently returns HTTP 402, so the Gallery's **Buy via Mintbase** calls the market contract directly. A Mintbase sale was tested on testnet (`market-v2-beta.mintspace2.testnet`) |
 | Pay in any token (NEAR Intents 1Click) | **Live on mainnet:** a real deposit address with status polling. No outside deposit has arrived yet |
 | Marketing plans | **Real:** written per piece, pinned to IPFS, logged on-chain. Written by NEAR AI when the key is set, otherwise by a labeled `fallback-marketer`. X posts are **drafts only, never posted** |
+| Market signals (views, clicks, Collect clicks) | **Real visitors only:** bots/headless browsers ignored, one per visitor per token per kind per 30 min, stored as JSON on IPFS (Pinata). Sales and markdowns are read from the chain. No seeded or simulated data: with too little data the panel says "learning" |
+| Curator decisions | **Real:** the lessons + the model's `why` are pinned to IPFS, and the CID is written on-chain in the job brief (`[L:<CID>]`) |
+| Reasoning feed | **Real:** rebuilt from signed tx arguments and the IPFS docs they reference |
 | Sales numbers | 0 outside sales on mainnet so far. Our own and test buys are labeled **test** and never counted as outside sales |
 | Autonomous cycles | **Real:** Vercel Cron → `/api/cron/cycle`, 12 slots a day, mainnet through 17 Nov 2026 (end-date guard) |
 | AI brains | **Real: NEAR AI Cloud, live.** Curator brief (Qwen3.6), Painter image (FLUX.2-klein), Critic review of the image (Qwen3-VL), Seller price + marketing plan (Qwen3.6). The home scoreboard shows "NEAR AI Cloud brains", and `/api/health` shows the models. If a single NEAR AI call fails, that step uses a labeled local fallback, and the on-chain `model` field then says `fallback-*`. |
@@ -284,8 +315,10 @@ This creates the accounts, deploys and initializes the contract, adds function-c
 - `lib/wallet.ts`: NEAR Connect buy, fund, commission (NEAR and wNEAR), buy via Mintbase.
 - `lib/marketing.ts`: the Seller's marketing plan and the NEP-177 reference JSON. `lib/intents.ts`: NEAR Intents 1Click assets.
 - `lib/ratelimit.ts`: the per-IP limit and the on-chain swarm-wide pace.
+- `lib/signals.ts` (visitor signals on IPFS), `lib/learn.ts` (lessons + price factor), `lib/reasoning.ts` (the live reasoning feed), `lib/track.ts` (client beacons).
+- `components/Reasoning.tsx` (the feed and the "What the swarm learned" panel), `components/ThemeToggle.tsx` (night mode).
 - `components/studio/`: the three.js low-poly studio. `director.js` turns real chain events into the robots' story, in live, watch or replay mode.
-- `app/api/*`: `state`, `health`, `swarm/step`, `swarm/collect`, `swarm/pause`, `cron/cycle`, `ledger`, `jobs`, `robots`, `market` (where each piece is for sale + its plan), `scoreboard`, `commission`, `intents/quote`, `media/[cid]` (a same-origin IPFS proxy for WebGL).
+- `app/api/*`: `state`, `health`, `swarm/step`, `swarm/collect`, `swarm/pause`, `cron/cycle`, `ledger`, `jobs`, `robots`, `market` (where each piece is for sale + its plan), `scoreboard`, `commission`, `intents/quote`, `media/[cid]` (a same-origin IPFS proxy for WebGL), `signal` (market signals), `learned` (what the swarm learned), `feed` (robot reasoning).
 
 ## Mainnet launch notes (13 Nov 2026, 05:47 CET)
 

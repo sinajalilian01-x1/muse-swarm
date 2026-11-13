@@ -17,6 +17,9 @@ export interface Plan {
   model: string; ai: boolean; error?: string;
 }
 
+/** The Seller's price decision and its reason, kept in the token's reference JSON (CID on-chain). */
+export interface Pricing { price: number; reason: string; model: string; ai: boolean; rule_price: number; rule_reason: string; lesson: string | null; learned_sha256: string | null }
+
 const clean = (s: unknown, n: number) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const tag = (s: string) => "#" + s.replace(/[^A-Za-z0-9]+/g, " ").trim().split(" ").filter(Boolean).slice(0, 3).map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join("");
 
@@ -58,7 +61,7 @@ export async function marketingPlan(job: Job, price: number): Promise<Plan> {
     try {
       const { data } = await chat(TEXT_MODEL, [
         { role: "system", content: "You are the Seller robot in Muse Swarm, an AI art studio on NEAR, working with the Curator robot who picked the trend. You write sharp, honest, non-spammy marketing for one NFT. No fake claims, no price hype, no engagement bait. Reply with JSON only." },
-        { role: "user", content: `Artwork: "${job.title}" (#${job.id}), low-poly painting. Trend it came from: "${job.trend}" (${job.source}). Brief: ${job.brief}. Critic score ${(job.score / 10).toFixed(1)}/10. Price ${price} NEAR on NEAR ${NETWORK}; every sale is split on-chain between the four robots and the owner. Link: ${url}.
+        { role: "user", content: `Artwork: "${job.title}" (#${job.id}), low-poly painting. Trend it came from: "${job.trend}" (${job.source}). Brief: ${job.brief.replace(/\s*\[L:[A-Za-z0-9]+\]\s*$/, "")}. Critic score ${(job.score / 10).toFixed(1)}/10. Price ${price} NEAR on NEAR ${NETWORK}; every sale is split on-chain between the four robots and the owner. Link: ${url}.
 Return {"pitch": "max 40 words", "audience": "who exactly, max 20 words", "channel": "best channel, max 10 words", "best_time": "when to post and why, max 16 words", "hashtags": ["3-5 hashtags"], "why": "one sentence strategy", "x_drafts": ["two X posts under 260 chars each, include the link"]}` },
       ], 600);
       const plan: Plan = {
@@ -75,12 +78,13 @@ Return {"pitch": "max 40 words", "audience": "who exactly, max 20 words", "chann
 }
 
 /** Pin the full plan as the token's NEP-177 reference JSON and return the on-chain plan argument. */
-export async function pinPlan(job: Job, plan: Plan, price: number) {
+export async function pinPlan(job: Job, plan: Plan, price: number, pricing?: Pricing) {
   const doc = {
     // NEP-177 reference: extra token info, readable by wallets/marketplaces.
     name: job.title, description: plan.pitch, token_id: job.token_id, contract: CONTRACT_ID, external_url: `${APP_URL}/gallery#job-${job.id}`,
     attributes: [{ trait_type: "Trend", value: job.trend }, { trait_type: "Critic score", value: job.score / 10 }, { trait_type: "List price (NEAR)", value: price }],
     marketing: { ...plan, status: "drafts only: Muse Swarm never posts to X or any external account" },
+    ...(pricing ? { pricing } : {}),
     for_sale: [{ venue: "Muse Swarm", url: `${APP_URL}/gallery#job-${job.id}` }, { venue: MARKET_NAME, market: MARKET_ID, url: job.token_id ? mintbaseTokenUrl(job.token_id) : null }],
   };
   const pinned = await pin(Buffer.from(JSON.stringify(doc, null, 1)), `muse-swarm-plan-${job.id}.json`, "application/json");

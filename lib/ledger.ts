@@ -46,9 +46,12 @@ function parse(t: any): LedgerTx {
 
 async function details(hashes: string[]): Promise<LedgerTx[]> {
   const missing = hashes.filter((h) => !detailCache.has(h));
-  for (let i = 0; i < missing.length; i += 20) {
-    const j = await post("/v0/transactions", { tx_hashes: missing.slice(i, i + 20) });
-    for (const t of j.transactions || []) { const p = parse(t); detailCache.set(p.hash, p); }
+  const chunks: string[][] = [];
+  for (let i = 0; i < missing.length; i += 20) chunks.push(missing.slice(i, i + 20));
+  // up to 4 batches in flight: a cold 200-tx read takes ~3 s instead of ~12 s
+  for (let i = 0; i < chunks.length; i += 4) {
+    const res = await Promise.all(chunks.slice(i, i + 4).map((c) => post("/v0/transactions", { tx_hashes: c })));
+    for (const j of res) for (const t of j.transactions || []) { const p = parse(t); detailCache.set(p.hash, p); }
   }
   return hashes.map((h) => detailCache.get(h)).filter((x): x is LedgerTx => !!x);
 }

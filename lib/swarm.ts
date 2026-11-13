@@ -4,7 +4,8 @@ import { view, robotCall, accountBalance } from "./near";
 import { fetchTrends } from "./trends";
 import { curatorPick, painterPaint, criticReview, aiMode, sellerPrice } from "./ai";
 import { pin, fetchIpfs } from "./ipfs";
-import { marketingPlan, pinPlan, MARKET_ID, type Plan } from "./marketing";
+import { marketingPlan, pinPlan, MARKET_ID, type Plan, type Pricing } from "./marketing";
+import { learn, cleanBrief, type Learned } from "./learn";
 import { ROBOT_IDS, ROLES, APP_URL, NETWORK, nearNum, nearToYocto, type Role } from "./config";
 import type { Job, Swarm, TxInfo } from "./types";
 
@@ -64,10 +65,10 @@ const REPRICE_AFTER_MS = 15 * 60_000;
 const SELLER_GAS = NETWORK === "mainnet" ? 70_000_000_000_000n : 150_000_000_000_000n;
 
 /** Seller writes the marketing plan, pins it as the token's NEP-177 reference, and builds the seller_list args. */
-async function sellerArgs(job: Job, price: number): Promise<{ args: Record<string, unknown>; plan: Plan | null; planCid?: string }> {
+async function sellerArgs(job: Job, price: number, pricing?: Pricing): Promise<{ args: Record<string, unknown>; plan: Plan | null; planCid?: string }> {
   const plan = await marketingPlan(job, price).catch(() => null);
   let pinned: Awaited<ReturnType<typeof pinPlan>> | null = null;
-  if (plan) pinned = await pinPlan(job, plan, price).catch(() => null);
+  if (plan) pinned = await pinPlan(job, plan, price, pricing).catch(() => null);
   return { args: { job_id: job.id, price: nearToYocto(price), plan: pinned?.arg ?? null, market: MARKET_ID }, plan, planCid: pinned?.cid };
 }
 
@@ -161,19 +162,30 @@ export async function advance(token?: string): Promise<StepResult> {
       const [trends, recent] = cm
         ? [[{ name: cm.brief.slice(0, 80), source: "Commission", url: `${APP_URL}/?commission=${cm.id}`, context: `commissioned by ${cm.patron}` }], []]
         : await Promise.all([fetchTrends(), getJobs(undefined, 12)]);
-      const pick = await curatorPick(trends, recent.map((j) => j.trend));
+      // Feature: market feedback loop. Before a new (non-commissioned) job the Curator reads what the Seller learned.
+      const learned: Learned | null = cm ? null : await learn(true).catch(() => null);
+      const pick = await curatorPick(trends, recent.map((j) => j.trend), learned ? { status: learned.status, summary: learned.summary, preferPalette: learned.adjust.preferPalette, preferSource: learned.adjust.preferSource } : undefined);
+      // The decision and its reasons are pinned to IPFS; its CID goes on-chain at the end of the brief as [L:<cid>].
+      let memo = "", decisionCid: string | undefined;
+      if (learned) {
+        const doc = { kind: "muse-swarm-curator-decision", job_id: sw.next_job, at: Date.now(),
+          curator: { trend: pick.trend.name, source: pick.trend.source, url: pick.trend.url, title: pick.title, palette: pick.palette, scene: pick.scene, why: pick.why, model: pick.model, ai: pick.ai },
+          learned: { status: learned.status, summary: learned.summary, lessons: learned.lessons, adjust: learned.adjust, totals: learned.totals, rules: learned.rules, signals_since: learned.signalsSince, sha256: learned.hash },
+          tokens: learned.tokens.map((t) => ({ job: t.job, palette: t.palette, source: t.source, views: t.views, clicks: t.clicks, collects: t.collects, sold: t.sold, markdowns: t.markdowns, listed_hours: t.listedHours, price: t.price })) };
+        try { decisionCid = (await pin(Buffer.from(JSON.stringify(doc, null, 1)), `muse-swarm-decision-${sw.next_job}.json`, "application/json")).cid; memo = ` [L:${decisionCid}]`; } catch {}
+      }
       if (cm) pick.line = `${cm.patron.length > 20 ? "A patron" : cm.patron} commissioned “${cm.brief.slice(0, 30)}”. On it!`;
       const r = await maybeRefuel("curator"); if (r) txs.push(r);
-      const tx = await robotCall("curator", "curator_open_job", { trend: pick.trend.name, source: pick.trend.url, brief: `${pick.title} — ${pick.brief}`.slice(0, 240), fee: pick.feeYocto, model: pick.model, commission_id: cm ? cm.id : null });
+      const tx = await robotCall("curator", "curator_open_job", { trend: pick.trend.name, source: pick.trend.url, brief: fitBrief(`${pick.title} — ${pick.brief}`, memo), fee: pick.feeYocto, model: pick.model, commission_id: cm ? cm.id : null });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error };
       const opened = tx.returnValue as Job;
       return { stage: "briefed", job: opened, txs, driver: driverToken(opened.id), say: pick.line,
-        extra: { commission: cm, trend: pick.trend, title: pick.title, palette: pick.palette, scene: pick.scene, others: trends.slice(0, 6).map((t) => t.name), ai: pick.ai, model: pick.model, aiError: pick.error } };
+        extra: { commission: cm, trend: pick.trend, title: pick.title, palette: pick.palette, scene: pick.scene, others: trends.slice(0, 6).map((t) => t.name), ai: pick.ai, model: pick.model, aiError: pick.error, why: pick.why, learned: learned ? { status: learned.status, summary: learned.summary, lessons: learned.lessons } : null, decisionCid } };
     }
     if (job.status === "briefed") {
       const title = job.brief.includes(" — ") ? job.brief.split(" — ")[0].slice(0, 40) : await titleFromBrief(job);
-      const art = await painterPaint(job.id, job.trend, job.brief, title);
+      const art = await painterPaint(job.id, job.trend, cleanBrief(job.brief), title);
       const pinned = await pin(art.bytes, `muse-swarm-job-${job.id}.${art.mime.includes("svg") ? "svg" : "png"}`, art.mime);
       const r = await maybeRefuel("painter"); if (r) txs.push(r);
       const tx = await robotCall("painter", "painter_submit", { job_id: job.id, title: art.title, media: pinned.cid, fee: art.feeYocto, model: art.model });
@@ -184,7 +196,7 @@ export async function advance(token?: string): Promise<StepResult> {
     if (job.status === "painted") {
       const img = await fetchIpfs(job.media);
       const mime = img.mime.includes("svg") || img.bytes.subarray(0, 5).toString() === "<svg " ? "image/svg+xml" : img.mime;
-      const rv = await criticReview(job.id, job.brief, img.bytes, mime);
+      const rv = await criticReview(job.id, cleanBrief(job.brief), img.bytes, mime);
       const r = await maybeRefuel("critic"); if (r) txs.push(r);
       const tx = await robotCall("critic", "critic_review", { job_id: job.id, score: rv.score, note: rv.note, fee: rv.feeYocto, model: rv.model });
       txs.push(tx);
@@ -203,25 +215,38 @@ export async function advance(token?: string): Promise<StepResult> {
         return take({ stage: "listed", job: tx.returnValue as Job, txs, say: `Delivered to ${cm.patron.length > 22 ? "the patron" : cm.patron}!`,
           extra: { delivered: cm.patron, commission: cm, price: nearNum(cm.amount), plan: sa.plan, planCid: sa.planCid } });
       }
-      const recent = await getJobs(undefined, 12);
+      const [recent, learned] = await Promise.all([getJobs(undefined, 12), learn().catch(() => null)]);
       const base = priceFor(job.score, sw, recent);
-      const sp = await sellerPrice(job, base, nearNum(sw.rules.floor), nearNum(sw.rules.max_price),
-        recent.filter((j) => j.id !== job.id && (j.status === "listed" || j.status === "sold")).map((j) => ({ title: j.title, price: nearNum(j.price), sold: j.status === "sold" })));
+      const floorN = nearNum(sw.rules.floor), maxN = nearNum(sw.rules.max_price);
+      const priceLesson = learned?.lessons.find((l) => l.kind === "price");
+      if (learned && learned.adjust.priceFactor !== 1) {
+        base.price = Math.max(floorN, Math.min(maxN, Math.round(base.price * learned.adjust.priceFactor * 200) / 200));
+        base.reason += `; market lesson: x${learned.adjust.priceFactor}`;
+      }
+      const sp = await sellerPrice(job, base, floorN, maxN,
+        recent.filter((j) => j.id !== job.id && (j.status === "listed" || j.status === "sold")).map((j) => ({ title: j.title, price: nearNum(j.price), sold: j.status === "sold" })), priceLesson?.text);
       const p = { price: sp.price, reason: sp.reason };
       const r = await maybeRefuel("seller"); if (r) txs.push(r);
-      const sa = await sellerArgs(job, p.price);
+      const sa = await sellerArgs(job, p.price, { price: p.price, reason: p.reason, model: sp.model, ai: sp.ai, rule_price: base.price, rule_reason: base.reason, lesson: priceLesson?.text ?? null, learned_sha256: learned?.hash ?? null });
       const tx = await robotCall("seller", "seller_list", sa.args, SELLER_GAS);
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
       const crossListed = (tx.events || []).some((e) => e.event === "cross_listed");
       const rp = await maybeReprice(sw).catch(() => null); if (rp) txs.push(rp);
       return take({ stage: "listed", job: tx.returnValue as Job, txs, say: crossListed ? `Listed for ${p.price} NEAR, here and on Mintbase` : `Listed for ${p.price} NEAR`,
-        extra: { price: p.price, reason: p.reason, priceModel: sp.model, priceAi: sp.ai, priceError: sp.error, plan: sa.plan, planCid: sa.planCid, market: crossListed ? MARKET_ID : null } });
+        extra: { price: p.price, reason: p.reason, lesson: priceLesson?.text ?? null, priceModel: sp.model, priceAi: sp.ai, priceError: sp.error, plan: sa.plan, planCid: sa.planCid, market: crossListed ? MARKET_ID : null } });
     }
     return { stage: "error", txs, error: `Unexpected job status ${job.status}`, job };
   } finally {
     inflight.delete(lockKey);
   }
+}
+
+/** The contract clips briefs at 240 bytes (UTF-8). Trim the text, never the [L:<cid>] memo at its end. */
+function fitBrief(text: string, memo: string, max = 240) {
+  let t = text.slice(0, max);
+  while (t && Buffer.byteLength(t + memo, "utf8") > max) t = t.slice(0, -1);
+  return t + memo;
 }
 
 async function titleFromBrief(job: Job) {

@@ -20,14 +20,31 @@ export function runStudio2(cfg) {
   const scene = new THREE.Scene(); const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = cfg.envIntensity ?? 0.45;
   const L = cfg.lights;
-  scene.add(new THREE.HemisphereLight(L.sky, L.ground, L.hemi));
+  const hemi = new THREE.HemisphereLight(L.sky, L.ground, L.hemi); scene.add(hemi);
   const sun = new THREE.DirectionalLight(L.sunColor, L.sun); sun.position.set(...L.sunPos); sun.castShadow = true; sun.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
   const sc = sun.shadow.camera, SS = L.shadowSize ?? 6.5; sc.left = -SS; sc.right = SS; sc.top = SS; sc.bottom = -SS; sc.near = 1; sc.far = 50; sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.025;
   scene.add(sun, sun.target);
-  if (L.fill) { const f = new THREE.DirectionalLight(L.fillColor ?? '#fff', L.fill); f.position.set(...L.fillPos); scene.add(f); }
+  let fill = null; if (L.fill) { fill = new THREE.DirectionalLight(L.fillColor ?? '#fff', L.fill); fill.position.set(...L.fillPos); scene.add(fill); }
+  // Evening mode: same scene, different light. Warm lamp pools (no shadows, intensity 0 by day so shaders never recompile).
+  const NC = cfg.night || {};
+  const lamps = (NC.lamps || []).map(([x, y, z, color, power, dist]) => { const p = new THREE.PointLight(color, 0, dist ?? 6, 1.6); p.position.set(x, y, z); p.userData.power = power; scene.add(p); return p; });
+  const day = { sky: new THREE.Color(L.sky), ground: new THREE.Color(L.ground), hemi: L.hemi, sunC: new THREE.Color(L.sunColor), sun: L.sun, fillC: new THREE.Color(L.fillColor ?? '#fff'), fill: L.fill || 0, exp: cfg.exposure ?? 1, env: cfg.envIntensity ?? 0.45 };
+  const eve = { sky: new THREE.Color(NC.sky ?? '#5a6c96'), ground: new THREE.Color(NC.ground ?? '#3a2e28'), hemi: NC.hemi ?? 0.55, sunC: new THREE.Color(NC.sunColor ?? '#ffb36b'), sun: NC.sun ?? 0.9, fillC: new THREE.Color(NC.fillColor ?? '#6f86c8'), fill: NC.fill ?? 0.35, exp: NC.exposure ?? 0.92, env: NC.envIntensity ?? 0.22 };
+  let nightT = 0, nightGoal = 0; const glassMats = [];
+  function applyNight(t) {
+    hemi.color.copy(day.sky).lerp(eve.sky, t); hemi.groundColor.copy(day.ground).lerp(eve.ground, t); hemi.intensity = day.hemi + (eve.hemi - day.hemi) * t;
+    sun.color.copy(day.sunC).lerp(eve.sunC, t); sun.intensity = day.sun + (eve.sun - day.sun) * t;
+    if (fill) { fill.color.copy(day.fillC).lerp(eve.fillC, t); fill.intensity = day.fill + (eve.fill - day.fill) * t; }
+    renderer.toneMappingExposure = day.exp + (eve.exp - day.exp) * t; scene.environmentIntensity = day.env + (eve.env - day.env) * t;
+    lamps.forEach((p) => { p.intensity = p.userData.power * t; });
+    glassMats.forEach((g) => { g.m.color.copy(g.day).lerp(g.eve, t); g.m.opacity = g.op + (g.eveOp - g.op) * t; });
+  }
+  function stepNight(dt) { if (nightT === nightGoal) return; const d = Math.sign(nightGoal - nightT) * dt / 0.9; nightT = Math.max(0, Math.min(1, nightT + d)); if ((d > 0 && nightT > nightGoal) || (d < 0 && nightT < nightGoal)) nightT = nightGoal; applyNight(nightT); }
   const C = cfg.camera; const camera = new THREE.PerspectiveCamera(C.fov, 1, 0.1, 300); const target = new THREE.Vector3(...C.target);
   const ctx = { painting: new LivePainting(320, 400) };
   cfg.buildRoom(kit, scene, ctx);
+  // dusk sky through the balcony glass: tint the room's glass panes at night
+  scene.traverse((o) => { const m = o.material; if (o.isMesh && m && !Array.isArray(m) && m.transparent && m.opacity < 0.3 && m.roughness < 0.2 && !glassMats.some((g) => g.m === m)) glassMats.push({ m, day: m.color.clone(), eve: new THREE.Color(NC.glass ?? '#f2a675'), op: m.opacity, eveOp: NC.glassOpacity ?? 0.2 }); });
 
   // ------------------------------------------------------------ robots
   const roles = ['curator', 'painter', 'critic', 'seller']; const R = {};
@@ -644,7 +661,7 @@ export function runStudio2(cfg) {
     layoutBubbles();
     for (let i = pops.length - 1; i >= 0; i--) { const o = pops[i]; const age = time - o.born; if (age > o.life) { o.d.remove(); pops.splice(i, 1); continue; } pv.copy(wp(o.anchor)); pv.y += o.dy + age * 0.45; place(pv, o.d, ` translateX(${o.x}px)`); }
   }
-  function logic(dt) { time += dt; curDt = dt; frameNo++; runTasks(); for (const k of roles) updateRobot(R[k], dt); scene.updateMatrixWorld(); updateItems(); updateFx(dt); updateCamera(dt); updateOverlay(); }
+  function logic(dt) { time += dt; curDt = dt; frameNo++; stepNight(Math.max(dt, 1 / 60)); runTasks(); for (const k of roles) updateRobot(R[k], dt); scene.updateMatrixWorld(); updateItems(); updateFx(dt); updateCamera(dt); updateOverlay(); }
 
   // boot
   window.__ms = { R, get time() { return time; }, get calls() { return renderer.info.render.calls; }, get tris() { return renderer.info.render.triangles; }, step(s) { for (let i = 0; i < s * 30; i++) logic(1 / 30); },
@@ -654,5 +671,5 @@ export function runStudio2(cfg) {
   let last = performance.now(), started = false;
   function frame(now) { const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)) * speed; last = now; logic(dt); renderer.render(scene, camera); if (!started) { started = true; cfg.onReady?.(); } requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
-  return { setFocus(v) { focusT = v ? 1 : 0; }, resize };
+  return { setFocus(v) { focusT = v ? 1 : 0; }, resize, setNight(on, instant) { nightGoal = on ? 1 : 0; if (instant) { nightT = nightGoal; applyNight(nightT); } } };
 }

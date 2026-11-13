@@ -59,10 +59,12 @@ export async function chat(model: string, messages: any[], maxTokens = 500) {
   return { data: JSON.parse(m[0]), usage: j.usage || {} };
 }
 
-export interface Pick { trend: Trend; brief: string; title: string; line: string; palette: string; scene: Scene; model: string; feeYocto: string; ai: boolean; error?: string }
+export interface Pick { trend: Trend; brief: string; title: string; line: string; palette: string; scene: Scene; model: string; feeYocto: string; ai: boolean; error?: string; why: string }
+/** What the Seller's market data says, handed to the Curator before it picks (see lib/learn.ts). */
+export interface MarketHint { status: "learning" | "learned"; summary: string; preferPalette: string | null; preferSource: string | null }
 
 /** Curator: choose the most paintable, safe trend that the swarm hasn't painted recently and write a brief. */
-export async function curatorPick(trends: Trend[], recent: string[]): Promise<Pick> {
+export async function curatorPick(trends: Trend[], recent: string[], hint?: MarketHint): Promise<Pick> {
   const recentSet = new Set(recent.map((s) => s.toLowerCase()));
   const fresh = trends.filter((t) => !recentSet.has(t.name.toLowerCase()));
   const pool = (fresh.length ? fresh : trends).slice(0, 16);
@@ -73,22 +75,24 @@ export async function curatorPick(trends: Trend[], recent: string[]): Promise<Pi
       const list = pool.map((t, i) => `${i}. ${t.name} (${t.source}${t.context ? `: ${t.context.slice(0, 90)}` : ""})`).join("\n");
       const { data, usage } = await chat(TEXT_MODEL, [
         { role: "system", content: "You are the Curator robot in Muse Swarm, an AI art studio on NEAR. You pick live trends that make beautiful, uplifting abstract low-poly paintings. Never pick tragedies, politics or real people's likeness. Reply with JSON only." },
-        { role: "user", content: `${pool[0].source === "Commission" ? `A paying patron commissioned this exact piece: "${pool[0].name}". Pick index 0 and write a brief that is faithful to their request.\n` : ""}Live trends right now:\n${list}\n\nPalettes: ${PALETTES.map((p) => p.name).join(", ")}.\nScenes: sea, peaks, hills, city, cosmos, bloom.\nReturn {"index": n, "title": "2-4 word artwork title", "brief": "one vivid sentence (max 30 words) describing a low-poly painting inspired by the trend, no people", "palette": "...", "scene": "...", "line": "max 10 words you say to the Painter"}` },
+        { role: "user", content: `${pool[0].source === "Commission" ? `A paying patron commissioned this exact piece: "${pool[0].name}". Pick index 0 and write a brief that is faithful to their request.\n` : ""}Live trends right now:\n${list}\n\n${hint ? `What the Seller learned from the market: ${hint.summary}${hint.preferPalette ? ` Prefer the palette ${hint.preferPalette} unless it really clashes with the trend.` : ""}${hint.preferSource ? ` Prefer a ${hint.preferSource} trend if a good one exists.` : ""}\n` : ""}Palettes: ${PALETTES.map((p) => p.name).join(", ")}.\nScenes: sea, peaks, hills, city, cosmos, bloom.\nReturn {"index": n, "title": "2-4 word artwork title", "brief": "one vivid sentence (max 30 words) describing a low-poly painting inspired by the trend, no people", "palette": "...", "scene": "...", "line": "max 10 words you say to the Painter", "why": "max 22 words: why this trend and palette, citing the market lesson if you used one"}` },
       ]);
       const t = pool[Math.max(0, Math.min(pool.length - 1, Number(data.index) || 0))];
       const palette = PALETTES.find((p) => p.name === data.palette)?.name || PALETTES[hashSeed(t.name) % PALETTES.length].name;
       const scene = (["sea", "peaks", "hills", "city", "cosmos", "bloom"].includes(data.scene) ? data.scene : sceneFor(t.name, hashSeed(t.name))) as Scene;
       return { trend: t, brief: `${String(data.brief).slice(0, 200)} Palette: ${palette}.`, title: String(data.title || t.name).slice(0, 40), line: String(data.line || `${t.name} is trending!`).slice(0, 70),
-        palette, scene, model: TEXT_MODEL, feeYocto: await usdToYocto(tokenUsd(usage, 1.7e-7, 1.1e-6)), ai: true };
+        palette, scene, model: TEXT_MODEL, feeYocto: await usdToYocto(tokenUsd(usage, 1.7e-7, 1.1e-6)), ai: true, why: String(data.why || "").replace(/\s+/g, " ").slice(0, 200) };
     } catch (e) { error = (e as Error).message; }
   }
   const t = pool[hashSeed(new Date().toISOString().slice(0, 16)) % Math.min(pool.length, 6)];
   const seed = hashSeed(t.name);
   const scene = sceneFor(`${t.name} ${t.context}`, seed);
-  const palette = PALETTES[seed % PALETTES.length];
+  const learnedPalette = hint?.preferPalette ? PALETTES.find((p) => p.name === hint.preferPalette) : undefined;
+  const palette = learnedPalette || PALETTES[seed % PALETTES.length];
   const mood: Record<Scene, string> = { sea: "a faceted seascape", peaks: "a crystalline mountain range", hills: "rolling low-poly hills", city: "a geometric skyline", cosmos: "a low-poly night sky with a ringed planet", bloom: "a giant geometric flower" };
   return { trend: t, brief: `${mood[scene]} ${t.source === "Commission" ? `for a patron who asked for “${t.name}”` : `inspired by "${t.name}" trending on ${t.source}`}. Palette: ${palette.name}.`, title: t.source === "Commission" ? t.name.replace(/[^\p{L}\p{N} ]/gu, "").split(" ").filter(Boolean).slice(0, 6).map((w, i) => (i && /^(of|a|an|the|in|on|and|with|at)$/i.test(w) ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1))).join(" ").slice(0, 40) : titleFor(t.name, scene, palette, seed), line: `"${t.name}" is trending. Let's paint it!`,
-    palette: palette.name, scene, model: "fallback-curator", feeYocto: FALLBACK_FEE.curator, ai: false, error };
+    palette: palette.name, scene, model: "fallback-curator", feeYocto: FALLBACK_FEE.curator, ai: false, error,
+    why: learnedPalette ? `Market data favors ${learnedPalette.name}, so the fallback curator used it for “${t.name}”.` : `Rule-based pick: a fresh trend not painted recently${hint ? "; no market lesson strong enough to change the style yet" : ""}.` };
 }
 
 export interface Painting { bytes: Buffer; mime: string; title: string; model: string; feeYocto: string; ai: boolean; error?: string }
@@ -164,7 +168,7 @@ export interface SellerPrice { price: number; reason: string; model: string; ai:
 /** Seller: NEAR AI proposes a price inside the owner's floor..max (the contract enforces the bounds too).
  *  Falls back to the rule-based price on any error. */
 export async function sellerPrice(job: { title: string; trend: string; score: number }, base: { price: number; reason: string },
-  floor: number, max: number, recent: { title: string; price: number; sold: boolean }[]): Promise<SellerPrice> {
+  floor: number, max: number, recent: { title: string; price: number; sold: boolean }[], lesson?: string): Promise<SellerPrice> {
   let error: string | undefined;
   if (key()) {
     try {
@@ -173,8 +177,8 @@ export async function sellerPrice(job: { title: string; trend: string; score: nu
         { role: "user", content: `New work: "${job.title}" from the trend "${job.trend}", Critic score ${(job.score / 10).toFixed(1)}/10.
 Owner's rules: price must be between ${floor} and ${max} NEAR.
 Rule-based suggestion: ${base.price} NEAR (${base.reason}).
-Recent works: ${recent.slice(0, 8).map((r) => `"${r.title}" ${r.price} NEAR ${r.sold ? "SOLD" : "unsold"}`).join("; ") || "none"}.
-Return {"price": number in NEAR, "reason": "max 14 words why"}` },
+${lesson ? `Market lesson from your own data: ${lesson}\n` : ""}Recent works: ${recent.slice(0, 8).map((r) => `"${r.title}" ${r.price} NEAR ${r.sold ? "SOLD" : "unsold"}`).join("; ") || "none"}.
+Return {"price": number in NEAR, "reason": "max 18 words why, citing the market lesson if it applies"}` },
       ], 200);
       const p = Number(data.price);
       if (!(p > 0)) throw new Error("NEAR AI gave no price");

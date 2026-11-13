@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { connect, disconnect, hasSession, initWallet, onAccount } from "@/lib/wallet";
 import { NETWORK } from "@/lib/config";
+import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [["/", "Studio"], ["/how", "How it works"], ["/gallery", "Gallery"], ["/robots", "Robots"], ["/ledger", "Ledger"]] as const;
 
@@ -20,6 +21,7 @@ export default function Nav() {
       </nav>
       <div className="nav-r">
         <span className="live" title={NETWORK === "mainnet" ? "Live on NEAR Mainnet with real NEAR" : "Everything runs on NEAR testnet with test NEAR"}><svg viewBox="0 0 24 24"><path d="M6 18V6l12 12V6" /></svg>Live on NEAR{NETWORK === "mainnet" ? <span className="tn main">Mainnet</span> : <span className="tn">testnet</span>}</span>
+        <ThemeToggle />
         <button className="wallet" title={acct || "Connect a NEAR wallet"} onClick={() => (acct ? (confirm(`Disconnect ${acct}?`) && disconnect()) : connect())}>{acct ? acct : "Connect wallet"}</button>
       </div>
     </header>

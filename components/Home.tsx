@@ -2,9 +2,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buy as walletBuy, onAccount, connect, consumeWalletReturn, walletError, commission as walletCommission, commissionWnear } from "@/lib/wallet";
-import { toast, who, label, txUrl, short } from "@/lib/ui";
+import { toast, who, short } from "@/lib/ui";
 import { toNear, txUrl as txLink, NETWORK, NET_NAME } from "@/lib/config";
 import { PAY_ASSETS } from "@/lib/intents";
+import Reasoning from "./Reasoning";
+import { track } from "@/lib/track";
 
 interface Latest { img: string; title: string; price: string | number; status: "listed" | "sold"; buyer?: string; tokenId?: string | null; jobId?: string; priceY?: string }
 interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; testRevenue: number; realBuyers: number; realCommissions: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; ai?: { nearAi: boolean; provider: string }; links: Record<string, string> }
@@ -21,6 +23,7 @@ export default function Home() {
   const [status, setStatus] = useState("");
   const [autoSell, setAutoSell] = useState(NETWORK !== "mainnet");
   const [feed, setFeed] = useState<FeedTx[]>([]);
+  const [bump, setBump] = useState(0);
   const [acct, setAcct] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
   const [fs, setFs] = useState(false);
@@ -72,10 +75,9 @@ export default function Home() {
   const toggleFs = () => { if (fs || nativeFsEl() || document.body.classList.contains("room-fs")) exitFs(); else enterFs(); };
 
 
-  const pushTx = useCallback((t: FeedTx) => setFeed((f) => [{ ...t, fresh: true }, ...f.filter((x) => x.hash !== t.hash).map((x) => ({ ...x, fresh: false }))].slice(0, 5)), []);
-  const loadFeed = useCallback(async () => {
-    try { const d = await (await fetch("/api/ledger?limit=5", { cache: "no-store" })).json(); if (d.txs) setFeed((f) => { const fresh = f.filter((x) => x.fresh); const rest = d.txs.map((t: any) => ({ hash: t.hash, signer: t.signer, method: t.method, ok: t.ok, error: t.error })); return [...fresh, ...rest.filter((r: FeedTx) => !fresh.some((x) => x.hash === r.hash))].slice(0, 5); }); } catch {}
-  }, []);
+  // Fresh txs from this visit show at the top of the reasoning feed until the indexer has them.
+  const pushTx = useCallback((t: FeedTx) => { setFeed((f) => [t, ...f.filter((x) => x.hash !== t.hash)].slice(0, 4)); setBump((b) => b + 1); }, []);
+  const loadFeed = useCallback(() => setBump((b) => b + 1), []);
 
   useEffect(() => {
     document.body.classList.add("home");
@@ -112,7 +114,6 @@ export default function Home() {
         },
       });
     })();
-    loadFeed(); const t = setInterval(loadFeed, 20000);
     const lb = async () => { try { const d = await (await fetch("/api/scoreboard", { cache: "no-store" })).json(); if (!d.error) setBoard(d); } catch {} };
     lb(); const tb = setInterval(lb, 15000);
     // wallet redirect return
@@ -123,7 +124,7 @@ export default function Home() {
       toast(r.ok ? "Verified on-chain: it's yours, and the split is paid. Welcome, collector!" : "Your wallet tx failed on-chain. You were not charged for the NFT.", 5000);
       setLatest((c) => (c && r.ok && r.events.some((e: any) => e.event === "sold" && String(e.data?.token_id) === String(c.tokenId)) ? { ...c, status: "sold", buyer: "you" } : c));
     });
-    return () => { alive = false; off(); clearInterval(t); clearInterval(tb); document.body.classList.remove("home"); };
+    return () => { alive = false; off(); clearInterval(tb); document.body.classList.remove("home"); };
   }, [loadFeed, pushTx]);
 
   useEffect(() => { document.body.classList.toggle("focus", focus); studio.current?.studio?.setFocus(focus); }, [focus]);
@@ -221,6 +222,7 @@ export default function Home() {
   const run = () => { if (!dir.current) return; setStatus("Curator is reading live trends…"); dir.current.run({ autoSell }); };
   const collect = async () => {
     if (!latest?.tokenId || latest.status !== "listed") return;
+    track(latest.jobId, "collect");
     if (!acct) { connect(); toast(`Connect a ${NET_NAME} wallet to collect.`); return; }
     const priceY = latest.priceY || dir.current?.state?.jobs?.find((j: any) => j.id === latest.jobId)?.price;
     try {
@@ -301,7 +303,7 @@ export default function Home() {
           <div className="lt-meta">
             <span className="mode" data-m={latest && latest.jobId === mode.jobId ? m : "replay"}>{!latest ? "Loading chain…" : latest.jobId !== mode.jobId ? <>Latest · <a href={`/gallery#job-${latest.jobId}`}>job #{latest.jobId}</a></> : m === "live" ? `Live · job #${mode.jobId}` : m === "watch" ? `Watching job #${mode.jobId}` : <>Replay · <a href={`/gallery#job-${mode.jobId}`}>job #{mode.jobId}</a></>}</span>
             <b>{latest?.title || "…"}</b>
-            <span className="lt-price">{latest ? `${latest.price} NEAR` : ""}{latest?.status === "sold" ? ` · sold to ${latest.buyer === "you" ? "you" : short(who(latest.buyer || "").name, 24)}` : latest ? <> · for sale · <a href={`/gallery#job-${latest.jobId}`}>details</a></> : ""}</span>
+            <span className="lt-price">{latest ? `${latest.price} NEAR` : ""}{latest?.status === "sold" ? ` · sold to ${latest.buyer === "you" ? "you" : short(who(latest.buyer || "").name, 24)}` : latest ? <> · for sale · <a href={`/gallery#job-${latest.jobId}`} onClick={() => track(latest.jobId, "click")}>details</a></> : ""}</span>
           </div>
           <div className="lt-btns">
             <button className="btn-sm" disabled={latest?.status !== "listed"} onClick={collect}>{latest?.status === "sold" ? "Sold" : "Collect"}</button>
@@ -314,14 +316,7 @@ export default function Home() {
         <div><i style={{ ["--c" as any]: "#F48AA6" }}><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" /></svg></i><p><b>Score gate</b><span>Below 7.0 never mints</span></p></div>
         <div><i style={{ ["--c" as any]: "#F6C53E" }}><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9" /></svg></i><p><b>On-chain split</b><span>Every sale, by the contract</span></p></div>
       </section>
-      <section className="feed">
-        <h4><span>Live on-chain activity</span><a href="/ledger">Full ledger →</a></h4>
-        <ul>
-          {feed.map((t) => { const w = who(t.signer === "you" ? acct || "you" : t.signer); return (
-            <li key={t.hash} className={t.fresh ? "new" : ""}><i className="dot" style={{ background: w.color }} /><b>{w.name}</b><span className={t.ok ? "" : "err"}>{t.ok ? label(t.method) : `failed: ${short(t.error || "", 40)}`}</span><a href={txUrl(t.hash)} target="_blank" rel="noreferrer">tx ↗</a></li>); })}
-          {!feed.length && <li><span>Loading transactions from NEAR…</span></li>}
-        </ul>
-      </section>
+      <Reasoning fresh={feed} bump={bump} acct={acct} />
       <div className="statbar">
         <div><span>Works minted</span><b>{stats.minted}</b><em>▲</em></div>
         <div><span>Sales</span><b>{toNear(stats.revenue, 3).replace(/\.?0+$/, "") || "0"} NEAR</b><em>▲</em></div>

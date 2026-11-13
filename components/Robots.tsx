@@ -105,7 +105,7 @@ export default function Robots() {
             <div><b>{n(st.fees_total, 4)}</b><span>AI fees → treasury</span></div>
             <div><b>{n(st.storage_total, 4)}</b><span>storage paid for jobs + NFTs</span></div>
             <div><b>{n(robotGas, 4)}</b><span>gas burned by the robots</span></div>
-            <div><b style={{ color: net >= 0n ? "#0E7F7A" : "#B4402F" }}>{net < 0n ? "−" : ""}{n(net < 0n ? -net : net, 4)}</b><span>robots net (earned − fees − storage − gas)</span></div>
+            <div><b style={{ color: net >= 0n ? "var(--ok-ink,#0E7F7A)" : "var(--bad-ink,#B4402F)" }}>{net < 0n ? "−" : ""}{n(net < 0n ? -net : net, 4)}</b><span>robots net (earned − fees − storage − gas)</span></div>
           </div>
           <p className="notice" style={{ marginTop: 14 }}>{NETWORK === "mainnet" ? <>Buys by our own accounts ({OWNER_ID} and its sub-accounts) are labeled test and are <b>not</b> real demand.</> : <>Most sales so far are made by <b>{COLLECTOR_ID}</b>, our testnet demo collector, so visitors without a wallet can see the full loop. That is the owner&apos;s own money going round, so it is <b>not</b> real demand. Our own test buyers (accounts under museswarm.testnet) are excluded too.</>} Only the &ldquo;outside wallets&rdquo; number counts as real demand. {d.revenue.sampleJobs < st.jobs ? `(Revenue split by buyer covers the latest ${d.revenue.sampleJobs} jobs.)` : ""} Gas for all swarm txs (incl. owner &amp; buyers): {n(gasAll, 4)} NEAR.</p>
         </section>

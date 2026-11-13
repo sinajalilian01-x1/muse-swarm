@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useState } from "react";
+import { track } from "@/lib/track";
 import { buy, buyOnMarket, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
 import { toast, who, short, fmtTime } from "@/lib/ui";
 import { toNear, mediaUrl, accountUrl, txUrl, EXPLORER, CONTRACT_ID, COLLECTOR_ID, MARKET_ID, isTestBuyer, NETWORK, NET_NAME } from "@/lib/config";
@@ -82,6 +83,7 @@ export default function Gallery() {
   useEffect(() => { const h = location.hash.match(/job-(\d+)/); if (h && jobs.length) { setOpen((o) => ({ ...o, [h[1]]: true })); setTimeout(() => document.getElementById(`job-${h[1]}`)?.scrollIntoView({ block: "start" }), 50); } }, [jobs.length]);
 
   const collect = async (j: Job) => {
+    track(j.id, "collect");
     if (!acct) { connect(); return; }
     setBusy(j.id);
     try {
@@ -90,6 +92,7 @@ export default function Gallery() {
     } catch (e: any) { toast(walletError(e)); } finally { setBusy(null); }
   };
   const collectOnMarket = async (j: Job, v: Venue) => {
+    track(j.id, "collect");
     if (!acct) { connect(); return; }
     setBusy(j.id);
     try {
@@ -97,25 +100,36 @@ export default function Gallery() {
       if (r?.hash) { setReceipt({ ok: r.ok, hash: r.hash, text: r.ok ? "It's yours, bought through the Mintbase market contract. Mintbase called our nft_transfer_payout, and the same on-chain split went to the owner and the four robots." : "The purchase failed on-chain. The market refunds failed offers." }); toast(r.ok ? "Bought via Mintbase. Split paid on-chain." : "Purchase failed, see tx"); await load(); setMarket((m) => { const c = { ...m }; delete c[j.token_id!]; return c; }); }
     } catch (e: any) { toast(walletError(e)); } finally { setBusy(null); }
   };
+  // A "view" is a listed or sold work that stayed at least half on screen for a second.
+  useEffect(() => {
+    const timers = new Map<Element, ReturnType<typeof setTimeout>>();
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      const id = (e.target as HTMLElement).dataset.job;
+      if (e.isIntersecting) timers.set(e.target, setTimeout(() => { track(id, "view"); io.unobserve(e.target); }, 1000));
+      else { clearTimeout(timers.get(e.target)); timers.delete(e.target); }
+    }), { threshold: 0.5 });
+    document.querySelectorAll("article.art[data-job]").forEach((el) => io.observe(el));
+    return () => { io.disconnect(); timers.forEach(clearTimeout); };
+  }, [jobs, filter]);
   const shown = jobs.filter((j) => j.media && (filter === "all" ? true : j.status === filter));
   const counts = { listed: jobs.filter((j) => j.status === "listed").length, sold: jobs.filter((j) => j.status === "sold").length, rejected: jobs.filter((j) => j.status === "rejected").length };
   return (
     <div className="page">
       <h1 className="t">Gallery</h1>
       <p className="sub">Every artwork the swarm made, straight from the contract. Approved works are NEP-171 NFTs minted by <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>. Rejected works stay here too: the Critic scored them under 7.0, so the contract refused to mint them.</p>
-      {receipt && <p className="notice" role="status" style={{ marginTop: 14, borderColor: receipt.ok ? "#0E7F7A" : "#B4402F" }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>} <button className="btn-sm ghost" onClick={() => setReceipt(null)} aria-label="Dismiss">✕</button></p>}
+      {receipt && <p className="notice" role="status" style={{ marginTop: 14, borderColor: receipt.ok ? "var(--ok-ink,#0E7F7A)" : "var(--bad-ink,#B4402F)" }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>} <button className="btn-sm ghost" onClick={() => setReceipt(null)} aria-label="Dismiss">✕</button></p>}
       {err && <p className="notice" style={{ marginTop: 14 }}>Could not load from {NET_NAME}: {short(err, 120)} <button className="btn-sm ghost" onClick={() => load()}>Retry</button></p>}
       <div className="btn-row">
         {(["all", "listed", "sold", "rejected"] as const).map((f) => <button key={f} className={`btn-sm ${filter === f ? "navy" : "ghost"}`} onClick={() => setFilter(f)}>{f === "all" ? `All (${jobs.filter((j) => j.media).length})` : `${f[0].toUpperCase() + f.slice(1)} (${counts[f]})`}</button>)}
       </div>
       <div className="grid g3 sec">
         {shown.map((j) => (
-          <article className="art" key={j.id} id={`job-${j.id}`} tabIndex={-1}>
+          <article className="art" key={j.id} id={`job-${j.id}`} tabIndex={-1} data-job={j.token_id ? j.id : undefined} onClickCapture={(e) => { const el = (e.target as HTMLElement).closest("a,button.mkt-toggle"); if (el && j.token_id) track(j.id, "click"); }}>
             <div className="im"><img src={mediaUrl(j.media)} alt={j.title} loading="lazy" /><span className={`pill ${j.status}`}>{j.status}</span></div>
             <div className="meta">
               <b>{j.title}</b>
               <div className="row"><span>Trend: {j.trend}</span><span>#{j.id}</span></div>
-              <div className="row"><span>Critic: <b style={{ fontSize: 13, color: j.score >= 70 ? "#0E7F7A" : "#B4402F" }}>{(j.score / 10).toFixed(1)}</b>/10</span>{j.price !== "0" && <span>{n(j.price)} NEAR</span>}</div>
+              <div className="row"><span>Critic: <b style={{ fontSize: 13, color: j.score >= 70 ? "var(--ok-ink,#0E7F7A)" : "var(--bad-ink,#B4402F)" }}>{(j.score / 10).toFixed(1)}</b>/10</span>{j.price !== "0" && <span>{n(j.price)} NEAR</span>}</div>
               {j.note && <p className="note" title={j.note}>“{j.note.replace(/\s*\([a-z]+ [\d.]+(, [a-z]+ [\d.]+)*\)\s*$/i, "")}”</p>}
               <div className="row"><span>{fmtTime(Number(j.updated_at_ms))}</span><a className="lnk" href={`https://gateway.pinata.cloud/ipfs/${j.media}`} target="_blank" rel="noreferrer">IPFS ↗</a></div>
               {j.token_id && <div className="row"><a className="lnk" href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${j.token_id}`} target="_blank" rel="noreferrer">NFT {j.token_id} ↗</a>{j.buyer && <a className="lnk" href={accountUrl(j.buyer)} target="_blank" rel="noreferrer">{isTestBuyer(j.buyer) ? <>test buy · {j.buyer === COLLECTOR_ID ? "demo collector" : who(j.buyer).name}</> : <>owner: {who(j.buyer).name}</>}</a>}</div>}
