@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 const STEPS = [
   ["#16A39C", "Curator", "Reads live trends", "Pulls what people are searching right now (Google Trends daily RSS, US & UK) and what builders discuss (Hacker News), skips unsafe topics, and writes a short art brief. Then it opens a job on-chain with curator_open_job. Only one job runs at a time, and stale jobs expire after 10 minutes."],
-  ["#F47A38", "Painter", "Paints and pins to IPFS", "Turns the brief into an 800×1000 artwork, pins it to IPFS through Pinata, and records the CID with painter_submit. Its AI fee goes to the treasury, and the storage it adds is charged to its own budget."],
+  ["#F47A38", "Painter", "Paints and pins to IPFS", "Turns the brief into an 800×1000 artwork, pins it to IPFS through Pinata, and records the CID with painter_submit. Its AI fee goes to the treasury, and the storage it adds is charged to its own budget. It also pays the Curator 0.002 NEAR for the brief, budget to budget inside the contract: agents hire agents."],
   ["#E9AE1C", "Critic", "Scores it, and the contract gates the mint", "Looks at the finished image and gives a score with a one-line review. critic_review mints a NEP-171 NFT only when the score is 7.0 or higher. Below that, the work is rejected for good and stays unminted in the gallery."],
-  ["#E86A8C", "Seller", "Prices and lists", "Prices the NFT from the score and recent demand. The contract refuses anything outside the owner's floor and max price. Then it lists the NFT with seller_list."],
+  ["#E86A8C", "Seller", "Prices and lists", "Prices the NFT from the score and recent demand. The contract refuses anything outside the owner's floor and max price. Then it lists the NFT with seller_list and pays the Critic 0.001 NEAR for the appraisal. If a work sits unsold for 15 minutes, the Seller marks it down 15% (never below the floor), using the same method."],
   ["#13243F", "Collector", "Buys, and the contract splits the money", "Anyone with a NEAR testnet wallet can call buy. The contract sends the token, pays the owner 30%, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. Anything above a robot's budget cap is swept to the owner. Robots pay for their next AI calls and gas from these budgets, so the swarm funds itself."],
 ];
 

@@ -449,3 +449,60 @@ fn jobs_page_newest_first() {
     let ids: Vec<u64> = c.get_jobs(Some(U64(2)), None).iter().map(|j| j.id.0).collect();
     assert_eq!(ids, vec![1]);
 }
+
+#[test]
+fn agents_pay_each_other_for_briefs_and_appraisals() {
+    let mut c = setup();
+    let id = open(&mut c);
+    let b0: Vec<u128> = c.robots.iter().map(|r| r.budget.0).collect();
+    paint(&mut c, id);
+    let b1: Vec<u128> = c.robots.iter().map(|r| r.budget.0).collect();
+    assert_eq!(b1[CURATOR], b0[CURATOR] + BRIEF_FEE);
+    assert!(b1[PAINTER] <= b0[PAINTER] - BRIEF_FEE);
+    assert!(get_logs().iter().any(|l| l.contains("\"agent_paid\"") && l.contains("\"brief\"")));
+    review(&mut c, id, 80);
+    let b2: Vec<u128> = c.robots.iter().map(|r| r.budget.0).collect();
+    ctx(seller(), 0);
+    c.seller_list(U64(id), U128(100 * MILLI));
+    assert_eq!(c.robots[CRITIC].budget.0, b2[CRITIC] + APPRAISAL_FEE);
+    assert!(c.robots[SELLER].budget.0 <= b2[SELLER] - APPRAISAL_FEE);
+}
+
+#[test]
+fn seller_can_reprice_a_stale_listing_within_bounds() {
+    let mut c = setup();
+    let t = listed(&mut c, 200 * MILLI);
+    let id: u64 = t.parse().unwrap();
+    ctx_at(seller(), 0, T0 + (REPRICE_AFTER_MS + 1) * 1_000_000);
+    let j = c.seller_list(U64(id), U128(150 * MILLI));
+    assert_eq!(j.price.0, 150 * MILLI);
+    assert_eq!(c.get_listings(None, None)[0].price.0, 150 * MILLI);
+    assert!(get_logs().iter().any(|l| l.contains("\"repriced\"")));
+    // still enforces the floor
+    ctx_at(seller(), 0, T0 + (2 * REPRICE_AFTER_MS + 2) * 1_000_000);
+    assert!(panics(|| { c.seller_list(U64(id), U128(10 * MILLI)); }));
+}
+
+#[test]
+fn reprice_too_soon_or_by_others_is_refused() {
+    let mut c = setup();
+    let t = listed(&mut c, 200 * MILLI);
+    let id: u64 = t.parse().unwrap();
+    ctx(seller(), 0);
+    assert!(panics(|| { c.seller_list(U64(id), U128(150 * MILLI)); }));
+    ctx_at(painter(), 0, T0 + (REPRICE_AFTER_MS + 1) * 1_000_000);
+    assert!(panics(|| { c.seller_list(U64(id), U128(150 * MILLI)); }));
+}
+
+#[test]
+fn repriced_listing_sells_at_new_price() {
+    let mut c = setup();
+    let t = listed(&mut c, 200 * MILLI);
+    let id: u64 = t.parse().unwrap();
+    ctx_at(seller(), 0, T0 + (REPRICE_AFTER_MS + 1) * 1_000_000);
+    c.seller_list(U64(id), U128(120 * MILLI));
+    ctx_at(buyer(), 120 * MILLI, T0 + (REPRICE_AFTER_MS + 2) * 1_000_000);
+    c.buy(t.clone());
+    assert_eq!(c.nft_token(t).unwrap().owner_id, buyer());
+    assert_eq!(c.stats.revenue_total.0, 120 * MILLI);
+}

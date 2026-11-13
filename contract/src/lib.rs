@@ -40,6 +40,12 @@ pub const JOB_TIMEOUT_MS: u64 = 10 * 60 * 1000;
 pub const GUARDIAN_MAX_PAUSE_SECS: u32 = 120;
 pub const MIN_FLOOR: u128 = 10_000_000_000_000_000_000_000; // 0.01 NEAR
 pub const MAX_REFUEL: u128 = 500_000_000_000_000_000_000_000; // 0.5 NEAR per call
+/// Agents hire each other: the Painter pays the Curator for each brief it paints from,
+/// and the Seller pays the Critic for each appraisal it lists on. Budget to budget, on-chain.
+pub const BRIEF_FEE: u128 = 2_000_000_000_000_000_000_000; // 0.002 NEAR
+pub const APPRAISAL_FEE: u128 = 1_000_000_000_000_000_000_000; // 0.001 NEAR
+/// The Seller may re-price an unsold listing (within floor/max) once it has sat this long.
+pub const REPRICE_AFTER_MS: u64 = 15 * 60 * 1000;
 const PINATA_BASE_URI: &str = "https://gateway.pinata.cloud/ipfs";
 
 pub const CURATOR: usize = 0;
@@ -474,6 +480,7 @@ impl Contract {
         self.jobs.flush();
         let storage = self.storage_cost_since(before);
         self.charge(PAINTER, fee.0, storage, job_id.0, &model);
+        self.pay_agent(PAINTER, CURATOR, BRIEF_FEE, job_id.0, "brief");
         let j = self.jobs.get(&job_id.0).cloned().unwrap();
         emit("painted", json!({"job_id": job_id, "title": j.title, "media": j.media, "by": self.robots[PAINTER].account_id}));
         j
@@ -537,6 +544,9 @@ impl Contract {
         self.roll_day();
         require!(price.0 >= self.rules.floor.0, "Price is below the owner's floor");
         require!(price.0 <= self.rules.max_price.0, "Price is above the owner's max price");
+        if let Some(listed) = self.jobs.get(&job_id.0).cloned().filter(|j| j.status == "listed") {
+            return self.reprice(listed, price);
+        }
         let mut j = self.active_job_with(job_id.0, "minted");
         let token_id = j.token_id.clone().unwrap();
         j.price = price;
@@ -550,6 +560,7 @@ impl Contract {
         let storage = self.storage_cost_since(before);
         self.active_job = None;
         self.charge(SELLER, 0, storage, job_id.0, "-");
+        self.pay_agent(SELLER, CRITIC, APPRAISAL_FEE, job_id.0, "appraisal");
         emit("listed", json!({"job_id": job_id, "token_id": token_id, "price": price, "floor": self.rules.floor,
             "by": self.robots[SELLER].account_id}));
         self.jobs.get(&job_id.0).cloned().unwrap()
@@ -754,6 +765,44 @@ impl Contract {
         r.spent_today = U128(r.spent_today.0 + amount);
         r.spent_total = U128(r.spent_total.0 + amount);
         r.actions += 1;
+    }
+
+    /// One agent pays another from its budget (counts against the payer's daily cap). A payee budget
+    /// above the cap is swept to the owner, same as sale proceeds.
+    fn pay_agent(&mut self, from: usize, to: usize, amount: u128, job_id: u64, what: &str) {
+        self.spend(from, amount);
+        self.robots[from].actions -= 1; // part of the same action, not a new one
+        let cap = self.rules.budget_cap.0;
+        let r = &mut self.robots[to];
+        let mut b = r.budget.0 + amount;
+        let mut swept = 0;
+        if b > cap {
+            swept = b - cap;
+            b = cap;
+            r.swept_total = U128(r.swept_total.0 + swept);
+        }
+        r.budget = U128(b);
+        if swept > 0 {
+            self.stats.owner_paid_total = U128(self.stats.owner_paid_total.0 + swept);
+            pay(&self.owner_id.clone(), swept);
+        }
+        emit("agent_paid", json!({"from": ROLES[from], "to": ROLES[to], "amount": U128(amount), "for": what, "job_id": U64(job_id),
+            "swept": U128(swept), "budgets": self.robots.iter().map(|r| r.budget).collect::<Vec<_>>()}));
+    }
+
+    /// Seller re-prices an unsold listing (within floor/max), at most once per REPRICE_AFTER_MS.
+    fn reprice(&mut self, mut j: Job, price: U128) -> Job {
+        require!(now_ms() >= j.updated_at_ms.0 + REPRICE_AFTER_MS, "Too soon to re-price this listing");
+        let token_id = j.token_id.clone().unwrap_or_else(|| env::panic_str("No token"));
+        require!(self.listings.get(&token_id).is_some(), "Not listed");
+        let old = j.price;
+        self.listings.insert(token_id.clone(), price.0);
+        j.price = price;
+        j.updated_at_ms = U64(now_ms());
+        self.jobs.insert(j.id.0, j.clone());
+        self.robots[SELLER].actions += 1;
+        emit("repriced", json!({"job_id": j.id, "token_id": token_id, "old_price": old, "price": price, "by": self.robots[SELLER].account_id}));
+        j
     }
 
     /// Charge a robot for an inference fee (paid to the treasury) plus storage (kept by the contract).

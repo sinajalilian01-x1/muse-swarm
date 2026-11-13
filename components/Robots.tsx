@@ -17,6 +17,23 @@ function KeyList({ keys }: { keys: any[] }) {
   </ul>);
 }
 
+const pc = (x: number) => `${Math.round(x * 100)}%`;
+function repLine(r: string, rep: any) {
+  if (!rep) return "…";
+  if (r === "curator") return `${pc(rep.curator.hitRate)} of its picks passed the Critic · ${rep.curator.sources} trend sources`;
+  if (r === "painter") return `avg score ${rep.painter.avgScore.toFixed(1)}/10 · best ${rep.painter.best.toFixed(1)}`;
+  if (r === "critic") return `${rep.critic.reviews} reviews · approves ${pc(rep.critic.approvalRate)} · rejected ${rep.critic.rejected}`;
+  return `${pc(rep.seller.sellThrough)} sell-through · avg sale ${rep.seller.avgPrice.toFixed(3)} NEAR`;
+}
+function gigLine(r: string, g: any) {
+  if (!g) return "…";
+  const x = g[r];
+  if (r === "curator") return `earned ${n(x.earned, 4)} NEAR from the Painter for ${x.count} briefs`;
+  if (r === "critic") return `earned ${n(x.earned, 4)} NEAR from the Seller for ${x.count} appraisals`;
+  if (r === "painter") return `paid the Curator ${n(x.paid, 4)} NEAR for briefs`;
+  return `paid the Critic ${n(x.paid, 4)} NEAR for appraisals`;
+}
+
 export default function Robots() {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState(""); const [pausing, setPausing] = useState(false);
   const [acct, setAcct] = useState<string | null>(null); const [backing, setBacking] = useState<string | null>(null);
@@ -49,7 +66,7 @@ export default function Robots() {
   return (
     <div className="page">
       <h1 className="t">The robots</h1>
-      <p className="sub">Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
+      <p className="sub">Agents that hire each other: on every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal, budget to budget inside the contract. Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
       {receipt && <p className="notice" role="status" style={{ marginTop: 14 }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>}</p>}
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load chain data: {err}</p>}
       {!d && !err && <p className="sub">Reading accounts and keys from NEAR testnet…</p>}
@@ -69,6 +86,8 @@ export default function Robots() {
                 <span>Gas refuels</span><span>{n(rb.refuel_total, 3)} NEAR</span>
                 <span>Gas burned</span><span>{n(d.gasBurntBySigner[rb.account_id] || "0", 5)} NEAR</span>
                 <span>Actions</span><span>{rb.actions}</span>
+                <span>Track record</span><span>{repLine(r, d.reputation)}</span>
+                <span>Agent-to-agent</span><span>{gigLine(r, d.gigs)}</span>
               </div>
               <KeyList keys={a?.keys || []} />
               <div className="btn-row"><button className="btn-sm ghost" disabled={backing === r} onClick={() => back(r)} title="Calls the contract's payable fund(role) from your wallet">{backing === r ? "Confirm in your wallet…" : `Back the ${m.name} with 0.1 NEAR`}</button></div>

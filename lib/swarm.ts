@@ -44,6 +44,28 @@ export function priceFor(score: number, sw: Swarm, recent: Job[]) {
   return { price: p, reason: `score ${(score / 10).toFixed(1)}, ${sold}/${market.length || 0} recent works sold` };
 }
 
+/** Contract v2 rule: a listing may be re-priced once it has sat unsold this long. */
+const REPRICE_AFTER_MS = 15 * 60_000;
+/**
+ * The Seller's market loop: an unsold listing older than 15 minutes is marked down 15% (never under the
+ * owner's floor, which the contract enforces too). One re-price per call, signed by the Seller's own key
+ * through the same seller_list method its function-call key already allows.
+ */
+export async function maybeReprice(sw?: Swarm): Promise<TxInfo | null> {
+  sw = sw || (await getSwarm());
+  if (!sw.live) return null;
+  const floor = nearNum(sw.rules.floor);
+  const jobs = await getJobs(undefined, 30);
+  const now = Number(sw.now_ms) || Date.now();
+  const stale = jobs.filter((j) => j.status === "listed" && now - Number(j.updated_at_ms) > REPRICE_AFTER_MS && nearNum(j.price) > floor + 0.001)
+    .sort((a, b) => Number(a.updated_at_ms) - Number(b.updated_at_ms))[0];
+  if (!stale) return null;
+  const next = Math.max(floor, Math.floor(nearNum(stale.price) * 0.85 * 200) / 200);
+  if (next >= nearNum(stale.price)) return null;
+  const tx = await robotCall("seller", "seller_list", { job_id: stale.id, price: nearToYocto(next) }).catch(() => null);
+  return tx ? { ...tx, method: tx.ok ? "repriced" : tx.method } : null;
+}
+
 export interface StepResult {
   stage: "briefed" | "painted" | "minted" | "rejected" | "listed" | "paused" | "busy" | "error";
   job?: Job | null; txs: TxInfo[]; driver?: string; say?: string; error?: string;
@@ -105,6 +127,7 @@ export async function advance(token?: string): Promise<StepResult> {
       const tx = await robotCall("seller", "seller_list", { job_id: job.id, price: nearToYocto(p.price) });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
+      const rp = await maybeReprice(sw).catch(() => null); if (rp) txs.push(rp);
       return take({ stage: "listed", job: tx.returnValue as Job, txs, say: `Listed for ${p.price} NEAR`, extra: { price: p.price, reason: p.reason } });
     }
     return { stage: "error", txs, error: `Unexpected job status ${job.status}`, job };

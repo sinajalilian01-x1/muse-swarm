@@ -1,4 +1,4 @@
-import { advance } from "@/lib/swarm";
+import { advance, maybeReprice } from "@/lib/swarm";
 import { json } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
 
@@ -23,5 +23,6 @@ export async function GET(req: Request) {
     steps.push({ stage: r.stage, txs: r.txs.map((t) => t.hash), error: r.error });
     if (["listed", "rejected", "paused", "busy", "error"].includes(r.stage)) break;
   }
-  return json({ ok: !steps.some((s) => s.stage === "error"), steps });
+  const rp = await maybeReprice().catch(() => null);
+  return json({ ok: !steps.some((s) => s.stage === "error"), steps, repriced: rp?.hash ?? null });
 }

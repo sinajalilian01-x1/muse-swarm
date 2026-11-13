@@ -35,7 +35,9 @@ function parse(t: any): LedgerTx {
   const method = fc?.method_name || (typeof action === "string" ? action : Object.keys(action || {})[0] || "?");
   const deposit = fc?.deposit || action?.Transfer?.deposit || "0";
   const ts = Number(t.execution_outcome?.block_timestamp || 0) / 1e6;
-  return { hash: tx.hash, at: ts, signer: tx.signer_id, method, args, deposit: String(deposit), ok, error, events: eventsFromLogs(logs), burnt: burnt.toString(), block: t.execution_outcome?.block_height || 0 };
+  const events = eventsFromLogs(logs);
+  const shown = events.some((e) => e.event === "repriced") ? "repriced" : method;
+  return { hash: tx.hash, at: ts, signer: tx.signer_id, method: shown, args, deposit: String(deposit), ok, error, events, burnt: burnt.toString(), block: t.execution_outcome?.block_height || 0 };
 }
 
 async function details(hashes: string[]): Promise<LedgerTx[]> {

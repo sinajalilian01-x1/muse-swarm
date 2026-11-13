@@ -14,6 +14,8 @@ function evText(e: any) {
     case "sold": return `${d.token_id} → ${short(d.buyer_id || "", 22)} · ${n(d.price, 3)} NEAR`;
     case "split_paid": return `owner ${n(d.owner_amount)} · robots ${(d.robot_shares || []).map((x: string) => n(x)).join(" / ")}${(() => { const sw = (d.swept || []).reduce((a: bigint, x: string) => a + BigInt(x), 0n); return sw > 0n ? ` · swept to owner ${n(sw.toString())}` : ""; })()}`;
     case "charged": return `${d.role}: fee ${n(d.fee, 5)} → treasury · storage ${n(d.storage, 5)}`;
+    case "agent_paid": return `${d.from} paid ${d.to} ${n(d.amount, 4)} NEAR for the ${d.for} (job #${d.job_id})`;
+    case "repriced": return `${d.token_id} · ${n(d.old_price, 3)} → ${n(d.price, 3)} NEAR (unsold, Seller adjusted)`;
     case "refueled": return `${d.role} +${n(d.amount, 3)} NEAR for gas`;
     case "paused": return `${d.seconds}s, until ${new Date(Number(d.until_ms)).toLocaleTimeString()}`;
     case "kill_switch": return d.engaged ? "ENGAGED" : "released";

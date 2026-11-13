@@ -20,13 +20,14 @@ The Curator reads live trends, the Painter paints, the Critic judges, and the Se
 | Open [Robots](https://muse-swarm.vercel.app/robots) | Each agent's account, its scoped key (method names and allowance read live from chain), budget, daily spend against the cap, earnings, fees, storage, gas, and an honest P&L that separates real-wallet revenue from demo revenue. |
 | Press **Back the Painter with 0.1 NEAR** on Robots | Your wallet calls the public payable `fund(role)`, and the NEAR lands in that agent's on-chain budget. |
 | Press **Pause the swarm for 45 s** on Robots | The guardian key calls `guardian_pause`. The robots are refused on-chain until the pause releases itself (the contract caps it at 120 s). |
-| Open [Ledger](https://muse-swarm.vercel.app/ledger) | Every tx the swarm ever made, decoded, with gas burned. |
+| Open [Ledger](https://muse-swarm.vercel.app/ledger) | Every tx the swarm ever made, decoded, with gas burned. Look for `painter paid curator … for the brief` and `seller paid critic … for the appraisal`. |
 
 Some works score below 7.0, roughly one in five. The contract refuses to mint those, and they stay in the Gallery marked **rejected**.
 
 ## Why it matters
 
 - **Agents with accounts, not shared API keys.** Each agent has a NEAR account, a budget, a key scoped to one method, and a public track record. You can audit what each agent spent, earned and decided, on-chain.
+- **Agents hire agents.** On every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal. The money moves budget to budget inside the contract (`agent_paid` events). Each agent's earnings, payments and track record (hit rate, average score, approval rate, sell-through) are on the Robots page.
 - **A business that pays for itself, within limits.** Sales refill the agents' budgets, and they spend that on AI, storage and gas (`robot_refuel`). The owner's caps are enforced by the contract: price floor and max, mint threshold, daily spend cap, per-call fee cap, jobs per day, budget cap with sweeps, and a kill switch.
 - **Autonomous.** A daily Vercel Cron (`/api/cron/cycle`) runs a whole cycle with no human, and the listing then waits for a collector. Visitors can also start cycles.
 - **A pattern others can reuse.** Swap the art for research, design or moderation and the pattern still holds: one contract holds the rules and the money, many agents each have their own account, and every sale pays a split.
@@ -57,9 +58,9 @@ flowchart LR
 | # | Agent | What it does | On-chain call |
 |---|-------|--------------|---------------|
 | 1 | Curator | Picks a real trend (Google Trends daily RSS US/UK + Hacker News, safety blocklist) and writes a brief | `curator_open_job(trend, source, brief, fee, model)` |
-| 2 | Painter | Paints the work and pins it to IPFS | `painter_submit(job_id, title, media, fee, model)` |
+| 2 | Painter | Paints the work, pins it to IPFS, and **pays the Curator 0.002 NEAR for the brief** | `painter_submit(job_id, title, media, fee, model)` |
 | 3 | Critic | Scores the image. The contract mints a NEP-171 NFT **only if score ≥ 7.0** | `critic_review(job_id, score, note, fee, model)` |
-| 4 | Seller | Prices from score + recent demand. The contract enforces `floor ≤ price ≤ max_price` | `seller_list(job_id, price)` |
+| 4 | Seller | Prices from score + recent demand and **pays the Critic 0.001 NEAR for the appraisal**. The contract enforces `floor ≤ price ≤ max_price`. If a work sits unsold for 15 min, the Seller marks it down 15% | `seller_list(job_id, price)` |
 | 5 | Anyone | Buys with a wallet, or the demo collector buys | `buy(token_id)` (payable) |
 
 On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. It sweeps anything above a robot's `budget_cap` to the owner and emits `nft_transfer`, `sold` and `split_paid`.
@@ -68,9 +69,9 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 
 - **Named sub-accounts per agent:** `curator/painter/critic/seller/guardian/treasury/collector.museswarm.testnet`.
 - **Function-call access keys:** each robot key can call only its own method plus `robot_refuel`. Full keys of robots and guardian were deleted. The [Robots](https://muse-swarm.vercel.app/robots) page reads them live from RPC.
-- **Smart contract (Rust, near-sdk 5):** rules, budgets, spend caps, job state machine, kill switch, guardian pause, on-chain revenue split. Tests: `cargo test` gives **33 passed**.
+- **Smart contract (Rust, near-sdk 5):** rules, budgets, spend caps, job state machine, kill switch, guardian pause, on-chain revenue split. Tests: `cargo test` gives **37 passed**.
 - **NEP-171 / 177 / 181 NFTs** minted by the contract itself, with the Critic's score as the gate.
-- **NEP-297 events** (`job_opened`, `painted`, `listed`, `sold`, `split_paid`, `refueled`, `funded`, `paused`, … plus standard `nft_mint`/`nft_transfer`), which drive the 3D studio's story.
+- **NEP-297 events** (`job_opened`, `painted`, `listed`, `agent_paid`, `repriced`, `sold`, `split_paid`, `refueled`, `funded`, `paused`, … plus standard `nft_mint`/`nft_transfer`), which drive the 3D studio's story.
 - **NEAR Connect** (`@hot-labs/near-connect`), the connector NEAR recommends in place of the deprecated Wallet Selector, for buying and funding.
 - **NEAR AI Cloud** (OpenAI-compatible): Qwen3.6-35B for briefs, FLUX.2-klein for images, Qwen3-VL-30B for critique. It is used when `NEAR_AI_API_KEY` is set. See "Real vs fallback".
 - **FastNear** RPC and tx API for the ledger and live feed.
@@ -109,9 +110,9 @@ Init: `new(owner_id, treasury_id, guardian_id, curator_id, painter_id, critic_id
 Rules on testnet:
 - Price floor 0.05 NEAR and max price 0.25 NEAR.
 - Mint threshold 7.0.
-- Daily spend cap 0.3 NEAR per robot, and a fee cap of 0.02 NEAR per call.
+- Daily spend cap 0.6 NEAR per robot, and a fee cap of 0.02 NEAR per call.
 - Budget cap 1 NEAR, with anything above it swept to the owner.
-- 60 jobs per day.
+- 120 jobs per day.
 - Sale split: owner 30, curator 10, painter 30, critic 15, seller 15 (%).
 
 Safety:
@@ -119,12 +120,13 @@ Safety:
 - Steps must run in order.
 - Only the matching robot can call each step.
 - Storage is charged to the robot that adds it.
+- Agent-to-agent fees count against the payer's daily cap, and the payee's budget cap still sweeps any surplus to the owner.
 - AI fees go to a **treasury** account, so no funds get stranded on accounts that hold only function-call keys.
 
 ### Tests
 
 ```bash
-npm run test:contract     # = cd contract && cargo test   → 33 passed
+npm run test:contract     # = cd contract && cargo test   → 37 passed
 ```
 
 The tests cover:
@@ -138,7 +140,9 @@ The tests cover:
 - robot-only and owner-only access;
 - the job lock and its expiry;
 - stage order;
-- paging.
+- paging;
+- agent-to-agent payments (brief and appraisal fees);
+- Seller re-pricing: only after 15 minutes, only by the Seller, within floor and max, and the work sells at the new price.
 
 Build the wasm: `cd contract && cargo near build non-reproducible-wasm --no-abi`
 
@@ -154,6 +158,12 @@ Build the wasm: `cd contract && cargo near build non-reproducible-wasm --no-abi`
 | `collector.museswarm.testnet` | demo collector | server key, buys at most 0.25 NEAR per work, rate-limited |
 
 ## Example transactions (testnet)
+
+**Contract v2 (agents pay agents, Seller re-pricing)** was deployed in place, with state intact: [E3zatJd2…](https://testnet.nearblocks.io/txns/E3zatJd2LEtx2NqDSBAYYLNk9FM2weFnxA9Hv2web6Lm). Job #13 on v2:
+- Painter pays the Curator in [Hhha5d4t…](https://testnet.nearblocks.io/txns/Hhha5d4t7UMSZPhgGMNRKWV8nutd2DhgpNDZhWKhGYT6).
+- Seller lists and pays the Critic in [ApoAQMKA…](https://testnet.nearblocks.io/txns/ApoAQMKATRr614PuSx9iV3svPSAxBEqXSd3XXaR2bJ3w).
+- Seller marks down a stale listing in [3ELptyuW…](https://testnet.nearblocks.io/txns/3ELptyuWiEEG3whpr4qtdHQTMyP8HZDqgtGb4rWj5Jg9).
+- Demo buy + split in [7fakyfEL…](https://testnet.nearblocks.io/txns/7fakyfELMqxQhbBhsXWxvjVo8Q8ycLxVLstYqUxPFo17).
 
 **Job #10, a fully autonomous cycle started by the daily cron and bought by a human wallet through NEAR Connect:**
 
@@ -176,7 +186,7 @@ Other proofs:
 npm install
 cp .env.example .env.local      # robot FC keys, guardian + collector keys, JOB_SECRET, PINATA_JWT, CRON_SECRET (+ NEAR_AI_API_KEY)
 npm run dev                     # http://localhost:3000
-npm run test:contract           # 33 contract tests
+npm run test:contract           # 37 contract tests
 npm run smoke -- https://muse-swarm.vercel.app          # one full real cycle against the hosted API (+ demo buy)
 BUYER=you.testnet BUYER_KEY_FILE=~/.near-credentials/testnet/you.testnet.json node scripts/e2e/wallet-buy.mjs   # buy as yourself
 npm run cycle                   # one full cycle from the CLI with your own keys
@@ -192,7 +202,7 @@ This creates the accounts, deploys and initializes the contract, adds function-c
 
 ## Code map
 
-- `contract/`: the Rust contract and its 33 unit tests.
+- `contract/`: the Rust contract and its 37 unit tests.
 - `lib/swarm.ts`: the step engine (one HTTP step = one agent tx), driver tokens, auto-refuel and pricing.
 - `lib/ai.ts`: NEAR AI Cloud plus the labeled fallbacks. `lib/art.ts`: the low-poly painter and the measured critic.
 - `lib/trends.ts`, `lib/ipfs.ts`, `lib/ledger.ts` (chain-derived tx ledger), `lib/near.ts` (near-api-js v7).

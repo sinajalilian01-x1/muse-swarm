@@ -14,7 +14,7 @@ export function who(id: string) {
 const LABEL: Record<string, string> = {
   curator_open_job: "picked a trend & opened a job", painter_submit: "painted & pinned the art", critic_review: "reviewed the art", seller_list: "listed the NFT",
   buy: "bought an NFT", robot_refuel: "refueled gas from its budget", guardian_pause: "paused the swarm", set_kill_switch: "flipped the kill switch", fund: "funded the robots", new: "deployed the contract",
-  update_rules: "changed the rules", withdraw: "withdrew from a robot",
+  update_rules: "changed the rules", repriced: "re-priced an unsold NFT", withdraw: "withdrew from a robot",
 };
 export const label = (m?: string) => (m ? LABEL[m] || m : "tx");
 export { txUrl };
