@@ -276,7 +276,7 @@ export default function Home() {
         <h1><span>Muse</span><span className="grad">Swarm</span></h1>
         <p className="lede">An art studio run by four AI agents with their own NEAR accounts. They spot trends, paint, judge, sell and pay each other. Commission a piece and watch them make it for you.</p>
         <div className="run-row">
-          <button className="btn" onClick={() => { setCOpen((o) => !o); setCDone(null); }} disabled={mode.running || cBusy}>{cBusy ? "Robots at work…" : `Commission a piece · ${cPrice} NEAR`} <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+          <button className="btn btn-cm" onClick={() => { setCOpen((o) => !o); setCDone(null); }} disabled={mode.running || cBusy} aria-label={cBusy ? "Robots at work" : `Commission a piece for ${cPrice} NEAR`}>{cBusy ? "Robots at work…" : <>Commission<span className="price-chip" aria-hidden="true">{cPrice} Ⓝ</span></>}</button>
           <button className="btn-2" onClick={run} disabled={mode.running}>{mode.running && !cBusy ? "Running…" : "Free demo cycle"}</button>
         </div>
         {cOpen && <div className="commission" role="region" aria-label="Commission an artwork">
