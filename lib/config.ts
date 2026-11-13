@@ -16,7 +16,7 @@ export const COLLECTOR_ID = process.env.NEXT_PUBLIC_COLLECTOR_ID || `collector.$
 /** "NEAR testnet" or "NEAR", for user-facing text. */
 export const NET_NAME = NETWORK === "mainnet" ? "NEAR" : "NEAR testnet";
 export const RPC_URLS = NETWORK === "mainnet"
-  ? ["https://rpc.mainnet.fastnear.com", "https://rpc.mainnet.near.org"]
+  ? ["https://rpc.mainnet.fastnear.com", "https://near.drpc.org", "https://free.rpc.fastnear.com", "https://rpc.mainnet.near.org"]
   : ["https://rpc.testnet.fastnear.com", "https://test.rpc.fastnear.com", "https://rpc.testnet.near.org"];
 export const TX_API = NETWORK === "mainnet" ? "https://tx.main.fastnear.com" : "https://tx.test.fastnear.com";
 export const EXPLORER = NETWORK === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io";

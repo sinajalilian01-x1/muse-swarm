@@ -11,12 +11,23 @@ export function provider() {
   return _provider;
 }
 
+/** Public RPCs rate-limit bursts (e.g. the Robots page reads ~20 accounts at once): retry transient errors with a short backoff. */
+const TRANSIENT = /Exceeded \d+ providers|429|rate.?limit|too many|timeout|timed out|fetch failed|ECONNRESET|503|502/i;
+async function retrying<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+  for (let i = 0; ; i++) {
+    try { return await fn(); } catch (e) {
+      if (i >= tries - 1 || !TRANSIENT.test(String((e as Error)?.message || e))) throw e;
+      await new Promise((r) => setTimeout(r, 350 * (i + 1) + Math.random() * 250));
+    }
+  }
+}
+
 export async function view<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
-  return (await provider().callFunction({ contractId: CONTRACT_ID, method, args } as any)) as T;
+  return retrying(async () => (await provider().callFunction({ contractId: CONTRACT_ID, method, args } as any)) as T);
 }
 
 export async function viewOn<T>(contractId: string, method: string, args: Record<string, unknown> = {}): Promise<T> {
-  return (await provider().callFunction({ contractId, method, args } as any)) as T;
+  return retrying(async () => (await provider().callFunction({ contractId, method, args } as any)) as T);
 }
 
 const keys = (env: string | undefined): KeyStr[] => (env || "").split(",").map((s) => s.trim()).filter(Boolean) as KeyStr[];
@@ -93,7 +104,7 @@ export const collectorCall = (method: string, args: object, deposit: string) => 
 
 export async function accountBalance(id: string): Promise<string> {
   try {
-    const r: any = await provider().viewAccount({ accountId: id } as any);
+    const r: any = await retrying(() => provider().viewAccount({ accountId: id } as any));
     return String(r?.amount ?? "0");
   } catch {
     try {
