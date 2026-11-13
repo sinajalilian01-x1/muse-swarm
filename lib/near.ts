@@ -12,7 +12,7 @@ export function provider() {
 }
 
 /** Public RPCs rate-limit bursts (e.g. the Robots page reads ~20 accounts at once): retry transient errors with a short backoff. */
-const TRANSIENT = /Exceeded \d+ providers|429|rate.?limit|too many|timeout|timed out|fetch failed|ECONNRESET|503|502/i;
+const TRANSIENT = /429|rate.?limit|too many|timeout|timed out|fetch failed|ECONNRESET|503|502/i;
 async function retrying<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
   for (let i = 0; ; i++) {
     try { return await fn(); } catch (e) {
@@ -103,16 +103,18 @@ export const guardianCall = (method: string, args: object) => call(GUARDIAN_ID, 
 export const collectorCall = (method: string, args: object, deposit: string) => call(COLLECTOR_ID, keys(process.env.COLLECTOR_KEY), method, args, deposit, 100_000_000_000_000n);
 
 export async function accountBalance(id: string): Promise<string> {
-  try {
-    const r: any = await retrying(() => provider().viewAccount({ accountId: id } as any));
-    return String(r?.amount ?? "0");
-  } catch {
+  // Direct view_account with a per-provider timeout. An account that does not exist (e.g. no demo collector on
+  // mainnet) is a definite answer (0), not a provider failure, so it must not walk every provider with backoff.
+  for (const url of RPC_URLS) {
     try {
-      const a = new Account(id, provider());
-      const s: any = await a.getState();
-      return String(s?.balance?.total ?? s?.amount ?? "0");
-    } catch { return "0"; }
+      const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", signal: AbortSignal.timeout(5000),
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_account", finality: "final", account_id: id } }) });
+      const j = await r.json();
+      if (j.result) return String(j.result.amount ?? "0");
+      if (/UNKNOWN_ACCOUNT|does not exist/i.test(JSON.stringify(j.error || ""))) return "0";
+    } catch {}
   }
+  return "0";
 }
 
 export async function accessKeys(id: string): Promise<{ public_key: string; permission: any }[]> {
