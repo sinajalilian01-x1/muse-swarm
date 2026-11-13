@@ -1,4 +1,4 @@
-const B = process.argv[2] || 'https://muse-swarm.vercel.app'; let driver; let job;
+const B = process.argv.slice(2).find((a) => /^https?:/.test(a)) || 'https://muse-swarm.vercel.app'; let driver; let job;
 const post = async (p, b) => { const r = await fetch(B + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b || {}) }); return [r.status, await r.json()]; };
 for (let i = 0; i < 6; i++) {
   const t = Date.now(); const [st, d] = await post('/api/swarm/step', { driver }); if (d.driver) driver = d.driver; job = d.job || job;
