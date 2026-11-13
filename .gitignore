@@ -9,3 +9,10 @@ AGENTS.md
 *.pem
 **/keys*.json
 .near-credentials
+# secrets: never commit keys, env files or wallet credentials
+*.env
+secrets/
+*.key
+**/credentials*.json
+**/*private*key*
+.vercel/.env*
