@@ -5,7 +5,7 @@ import { fetchTrends } from "./trends";
 import { curatorPick, painterPaint, criticReview, aiMode, sellerPrice } from "./ai";
 import { pin, fetchIpfs } from "./ipfs";
 import { marketingPlan, pinPlan, MARKET_ID, type Plan } from "./marketing";
-import { ROBOT_IDS, APP_URL, NETWORK, nearNum, nearToYocto, type Role } from "./config";
+import { ROBOT_IDS, ROLES, APP_URL, NETWORK, nearNum, nearToYocto, type Role } from "./config";
 import type { Job, Swarm, TxInfo } from "./types";
 
 export const getSwarm = () => view<Swarm>("get_swarm");
@@ -93,9 +93,33 @@ export async function maybeMarketBacklog(): Promise<TxInfo | null> {
  * owner's floor, which the contract enforces too). One re-price per call, signed by the Seller's own key
  * through the same seller_list method its function-call key already allows.
  */
+/** Mainnet cap usage of one full job per robot (measured on jobs #1-6; includes the 0.01 NEAR Mintbase deposit). */
+const JOB_COST: Record<Role, number> = { curator: 0.006, painter: 0.007, critic: 0.011, seller: 0.016 };
+const MARKDOWN_COST = 0.012;
+function headroom(sw: Swarm, i: number): number {
+  const rb = sw.robots[i];
+  const today = Math.floor(Number(sw.now_ms) / 86_400_000).toString();
+  const capLeft = nearNum(sw.rules.daily_cap) - (rb.day === today ? nearNum(rb.spent_today) : 0);
+  return Math.min(capLeft, nearNum(rb.budget));
+}
+/**
+ * Before opening a job on mainnet, check that every robot can finish it today (budget and daily cap),
+ * including a gas refuel if one is due. Without this a piece could be minted but left unlisted.
+ */
+export async function jobAffordable(sw: Swarm): Promise<{ ok: boolean; short?: Role[] }> {
+  if (NETWORK !== "mainnet") return { ok: true };
+  const today = Math.floor(Number(sw.now_ms) / 86_400_000).toString();
+  if (sw.stats.day === today && sw.stats.jobs_today >= sw.rules.max_jobs_per_day) return { ok: false, short: ["jobs/day limit" as Role] };
+  const bals = await Promise.all(ROLES.map((r) => accountBalance(ROBOT_IDS[r]).then(nearNum).catch(() => 1)));
+  const short = ROLES.filter((r, i) => headroom(sw, i) < JOB_COST[r] + (bals[i] < refuelBelow(r) + 0.004 ? Number(REFUEL_AMOUNT) : 0));
+  return short.length ? { ok: false, short } : { ok: true };
+}
+
 export async function maybeReprice(sw?: Swarm): Promise<TxInfo | null> {
   sw = sw || (await getSwarm());
   if (!sw.live) return null;
+  // Keep enough of the Seller's day for the next listing; markdowns come second.
+  if (NETWORK === "mainnet" && headroom(sw, ROLES.indexOf("seller")) < MARKDOWN_COST + JOB_COST.seller) return null;
   const floor = nearNum(sw.rules.floor);
   const jobs = await getJobs(undefined, 30);
   const now = Number(sw.now_ms) || Date.now();
@@ -131,6 +155,8 @@ export async function advance(token?: string): Promise<StepResult> {
   try {
     const txs: TxInfo[] = [];
     if (!job) {
+      const afford = await jobAffordable(sw);
+      if (!afford.ok) return { stage: "error", txs, error: `The robots have used today's on-chain budget (${afford.short!.join(", ")}). The contract's daily caps reset at 00:00 UTC (01:00 CET).` };
       const cm = await nextCommission();
       const [trends, recent] = cm
         ? [[{ name: cm.brief.slice(0, 80), source: "Commission", url: `${APP_URL}/?commission=${cm.id}`, context: `commissioned by ${cm.patron}` }], []]

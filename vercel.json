@@ -1,5 +1,54 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "crons": [{ "path": "/api/cron/cycle", "schedule": "17 9 * * *" }]
+  "crons": [
+    {
+      "path": "/api/cron/cycle?slot=1",
+      "schedule": "17 0 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=2",
+      "schedule": "17 2 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=3",
+      "schedule": "17 4 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=4",
+      "schedule": "17 6 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=5",
+      "schedule": "17 8 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=6",
+      "schedule": "17 10 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=7",
+      "schedule": "17 12 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=8",
+      "schedule": "17 14 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=9",
+      "schedule": "17 16 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=10",
+      "schedule": "17 18 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=11",
+      "schedule": "17 20 * * *"
+    },
+    {
+      "path": "/api/cron/cycle?slot=12",
+      "schedule": "17 22 * * *"
+    }
+  ]
 }
