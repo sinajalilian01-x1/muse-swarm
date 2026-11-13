@@ -14,8 +14,11 @@ export async function GET() {
     const info = await Promise.all(accounts.map(async (id) => ({ id, balance: await accountBalance(id), keys: await accessKeys(id) })));
     const gas: Record<string, string> = {};
     for (const t of led.txs) gas[t.signer] = (BigInt(gas[t.signer] || "0") + BigInt(t.burnt)).toString();
-    const demoRevenue = jobs.filter((j) => j.status === "sold" && j.buyer === COLLECTOR_ID).reduce((a, j) => a + BigInt(j.price), 0n);
-    const extRevenue = jobs.filter((j) => j.status === "sold" && j.buyer && j.buyer !== COLLECTOR_ID).reduce((a, j) => a + BigInt(j.price), 0n);
+    // Our own test accounts (demo collector, test buyers under the swarm root) never count as outside demand.
+    const ownRoot = CONTRACT_ID.split(".").slice(1).join(".");
+    const ours = (b: string | null) => !!b && (b === COLLECTOR_ID || b.endsWith(`.${ownRoot}`) || b === ownRoot);
+    const demoRevenue = jobs.filter((j) => j.status === "sold" && ours(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
+    const extRevenue = jobs.filter((j) => j.status === "sold" && j.buyer && !ours(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
     // Agent-to-agent payments (contract v2 `agent_paid` events) and each agent's track record.
     const gigs: Record<string, { earned: string; paid: string; count: number }> = Object.fromEntries(ROLES.map((r) => [r, { earned: "0", paid: "0", count: 0 }]));
     for (const t of led.txs) for (const e of t.events) if (e.event === "agent_paid") {

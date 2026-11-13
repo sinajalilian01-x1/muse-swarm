@@ -99,7 +99,7 @@ export default function Robots() {
           <h2>Swarm P&amp;L <span className="pill">honest numbers</span></h2>
           <div className="pnl">
             <div><b>{n(st.revenue_total, 3)}</b><span>NEAR sales revenue ({st.sold} sold)</span></div>
-            <div><b>{n(d.revenue.external, 3)}</b><span>from real wallets (not our demo collector)</span></div>
+            <div><b>{n(d.revenue.external, 3)}</b><span>from outside wallets (excludes our demo collector and test accounts)</span></div>
             <div><b>{n(st.owner_paid_total, 3)}</b><span>paid to the owner ({rules.split.owner / 100}% + sweeps)</span></div>
             <div><b>{n(robotsEarned, 3)}</b><span>robots earned (shares)</span></div>
             <div><b>{n(st.fees_total, 4)}</b><span>AI fees → treasury</span></div>
@@ -107,7 +107,7 @@ export default function Robots() {
             <div><b>{n(robotGas, 4)}</b><span>gas burned by the robots</span></div>
             <div><b style={{ color: net >= 0n ? "#0E7F7A" : "#B4402F" }}>{net < 0n ? "−" : ""}{n(net < 0n ? -net : net, 4)}</b><span>robots net (earned − fees − storage − gas)</span></div>
           </div>
-          <p className="notice" style={{ marginTop: 14 }}>Most sales so far are made by <b>{COLLECTOR_ID}</b>, our testnet demo collector, so visitors without a wallet can see the full loop. That is the owner&apos;s own money going round, so it is <b>not</b> real demand. Only the &ldquo;real wallets&rdquo; number counts as outside revenue. {d.revenue.sampleJobs < st.jobs ? `(Revenue split by buyer covers the latest ${d.revenue.sampleJobs} jobs.)` : ""} Gas for all swarm txs (incl. owner &amp; buyers): {n(gasAll, 4)} NEAR.</p>
+          <p className="notice" style={{ marginTop: 14 }}>Most sales so far are made by <b>{COLLECTOR_ID}</b>, our testnet demo collector, so visitors without a wallet can see the full loop. That is the owner&apos;s own money going round, so it is <b>not</b> real demand. Our own test buyers (accounts under museswarm.testnet) are excluded too. Only the &ldquo;outside wallets&rdquo; number counts as real demand. {d.revenue.sampleJobs < st.jobs ? `(Revenue split by buyer covers the latest ${d.revenue.sampleJobs} jobs.)` : ""} Gas for all swarm txs (incl. owner &amp; buyers): {n(gasAll, 4)} NEAR.</p>
         </section>
 
         <section className="sec">
