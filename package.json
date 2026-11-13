@@ -1,0 +1,37 @@
+{
+  "name": "muse-swarm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:contract": "cd contract && cargo test",
+    "cycle": "NODE_OPTIONS=--conditions=react-server tsx scripts/cycle.mts"
+  },
+  "dependencies": {
+    "@near-js/crypto": "^2.5.1",
+    "@near-wallet-selector/core": "^10.1.4",
+    "@near-wallet-selector/here-wallet": "^10.1.4",
+    "@near-wallet-selector/meteor-wallet": "^10.1.4",
+    "@near-wallet-selector/modal-ui": "^10.1.4",
+    "@near-wallet-selector/my-near-wallet": "^10.1.4",
+    "near-api-js": "^7.5.3",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.187.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}
