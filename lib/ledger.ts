@@ -36,7 +36,9 @@ function parse(t: any): LedgerTx {
   const deposit = fc?.deposit || action?.Transfer?.deposit || "0";
   const ts = Number(t.execution_outcome?.block_timestamp || 0) / 1e6;
   const events = eventsFromLogs(logs);
-  const shown = events.some((e) => e.event === "repriced") ? "repriced" : method;
+  const shown = events.some((e) => e.event === "repriced") ? "repriced"
+    : tx.receiver_id !== CONTRACT_ID && method === "buy" ? "nft_transfer_payout"
+    : method === "seller_list" && events.some((e) => e.event === "marketing_plan") && !events.some((e) => e.event === "listed") ? "marketed" : method;
   return { hash: tx.hash, at: ts, signer: tx.signer_id, method: shown, args, deposit: String(deposit), ok, error, events, burnt: burnt.toString(), block: t.execution_outcome?.block_height || 0 };
 }
 

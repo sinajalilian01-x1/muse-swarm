@@ -70,7 +70,7 @@ fn listed(c: &mut Contract, price: u128) -> TokenId {
     paint(c, id);
     let j = review(c, id, 85);
     ctx(seller(), 0);
-    c.seller_list(U64(id), U128(price));
+    c.seller_list(U64(id), U128(price), None, None);
     j.token_id.unwrap()
 }
 fn panics<F: FnOnce()>(f: F) -> bool {
@@ -148,7 +148,7 @@ fn floor_is_enforced() {
     paint(&mut c, id);
     review(&mut c, id, 90);
     ctx(seller(), 0);
-    c.seller_list(U64(id), U128(49 * MILLI));
+    c.seller_list(U64(id), U128(49 * MILLI), None, None);
 }
 
 #[test]
@@ -159,7 +159,7 @@ fn max_price_is_enforced() {
     paint(&mut c, id);
     review(&mut c, id, 90);
     ctx(seller(), 0);
-    c.seller_list(U64(id), U128(501 * MILLI));
+    c.seller_list(U64(id), U128(501 * MILLI), None, None);
 }
 
 #[test]
@@ -314,7 +314,7 @@ fn kill_switch_blocks_review_and_listing() {
     ctx(owner(), 0);
     c.set_kill_switch(true);
     ctx(seller(), 0);
-    assert!(panics(|| { c.seller_list(U64(id), U128(100 * MILLI)); }));
+    assert!(panics(|| { c.seller_list(U64(id), U128(100 * MILLI), None, None); }));
 }
 
 #[test]
@@ -392,7 +392,7 @@ fn only_seller_lists() {
     paint(&mut c, id);
     review(&mut c, id, 90);
     ctx(owner(), 0);
-    c.seller_list(U64(id), U128(100 * MILLI));
+    c.seller_list(U64(id), U128(100 * MILLI), None, None);
 }
 
 #[test]
@@ -463,7 +463,7 @@ fn agents_pay_each_other_for_briefs_and_appraisals() {
     review(&mut c, id, 80);
     let b2: Vec<u128> = c.robots.iter().map(|r| r.budget.0).collect();
     ctx(seller(), 0);
-    c.seller_list(U64(id), U128(100 * MILLI));
+    c.seller_list(U64(id), U128(100 * MILLI), None, None);
     assert_eq!(c.robots[CRITIC].budget.0, b2[CRITIC] + APPRAISAL_FEE);
     assert!(c.robots[SELLER].budget.0 <= b2[SELLER] - APPRAISAL_FEE);
 }
@@ -474,13 +474,13 @@ fn seller_can_reprice_a_stale_listing_within_bounds() {
     let t = listed(&mut c, 200 * MILLI);
     let id: u64 = t.parse().unwrap();
     ctx_at(seller(), 0, T0 + (REPRICE_AFTER_MS + 1) * 1_000_000);
-    let j = c.seller_list(U64(id), U128(150 * MILLI));
+    let j = c.seller_list(U64(id), U128(150 * MILLI), None, None);
     assert_eq!(j.price.0, 150 * MILLI);
     assert_eq!(c.get_listings(None, None)[0].price.0, 150 * MILLI);
     assert!(get_logs().iter().any(|l| l.contains("\"repriced\"")));
     // still enforces the floor
     ctx_at(seller(), 0, T0 + (2 * REPRICE_AFTER_MS + 2) * 1_000_000);
-    assert!(panics(|| { c.seller_list(U64(id), U128(10 * MILLI)); }));
+    assert!(panics(|| { c.seller_list(U64(id), U128(10 * MILLI), None, None); }));
 }
 
 #[test]
@@ -489,9 +489,9 @@ fn reprice_too_soon_or_by_others_is_refused() {
     let t = listed(&mut c, 200 * MILLI);
     let id: u64 = t.parse().unwrap();
     ctx(seller(), 0);
-    assert!(panics(|| { c.seller_list(U64(id), U128(150 * MILLI)); }));
+    assert!(panics(|| { c.seller_list(U64(id), U128(150 * MILLI), None, None); }));
     ctx_at(painter(), 0, T0 + (REPRICE_AFTER_MS + 1) * 1_000_000);
-    assert!(panics(|| { c.seller_list(U64(id), U128(150 * MILLI)); }));
+    assert!(panics(|| { c.seller_list(U64(id), U128(150 * MILLI), None, None); }));
 }
 
 #[test]
@@ -500,9 +500,119 @@ fn repriced_listing_sells_at_new_price() {
     let t = listed(&mut c, 200 * MILLI);
     let id: u64 = t.parse().unwrap();
     ctx_at(seller(), 0, T0 + (REPRICE_AFTER_MS + 1) * 1_000_000);
-    c.seller_list(U64(id), U128(120 * MILLI));
+    c.seller_list(U64(id), U128(120 * MILLI), None, None);
     ctx_at(buyer(), 120 * MILLI, T0 + (REPRICE_AFTER_MS + 2) * 1_000_000);
     c.buy(t.clone());
     assert_eq!(c.nft_token(t).unwrap().owner_id, buyer());
     assert_eq!(c.stats.revenue_total.0, 120 * MILLI);
+}
+
+// ---------------------------------------------------------------- v3: marketing + marketplaces
+const MB: &str = "market-v2-beta.mintspace2.testnet";
+fn plan() -> MarketingPlan {
+    MarketingPlan { pitch: "A quiet aurora for night owls".into(), audience: "NEAR art collectors".into(), channel: "X".into(),
+        best_time: "Tue 18:00 CET".into(), hashtags: vec!["#NEARHackathon".into(), "#lowpoly".into()], reference: Some("bafyplan".into()) }
+}
+fn approvals_on(c: &mut Contract) { ctx(owner(), 0); c.enable_approvals(); }
+
+#[test]
+fn new_mints_carry_full_nep177_metadata() {
+    let mut c = setup();
+    let t = listed(&mut c, 100 * MILLI);
+    let md = c.nft_token(t).unwrap().metadata.unwrap();
+    assert!(md.media.unwrap().starts_with("https://"));
+    assert!(md.description.unwrap().contains("Critic robot at 8.5/10"));
+}
+
+#[test]
+fn seller_logs_marketing_plan_and_sets_reference() {
+    let mut c = setup();
+    let id = open(&mut c); paint(&mut c, id); review(&mut c, id, 85);
+    ctx(seller(), 0);
+    c.seller_list(U64(id), U128(100 * MILLI), Some(plan()), None);
+    assert!(get_logs().iter().any(|l| l.contains("\"marketing_plan\"") && l.contains("night owls")));
+    let md = c.nft_token("1".into()).unwrap().metadata.unwrap();
+    assert_eq!(md.reference.as_deref(), Some("bafyplan"));
+    // Same price again = re-market only, no 15-minute re-price rule.
+    ctx(seller(), 0);
+    let j = c.seller_list(U64(id), U128(100 * MILLI), Some(plan()), None);
+    assert_eq!(j.price.0, 100 * MILLI);
+}
+
+#[test]
+fn cross_list_needs_approvals_enabled_and_allowed_market() {
+    let mut c = setup();
+    let id = open(&mut c); paint(&mut c, id); review(&mut c, id, 85);
+    ctx(seller(), 0);
+    assert!(panics(|| { c.seller_list(U64(id), U128(100 * MILLI), None, Some(MB.parse().unwrap())); }));
+    approvals_on(&mut c);
+    ctx(seller(), 0);
+    assert!(panics(|| { c.seller_list(U64(id), U128(100 * MILLI), None, Some("evil.testnet".parse().unwrap())); }));
+    ctx(owner(), 0);
+    assert!(panics(|| { ctx(buyer(), 0); c.enable_approvals(); }));
+}
+
+#[test]
+fn cross_list_approves_market_and_charges_seller() {
+    let mut c = setup();
+    approvals_on(&mut c);
+    let id = open(&mut c); paint(&mut c, id); review(&mut c, id, 85);
+    let before = c.get_swarm().robots[SELLER].budget.0;
+    ctx(seller(), 0);
+    c.seller_list(U64(id), U128(100 * MILLI), Some(plan()), Some(MB.parse().unwrap()));
+    assert!(c.nft_is_approved("1".into(), MB.parse().unwrap(), Some(1)));
+    let after = c.get_swarm().robots[SELLER].budget.0;
+    assert!(before - after >= MARKET_STORAGE + APPRAISAL_FEE, "seller pays the market storage deposit");
+}
+
+#[test]
+fn market_sale_pays_out_the_same_split() {
+    let mut c = setup();
+    approvals_on(&mut c);
+    let id = open(&mut c); paint(&mut c, id); review(&mut c, id, 85);
+    ctx(seller(), 0);
+    c.seller_list(U64(id), U128(100 * MILLI), None, Some(MB.parse().unwrap()));
+    let budgets: Vec<u128> = c.get_swarm().robots.iter().map(|r| r.budget.0).collect();
+    // Disallowed caller and wrong approval id fail.
+    ctx(a("evil.testnet"), 1);
+    assert!(panics(|| { c.nft_transfer_payout(buyer(), "1".into(), 1, None, U128(975 * MILLI / 10), Some(10)); }));
+    ctx(a(MB), 1);
+    assert!(panics(|| { c.nft_transfer_payout(buyer(), "1".into(), 7, None, U128(975 * MILLI / 10), Some(10)); }));
+    ctx(a(MB), 1);
+    let bal = 975 * MILLI / 10; // after Mintbase's 2.5% fee
+    let p = c.nft_transfer_payout(buyer(), "1".into(), 1, None, U128(bal), Some(10));
+    let sum: u128 = p.payout.values().map(|v| v.0).sum();
+    assert_eq!(sum, bal, "payout must add up to the balance exactly");
+    assert_eq!(p.payout[&owner()].0, bal * 2_000 / 10_000 + (bal - bal * 2_000 / 10_000 - [1_500u128, 3_500, 1_500, 1_500].iter().map(|b| bal * b / 10_000).sum::<u128>()));
+    assert_eq!(c.nft_token("1".into()).unwrap().owner_id, buyer());
+    let j = c.get_job(U64(id)).unwrap();
+    assert_eq!(j.status, "sold");
+    assert_eq!(j.buyer, Some(buyer()));
+    let after: Vec<u128> = c.get_swarm().robots.iter().map(|r| r.budget.0).collect();
+    assert_eq!(after[PAINTER] - budgets[PAINTER], bal * 3_500 / 10_000);
+    assert!(get_logs().iter().any(|l| l.contains("\"venue\":\"market-v2-beta.mintspace2.testnet\"")));
+    // Can't be sold twice.
+    ctx(buyer(), 100 * MILLI);
+    assert!(panics(|| { c.buy("1".into()); }));
+}
+
+#[test]
+fn direct_buy_revokes_market_approval() {
+    let mut c = setup();
+    approvals_on(&mut c);
+    let id = open(&mut c); paint(&mut c, id); review(&mut c, id, 85);
+    ctx(seller(), 0);
+    c.seller_list(U64(id), U128(100 * MILLI), None, Some(MB.parse().unwrap()));
+    ctx(buyer(), 100 * MILLI);
+    c.buy("1".into());
+    assert!(!c.nft_is_approved("1".into(), MB.parse().unwrap(), None));
+    ctx(a(MB), 1);
+    assert!(panics(|| { c.nft_transfer_payout(a("b2.testnet"), "1".into(), 1, None, U128(MILLI), Some(10)); }));
+}
+
+#[test]
+fn nft_payout_view_sums_to_balance() {
+    let c = setup();
+    let p = c.nft_payout("1".into(), U128(123_456_789), Some(10));
+    assert_eq!(p.payout.values().map(|v| v.0).sum::<u128>(), 123_456_789);
 }

@@ -195,7 +195,7 @@ export default function Home() {
           <div className="lt-meta">
             <span className="mode" data-m={latest && latest.jobId === mode.jobId ? m : "replay"}>{!latest ? "Loading chain…" : latest.jobId !== mode.jobId ? <>Latest · <a href={`/gallery#job-${latest.jobId}`}>job #{latest.jobId}</a></> : m === "live" ? `Live · job #${mode.jobId}` : m === "watch" ? `Watching job #${mode.jobId}` : <>Replay · <a href={`/gallery#job-${mode.jobId}`}>job #{mode.jobId}</a></>}</span>
             <b>{latest?.title || "…"}</b>
-            <span className="lt-price">{latest ? `${latest.price} NEAR` : ""}{latest?.status === "sold" ? ` · sold to ${short(latest.buyer || "", 20)}` : latest ? " · for sale" : ""}</span>
+            <span className="lt-price">{latest ? `${latest.price} NEAR` : ""}{latest?.status === "sold" ? ` · sold to ${short(latest.buyer || "", 20)}` : latest ? <> · for sale · <a href={`/gallery#job-${latest.jobId}`}>where + plan</a></> : ""}</span>
           </div>
           <div className="lt-btns">
             <button className="btn-sm" disabled={latest?.status !== "listed"} onClick={collect}>{latest?.status === "sold" ? "Sold" : acct ? "Collect" : "Collect"}</button>

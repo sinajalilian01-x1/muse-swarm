@@ -4,6 +4,7 @@ import { view, robotCall, accountBalance } from "./near";
 import { fetchTrends } from "./trends";
 import { curatorPick, painterPaint, criticReview, aiMode } from "./ai";
 import { pin, fetchIpfs } from "./ipfs";
+import { marketingPlan, pinPlan, MARKET_ID, type Plan } from "./marketing";
 import { ROBOT_IDS, nearNum, nearToYocto, type Role } from "./config";
 import type { Job, Swarm, TxInfo } from "./types";
 
@@ -46,6 +47,33 @@ export function priceFor(score: number, sw: Swarm, recent: Job[]) {
 
 /** Contract v2 rule: a listing may be re-priced once it has sat unsold this long. */
 const REPRICE_AFTER_MS = 15 * 60_000;
+const SELLER_GAS = 150_000_000_000_000n;
+
+/** Seller writes the marketing plan, pins it as the token's NEP-177 reference, and builds the seller_list args. */
+async function sellerArgs(job: Job, price: number): Promise<{ args: Record<string, unknown>; plan: Plan | null; planCid?: string }> {
+  const plan = await marketingPlan(job, price).catch(() => null);
+  let pinned: Awaited<ReturnType<typeof pinPlan>> | null = null;
+  if (plan) pinned = await pinPlan(job, plan, price).catch(() => null);
+  return { args: { job_id: job.id, price: nearToYocto(price), plan: pinned?.arg ?? null, market: MARKET_ID }, plan, planCid: pinned?.cid };
+}
+
+/**
+ * Seller's back-catalog loop: a listed piece with no marketing plan / marketplace listing yet (made before v3)
+ * gets a plan and a Mintbase cross-listing at its current price. One per call.
+ */
+export async function maybeMarketBacklog(): Promise<TxInfo | null> {
+  const sw = await getSwarm();
+  if (!sw.live) return null;
+  const jobs = await getJobs(undefined, 40);
+  for (const j of jobs.filter((x) => x.status === "listed" && x.token_id)) {
+    const t = await view<{ metadata?: { reference?: string | null } } | null>("nft_token", { token_id: j.token_id });
+    if (t?.metadata?.reference) continue;
+    const { args } = await sellerArgs(j, nearNum(j.price));
+    const tx = await robotCall("seller", "seller_list", args, SELLER_GAS).catch(() => null);
+    return tx ? { ...tx, method: tx.ok ? "marketed" : tx.method } : null;
+  }
+  return null;
+}
 /**
  * The Seller's market loop: an unsold listing older than 15 minutes is marked down 15% (never under the
  * owner's floor, which the contract enforces too). One re-price per call, signed by the Seller's own key
@@ -62,7 +90,7 @@ export async function maybeReprice(sw?: Swarm): Promise<TxInfo | null> {
   if (!stale) return null;
   const next = Math.max(floor, Math.floor(nearNum(stale.price) * 0.85 * 200) / 200);
   if (next >= nearNum(stale.price)) return null;
-  const tx = await robotCall("seller", "seller_list", { job_id: stale.id, price: nearToYocto(next) }).catch(() => null);
+  const tx = await robotCall("seller", "seller_list", { job_id: stale.id, price: nearToYocto(next), plan: null, market: MARKET_ID }, SELLER_GAS).catch(() => null);
   return tx ? { ...tx, method: tx.ok ? "repriced" : tx.method } : null;
 }
 
@@ -124,11 +152,14 @@ export async function advance(token?: string): Promise<StepResult> {
       const recent = await getJobs(undefined, 12);
       const p = priceFor(job.score, sw, recent);
       const r = await maybeRefuel("seller"); if (r) txs.push(r);
-      const tx = await robotCall("seller", "seller_list", { job_id: job.id, price: nearToYocto(p.price) });
+      const sa = await sellerArgs(job, p.price);
+      const tx = await robotCall("seller", "seller_list", sa.args, SELLER_GAS);
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
+      const crossListed = (tx.events || []).some((e) => e.event === "cross_listed");
       const rp = await maybeReprice(sw).catch(() => null); if (rp) txs.push(rp);
-      return take({ stage: "listed", job: tx.returnValue as Job, txs, say: `Listed for ${p.price} NEAR`, extra: { price: p.price, reason: p.reason } });
+      return take({ stage: "listed", job: tx.returnValue as Job, txs, say: crossListed ? `Listed for ${p.price} NEAR, here and on Mintbase` : `Listed for ${p.price} NEAR`,
+        extra: { price: p.price, reason: p.reason, plan: sa.plan, planCid: sa.planCid, market: crossListed ? MARKET_ID : null } });
     }
     return { stage: "error", txs, error: `Unexpected job status ${job.status}`, job };
   } finally {

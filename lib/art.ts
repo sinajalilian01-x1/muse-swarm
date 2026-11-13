@@ -145,8 +145,10 @@ export function fallbackCritique(m: Painted["metrics"], seedStr: string) {
 }
 
 export function titleFor(trend: string, scene: Scene, palette: Palette, seed: number) {
-  const words: Record<Scene, string[]> = { sea: ["Tide", "Swell", "Harbor"], peaks: ["Summit", "Ridge", "Crest"], hills: ["Meadow", "Valley", "Fields"], city: ["Skyline", "Arena", "Blocks"], cosmos: ["Orbit", "Signal", "Night Sky"], bloom: ["Bloom", "Encore", "Petals"] };
-  const t = trend.replace(/[^\p{L}\p{N} ]/gu, "").split(" ").slice(0, 3).join(" ");
+  const words: Record<Scene, string[]> = { sea: ["Tide", "Swell", "Harbor"], peaks: ["Summit", "Ridge", "Crest"], hills: ["Meadow", "Valley", "Fields"], city: ["Skyline", "Arena", "City Lights"], cosmos: ["Orbit", "Signal", "Night Sky"], bloom: ["Bloom", "Encore", "Petals"] };
+  const words3 = trend.replace(/[^\p{L}\p{N} ]/gu, "").split(" ").filter(Boolean).slice(0, 3);
+  while (words3.length > 1 && /^(vs|v|and|or|of|the|for|in|at|to|on|with|a|an)$/i.test(words3[words3.length - 1])) words3.pop();
+  const t = words3.join(" ");
   const w = words[scene][seed % 3];
   return `${t ? t.replace(/\b\w/g, (c) => c.toUpperCase()) + " " : ""}${w}`.slice(0, 40) + (seed % 4 === 0 ? `, ${palette.name}` : "");
 }

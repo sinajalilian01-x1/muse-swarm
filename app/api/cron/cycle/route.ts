@@ -1,4 +1,4 @@
-import { advance, maybeReprice } from "@/lib/swarm";
+import { advance, maybeReprice, maybeMarketBacklog } from "@/lib/swarm";
 import { json } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
 
@@ -24,5 +24,6 @@ export async function GET(req: Request) {
     if (["listed", "rejected", "paused", "busy", "error"].includes(r.stage)) break;
   }
   const rp = await maybeReprice().catch(() => null);
-  return json({ ok: !steps.some((s) => s.stage === "error"), steps, repriced: rp?.hash ?? null });
+  const mk = Date.now() - t0 < 45_000 ? await maybeMarketBacklog().catch(() => null) : null;
+  return json({ ok: !steps.some((s) => s.stage === "error"), steps, repriced: rp?.hash ?? null, marketed: mk?.hash ?? null });
 }

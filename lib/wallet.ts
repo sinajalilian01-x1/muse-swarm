@@ -1,6 +1,6 @@
 "use client";
 // NEAR Connect (testnet): connect a wallet, buy a listed artwork or back a robot, straight from the swarm contract.
-import { CONTRACT_ID, NETWORK, RPC_URLS, nearToYocto } from "./config";
+import { CONTRACT_ID, MARKET_ID, NETWORK, RPC_URLS, nearToYocto } from "./config";
 
 type Listener = (account: string | null) => void;
 let connector: any = null, account: string | null = null, ready: Promise<any> | null = null;
@@ -118,5 +118,12 @@ export async function fund(role: string, amountNear: string) {
 export async function buy(tokenId: string, priceYocto: string) {
   const w = await signedInWallet();
   const res = await w.signAndSendTransaction({ signerId: account, receiverId: CONTRACT_ID, actions: [fnCall("buy", { token_id: tokenId }, 100_000_000_000_000n, priceYocto)] });
+  return { ...parseResult(res), account };
+}
+
+/** Buy through Mintbase's market contract (the Seller cross-listed it there). The market calls our nft_transfer_payout (NEP-199), so the same split is paid on-chain. */
+export async function buyOnMarket(tokenId: string, priceYocto: string) {
+  const w = await signedInWallet();
+  const res = await w.signAndSendTransaction({ signerId: account, receiverId: MARKET_ID, actions: [fnCall("buy", { nft_contract_id: CONTRACT_ID, token_id: tokenId }, 200_000_000_000_000n, priceYocto)] });
   return { ...parseResult(res), account };
 }

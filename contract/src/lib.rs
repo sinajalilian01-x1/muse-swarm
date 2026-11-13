@@ -32,7 +32,7 @@ use near_sdk::collections::LazyOption;
 use near_sdk::json_types::{U128, U64};
 use near_sdk::serde_json::{self, json};
 use near_sdk::store::{IterableMap, LookupMap};
-use near_sdk::{env, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, Promise, PromiseOrValue};
+use near_sdk::{env, near, require, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PromiseOrValue};
 use std::collections::HashMap;
 
 pub const NS_PER_DAY: u64 = 86_400_000_000_000;
@@ -47,6 +47,15 @@ pub const APPRAISAL_FEE: u128 = 1_000_000_000_000_000_000_000; // 0.001 NEAR
 /// The Seller may re-price an unsold listing (within floor/max) once it has sat this long.
 pub const REPRICE_AFTER_MS: u64 = 15 * 60 * 1000;
 const PINATA_BASE_URI: &str = "https://gateway.pinata.cloud/ipfs";
+/// NEAR NFT marketplaces the Seller may cross-list on (owner rule, fixed in code). The contract
+/// approves the market (NEP-178) and the market sells through `nft_transfer_payout` (NEP-199),
+/// so a sale on the market pays out the exact same owner/robot split as a sale on our own site.
+pub const ALLOWED_MARKETS: [&str; 2] = ["market-v2-beta.mintspace2.testnet", "simple.market.mintbase1.near"];
+/// Mintbase charges listers a refundable storage deposit per listing; paid from the Seller's budget.
+pub const MARKET_STORAGE: u128 = 10_000_000_000_000_000_000_000; // 0.01 NEAR
+const GAS_MARKET_DEPOSIT: Gas = Gas::from_tgas(10);
+const GAS_MARKET_APPROVE: Gas = Gas::from_tgas(20);
+const GAS_MARKET_CB: Gas = Gas::from_tgas(10);
 
 pub const CURATOR: usize = 0;
 pub const PAINTER: usize = 1;
@@ -64,6 +73,28 @@ enum StorageKey {
     Jobs,
     Listings,
     TokenJob,
+    Approvals,
+    ApprovalIds,
+}
+
+/// The Seller's marketing plan for one piece (written with the Curator). Logged on-chain as a
+/// `marketing_plan` event; the full plan JSON is pinned to IPFS and becomes the token's NEP-177 `reference`.
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct MarketingPlan {
+    pub pitch: String,
+    pub audience: String,
+    pub channel: String,
+    pub best_time: String,
+    pub hashtags: Vec<String>,
+    /// IPFS CID of the full plan JSON (with X post drafts).
+    pub reference: Option<String>,
+}
+
+/// NEP-199 payout.
+#[near(serializers = [json])]
+pub struct Payout {
+    pub payout: HashMap<AccountId, U128>,
 }
 
 /// Revenue split in basis points. Must sum to 10_000.
@@ -503,8 +534,8 @@ impl Contract {
             let token_id = format!("{}", job_id.0);
             let md = TokenMetadata {
                 title: Some(j.title.clone()),
-                description: None,
-                media: Some(j.media.clone()),
+                description: Some(Self::describe(&j, score)),
+                media: Some(format!("{}/{}", PINATA_BASE_URI, j.media)),
                 media_hash: None,
                 copies: Some(1),
                 issued_at: Some(format!("{}", now_ms())),
@@ -538,14 +569,21 @@ impl Contract {
     }
 
     /// Seller: list the minted work between the owner's floor and max price. Closes the job.
-    pub fn seller_list(&mut self, job_id: U64, price: U128) -> Job {
+    ///
+    /// Optional `plan`: the Seller's marketing plan, logged on-chain and set as the token's NEP-177
+    /// description/reference. Optional `market`: cross-list on an allowed NEAR NFT marketplace
+    /// (NEP-178 approval + `nft_on_approve`), at the same price. Calling this again on a listed job
+    /// with a new price re-prices it (15-minute rule); with the same price it only (re-)markets it.
+    pub fn seller_list(&mut self, job_id: U64, price: U128, plan: Option<MarketingPlan>, market: Option<AccountId>) -> Job {
         self.assert_robot(SELLER);
         self.assert_live();
         self.roll_day();
         require!(price.0 >= self.rules.floor.0, "Price is below the owner's floor");
         require!(price.0 <= self.rules.max_price.0, "Price is above the owner's max price");
         if let Some(listed) = self.jobs.get(&job_id.0).cloned().filter(|j| j.status == "listed") {
-            return self.reprice(listed, price);
+            let j = if listed.price == price && (plan.is_some() || market.is_some()) { listed } else { self.reprice(listed, price) };
+            self.market_it(&j, plan, market);
+            return self.jobs.get(&job_id.0).cloned().unwrap();
         }
         let mut j = self.active_job_with(job_id.0, "minted");
         let token_id = j.token_id.clone().unwrap();
@@ -563,7 +601,58 @@ impl Contract {
         self.pay_agent(SELLER, CRITIC, APPRAISAL_FEE, job_id.0, "appraisal");
         emit("listed", json!({"job_id": job_id, "token_id": token_id, "price": price, "floor": self.rules.floor,
             "by": self.robots[SELLER].account_id}));
+        let j = self.jobs.get(&job_id.0).cloned().unwrap();
+        self.market_it(&j, plan, market);
         self.jobs.get(&job_id.0).cloned().unwrap()
+    }
+
+    /// Callback for a cross-listing: on failure the Seller gets its market storage deposit back.
+    #[private]
+    pub fn on_cross_listed(&mut self, job_id: U64, token_id: TokenId, market: AccountId, approval_id: u64, price: U128,
+        #[callback_result] r: Result<(), near_sdk::PromiseError>) -> bool {
+        if r.is_ok() {
+            emit("cross_listed", json!({"job_id": job_id, "token_id": token_id, "market": market, "approval_id": approval_id, "price": price}));
+            return true;
+        }
+        let s = &mut self.robots[SELLER];
+        s.budget = U128(s.budget.0 + MARKET_STORAGE);
+        if let Some(by_id) = self.tokens.approvals_by_id.as_mut() {
+            if let Some(mut m) = by_id.get(&token_id) {
+                if m.get(&market) == Some(&approval_id) {
+                    m.remove(&market);
+                    by_id.insert(&token_id, &m);
+                }
+            }
+        }
+        emit("cross_list_failed", json!({"job_id": job_id, "token_id": token_id, "market": market, "refunded": U128(MARKET_STORAGE)}));
+        false
+    }
+
+    /// Owner, once after upgrading from v2: turn on NEP-178 approvals (needed for marketplace listings).
+    pub fn enable_approvals(&mut self) -> bool {
+        self.assert_owner();
+        if self.tokens.approvals_by_id.is_none() {
+            self.tokens.approvals_by_id = Some(near_sdk::collections::LookupMap::new(StorageKey::Approvals));
+            self.tokens.next_approval_id_by_id = Some(near_sdk::collections::LookupMap::new(StorageKey::ApprovalIds));
+        }
+        true
+    }
+
+    /// Owner: backfill NEP-177 metadata for tokens minted before v3 (description, absolute media URL)
+    /// so wallets and marketplaces show them properly. Only fills what is missing.
+    pub fn patch_metadata(&mut self, token_ids: Vec<TokenId>) -> u32 {
+        self.assert_owner();
+        let mut n = 0;
+        for t in token_ids {
+            let Some(job) = self.token_job.get(&t).copied().and_then(|id| self.jobs.get(&id).cloned()) else { continue };
+            let by_id = self.tokens.token_metadata_by_id.as_mut().unwrap();
+            let Some(mut md) = by_id.get(&t) else { continue };
+            if md.description.is_none() { md.description = Some(Self::describe(&job, job.score)); }
+            if let Some(m) = md.media.clone() { if !m.starts_with("http") { md.media = Some(format!("{}/{}", PINATA_BASE_URI, m)); } }
+            by_id.insert(&t, &md);
+            n += 1;
+        }
+        n
     }
 
     /// A robot moves a little of its own budget to its own account to pay for gas.
@@ -595,7 +684,17 @@ impl Contract {
         require!(buyer != env::current_account_id(), "Swarm cannot buy its own work");
         self.listings.remove(&token_id);
         self.tokens.internal_transfer(&env::current_account_id(), &buyer, &token_id, None, Some("muse-swarm sale".into()));
+        let (to_owner, shares) = self.settle(&token_id, &buyer, price, "muse-swarm");
+        pay(&self.owner_id.clone(), to_owner);
+        pay(&buyer, deposit - price);
+        json!({"token_id": token_id, "price": U128(price), "owner_amount": U128(to_owner), "robot_shares": shares})
+    }
 
+    /// Record a sale and split `price`: robot shares go into robot budgets (above the cap is swept
+    /// to the owner). Returns (amount owed to the owner, robot shares). The caller moves the NEAR.
+    fn settle(&mut self, token_id: &TokenId, buyer: &AccountId, price: u128, venue: &str) -> (u128, Vec<U128>) {
+        let token_id = token_id.clone();
+        let buyer = buyer.clone();
         let (owner_share, robot_shares) = split_sale(price, &self.rules.split);
         let mut to_owner = owner_share;
         let mut swept = [0u128; 4];
@@ -624,15 +723,60 @@ impl Contract {
         self.stats.revenue_total = U128(self.stats.revenue_total.0 + price);
         self.stats.owner_paid_total = U128(self.stats.owner_paid_total.0 + to_owner);
         self.stats.robots_earned_total = U128(self.stats.robots_earned_total.0 + robot_shares.iter().sum::<u128>());
-        pay(&self.owner_id.clone(), to_owner);
-        pay(&buyer, deposit - price);
-        emit("sold", json!({"job_id": U64(job_id), "token_id": token_id, "buyer_id": buyer, "price": U128(price)}));
+        emit("sold", json!({"job_id": U64(job_id), "token_id": token_id, "buyer_id": buyer, "price": U128(price), "venue": venue}));
         let shares: Vec<U128> = robot_shares.iter().map(|v| U128(*v)).collect();
         let sweeps: Vec<U128> = swept.iter().map(|v| U128(*v)).collect();
         emit("split_paid", json!({"token_id": token_id, "owner_id": self.owner_id, "owner_amount": U128(to_owner),
-            "robot_shares": shares, "swept": sweeps,
+            "robot_shares": shares, "swept": sweeps, "venue": venue,
             "budgets": self.robots.iter().map(|r| r.budget).collect::<Vec<_>>()}));
-        json!({"token_id": token_id, "price": U128(price), "owner_amount": U128(to_owner), "robot_shares": shares})
+        (to_owner, shares)
+    }
+
+    /// NEP-199: an approved marketplace sells the token. The `balance` (after the market's own fee)
+    /// is split by the same rules as a direct sale: the owner's share is paid to the owner by the
+    /// market, the robots' shares are paid to this contract and credited to their budgets.
+    #[payable]
+    pub fn nft_transfer_payout(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: u64,
+        memo: Option<String>, balance: U128, max_len_payout: Option<u32>) -> Payout {
+        near_sdk::assert_one_yocto();
+        let market = env::predecessor_account_id();
+        require!(ALLOWED_MARKETS.contains(&market.as_str()), "Market not allowed");
+        require!(self.listings.get(&token_id).is_some(), "Not for sale");
+        require!(max_len_payout.unwrap_or(10) >= 2, "Payout needs 2 recipients");
+        require!(self.nft_is_approved(token_id.clone(), market.clone(), Some(approval_id)), "Market is not approved for this token");
+        self.listings.remove(&token_id);
+        self.tokens.internal_transfer(&market, &receiver_id, &token_id, Some(approval_id), memo.or(Some("muse-swarm sale via market".into())));
+        let venue = market.to_string();
+        let (to_owner, _) = self.settle(&token_id, &receiver_id, balance.0, &venue);
+        let mut payout = HashMap::new();
+        payout.insert(self.owner_id.clone(), U128(to_owner));
+        let to_swarm = balance.0 - to_owner;
+        if to_swarm > 0 {
+            payout.insert(env::current_account_id(), U128(to_swarm));
+        }
+        Payout { payout }
+    }
+
+    /// NEP-199 view: how a sale of `balance` would be paid out.
+    pub fn nft_payout(&self, token_id: TokenId, balance: U128, max_len_payout: Option<u32>) -> Payout {
+        let _ = (token_id, max_len_payout);
+        let (owner_share, shares) = split_sale(balance.0, &self.rules.split);
+        let robots: u128 = shares.iter().sum();
+        let mut payout = HashMap::new();
+        payout.insert(self.owner_id.clone(), U128(owner_share));
+        if robots > 0 {
+            payout.insert(env::current_account_id(), U128(robots));
+        }
+        Payout { payout }
+    }
+
+    /// NEP-178 view.
+    pub fn nft_is_approved(&self, token_id: TokenId, approved_account_id: AccountId, approval_id: Option<u64>) -> bool {
+        let Some(by_id) = self.tokens.approvals_by_id.as_ref() else { return false };
+        match by_id.get(&token_id).and_then(|m| m.get(&approved_account_id).copied()) {
+            Some(id) => approval_id.map_or(true, |a| a == id),
+            None => false,
+        }
     }
 
     // ------------------------------------------------------------------ views
@@ -712,6 +856,62 @@ impl Contract {
     fn assert_live(&self) {
         require!(!self.kill_switch, "Kill switch engaged: the owner has stopped the swarm");
         require!(env::block_timestamp() >= self.paused_until_ns, "Swarm paused: it resumes by itself shortly");
+    }
+
+    fn describe(j: &Job, score: u8) -> String {
+        clip(format!("Painted by the Muse Swarm Painter robot from a live trend (\"{}\") and passed by the Critic robot at {:.1}/10. Four AI agents on NEAR made, judged, minted and listed it; every sale is split on-chain between the agents and their owner.",
+            clip(j.trend.clone(), 60), score as f32 / 10.0), 400)
+    }
+
+    /// Log the marketing plan and/or cross-list on an allowed market. Costs come out of the Seller's budget.
+    fn market_it(&mut self, j: &Job, plan: Option<MarketingPlan>, market: Option<AccountId>) {
+        let Some(token_id) = j.token_id.clone() else { return };
+        let before = env::storage_usage();
+        if let Some(p) = plan {
+            let p = MarketingPlan {
+                pitch: clip(p.pitch, 280), audience: clip(p.audience, 120), channel: clip(p.channel, 80), best_time: clip(p.best_time, 80),
+                hashtags: p.hashtags.into_iter().take(6).map(|h| clip(h, 32)).collect(), reference: p.reference.map(|r| clip(r, 100)),
+            };
+            if let Some(by_id) = self.tokens.token_metadata_by_id.as_mut() {
+                if let Some(mut md) = by_id.get(&token_id) {
+                    if md.reference.is_none() || p.reference.is_some() {
+                        md.reference = p.reference.clone();
+                    }
+                    if md.description.is_none() {
+                        md.description = Some(Self::describe(j, j.score));
+                    }
+                    by_id.insert(&token_id, &md);
+                }
+            }
+            emit("marketing_plan", json!({"job_id": j.id, "token_id": token_id, "plan": p, "by": self.robots[SELLER].account_id}));
+        }
+        if let Some(market) = market {
+            require!(ALLOWED_MARKETS.contains(&market.as_str()), "Market not allowed");
+            let approvals = self.tokens.approvals_by_id.as_mut().unwrap_or_else(|| env::panic_str("Approvals not enabled"));
+            let ids = self.tokens.next_approval_id_by_id.as_mut().unwrap();
+            let approval_id = ids.get(&token_id).unwrap_or(1);
+            let mut m = approvals.get(&token_id).unwrap_or_default();
+            m.insert(market.clone(), approval_id);
+            approvals.insert(&token_id, &m);
+            ids.insert(&token_id, &(approval_id + 1));
+            let storage = self.storage_cost_since(before);
+            self.charge(SELLER, 0, storage, j.id.0, "-");
+            self.spend(SELLER, MARKET_STORAGE);
+            self.robots[SELLER].actions -= 1;
+            let msg = json!({"price": j.price}).to_string();
+            let _ = Promise::new(market.clone())
+                .function_call("deposit_storage".to_string(), b"{}".to_vec(), NearToken::from_yoctonear(MARKET_STORAGE), GAS_MARKET_DEPOSIT)
+                .function_call("nft_on_approve".to_string(),
+                    json!({"token_id": token_id, "owner_id": env::current_account_id(), "approval_id": approval_id, "msg": msg}).to_string().into_bytes(),
+                    NearToken::from_yoctonear(0), GAS_MARKET_APPROVE)
+                .then(Self::ext(env::current_account_id()).with_static_gas(GAS_MARKET_CB)
+                    .on_cross_listed(j.id, token_id, market, approval_id, j.price));
+        } else {
+            let storage = self.storage_cost_since(before);
+            if storage > 0 {
+                self.charge(SELLER, 0, storage, j.id.0, "-");
+            }
+        }
     }
 
     fn role_index(role: &str) -> usize {

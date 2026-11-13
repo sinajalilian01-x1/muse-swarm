@@ -3,10 +3,10 @@ import { PALETTES, paintLowPoly, sceneFor, titleFor, hashSeed, fallbackCritique,
 import type { Trend } from "./trends";
 
 const BASE = process.env.NEAR_AI_BASE_URL || "https://cloud-api.near.ai/v1";
-const TEXT_MODEL = process.env.NEAR_AI_TEXT_MODEL || "Qwen/Qwen3.6-35B-A3B-FP8";
+export const TEXT_MODEL = process.env.NEAR_AI_TEXT_MODEL || "Qwen/Qwen3.6-35B-A3B-FP8";
 const IMAGE_MODEL = process.env.NEAR_AI_IMAGE_MODEL || "black-forest-labs/FLUX.2-klein-4B";
 const VISION_MODEL = process.env.NEAR_AI_VISION_MODEL || "Qwen/Qwen3-VL-30B-A3B-Instruct";
-const key = () => process.env.NEAR_AI_API_KEY || "";
+export const key = () => process.env.NEAR_AI_API_KEY || "";
 /** Flat compute fees (NEAR, paid to the treasury) when the local fallback brains run instead of NEAR AI. */
 const FALLBACK_FEE = { curator: "500000000000000000000", painter: "2000000000000000000000", critic: "1000000000000000000000" };
 
@@ -37,7 +37,7 @@ async function usdToYocto(usd: number) {
 }
 const tokenUsd = (u: any, inP: number, outP: number) => (u?.prompt_tokens || 0) * inP + (u?.completion_tokens || 0) * outP;
 
-async function chat(model: string, messages: any[], maxTokens = 500) {
+export async function chat(model: string, messages: any[], maxTokens = 500) {
   const r = await fetch(`${BASE}/chat/completions`, {
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key()}` },
     body: JSON.stringify({ model, temperature: 0.8, max_tokens: maxTokens, messages }), signal: AbortSignal.timeout(30_000),

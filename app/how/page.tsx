@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import { aiMode } from "@/lib/ai";
-import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, accountUrl } from "@/lib/config";
+import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, MARKET_ID, accountUrl } from "@/lib/config";
 
 export const metadata = { title: "How it works · Muse Swarm" };
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ const STEPS = [
   ["#16A39C", "Curator", "Reads live trends", "Pulls what people are searching right now (Google Trends daily RSS, US & UK) and what builders discuss (Hacker News), skips unsafe topics, and writes a short art brief. Then it opens a job on-chain with curator_open_job. Only one job runs at a time, and stale jobs expire after 10 minutes."],
   ["#F47A38", "Painter", "Paints and pins to IPFS", "Turns the brief into an 800×1000 artwork, pins it to IPFS through Pinata, and records the CID with painter_submit. Its AI fee goes to the treasury, and the storage it adds is charged to its own budget. It also pays the Curator 0.002 NEAR for the brief, budget to budget inside the contract: agents hire agents."],
   ["#E9AE1C", "Critic", "Scores it, and the contract gates the mint", "Looks at the finished image and gives a score with a one-line review. critic_review mints a NEP-171 NFT only when the score is 7.0 or higher. Below that, the work is rejected for good and stays unminted in the gallery."],
-  ["#E86A8C", "Seller", "Prices and lists", "Prices the NFT from the score and recent demand. The contract refuses anything outside the owner's floor and max price. Then it lists the NFT with seller_list and pays the Critic 0.001 NEAR for the appraisal. If a work sits unsold for 15 minutes, the Seller marks it down 15% (never below the floor), using the same method."],
+  ["#E86A8C", "Seller", "Prices, markets and lists, beyond this website", "Prices the NFT from the score and recent demand (the contract refuses anything outside the owner's floor and max price) and pays the Critic 0.001 NEAR for the appraisal. With the Curator's trend context it writes a marketing plan: pitch, audience, channel, best time, hashtags and two X post drafts. The plan is pinned to IPFS as the token's NEP-177 reference and logged on-chain as a marketing_plan event. In the same seller_list call the contract approves Mintbase's market (NEP-178) and lists the NFT there, so it is for sale on our site and on a real NEAR marketplace at once. Unsold work is marked down 15% after 15 minutes, on both venues."],
   ["#13243F", "Collector", "Buys, and the contract splits the money", "Anyone with a NEAR testnet wallet can call buy. The contract sends the token, pays the owner 30%, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. Anything above a robot's budget cap is swept to the owner. Robots pay for their next AI calls and gas from these budgets, so the swarm funds itself."],
 ];
 
@@ -37,6 +37,17 @@ export default function How() {
       </div>
 
       <section className="sec">
+        <h2>Selling beyond the website</h2>
+        <div className="grid g3">
+          {[
+            ["Cross-listed on Mintbase", <>Every new listing is also listed on Mintbase&apos;s market contract (<a className="lnk" href={accountUrl(MARKET_ID)} target="_blank" rel="noreferrer">{MARKET_ID}</a>). When someone buys there, Mintbase calls our <code>nft_transfer_payout</code> (NEP-199) and the contract pays the same owner/robot split. The first market sale is on-chain: <a className="lnk" href="https://testnet.nearblocks.io/txns/9xXN7jQpjGsZdDWfYSBCEDmBvCJoZ3KQUrnyTrFNh1pQ" target="_blank" rel="noreferrer">9xXN7jQp… ↗</a>. Mintbase&apos;s testnet website is paused, so the Gallery has a <b>Buy via Mintbase</b> button that calls the market contract directly.</>],
+            ["A marketing plan per piece", <>The Seller, using the Curator&apos;s trend context, writes a pitch, target audience, channel, best posting time and hashtags for every piece{ai.nearAi ? " with NEAR AI" : " (labeled rule-based fallback until the NEAR AI key is added)"}. Open any work in the <a className="lnk" href="/gallery">Gallery</a> and press <b>Where it&apos;s for sale</b>.</>],
+            ["Drafts, never posts", "Each plan includes two X post drafts with a Copy button. The app never posts to X or any other account. A human decides what goes out. Wallets and marketplaces read the NEP-177 metadata: title, description, absolute image URL and the plan as reference JSON."],
+          ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
+        </div>
+      </section>
+
+      <section className="sec">
         <h2>Architecture</h2>
         <pre className="diagram">{`  visitor ──"Run a real cycle"──▶ Next.js API (Vercel)                         NEAR testnet
                                  │  one step = one robot tx                ┌───────────────────────────────┐
@@ -44,6 +55,7 @@ export default function How() {
   ${(ai.nearAi ? "NEAR AI Cloud (LLM/image/VLM)" : "fallback brains (no AI key)").padEnd(28)} ─▶ │  painter ── FC key ── pin to IPFS ────▶ │  rules · budgets · jobs       │
   Pinata IPFS ◀───────────────── │  critic  ── FC key ── score ≥ 7.0? ───▶ │  NEP-171 NFTs + NEP-297 events│
                                  │  seller  ── FC key ── floor ≤ p ≤ max ▶ │  buy() → on-chain split       │
+  Mintbase market ◀── nft_on_approve (NEP-178) ─────────────────────────── │  nft_transfer_payout (NEP-199)│
   wallet (NEAR Connect) ─────────┼──────────────────── buy ──────────────▶ │  fees → treasury              │
                                  │  guardian ─ FC key ── pause ≤ 120 s ──▶ │  kill switch (owner)          │
   studio / gallery / ledger ◀── view calls + FastNear tx API ◀───────────── └───────────────────────────────┘`}</pre>
@@ -58,7 +70,7 @@ export default function How() {
             ["Kill switch", "The owner can freeze every robot action. For the public demo, a guardian can pause the swarm for up to 120 s, and the pause always releases itself."],
             ["No public budget drain", "Running a cycle is rate-limited per visitor and paced swarm-wide from on-chain job timestamps (12 per 10 min, across every server instance). Only one job runs at a time, and a signed driver token stops two visitors driving the same job."],
             ["Nothing stranded", "AI fees go to a treasury account rather than piling up on keys that can't withdraw. The owner can withdraw any robot's budget."],
-            ["Lean storage", "Each robot pays for the storage it adds. NFT metadata holds only the IPFS CID, title and short text, and the image itself lives on IPFS."],
+            ["Lean storage", "Each robot pays for the storage it adds. NFT metadata holds the title, a short description, the image URL and a reference to the plan JSON. The image and the plan live on IPFS."],
           ].map(([t, p]) => <div className="card" key={t}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
       </section>

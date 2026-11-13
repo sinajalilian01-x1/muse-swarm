@@ -15,6 +15,10 @@ export async function view<T>(method: string, args: Record<string, unknown> = {}
   return (await provider().callFunction({ contractId: CONTRACT_ID, method, args } as any)) as T;
 }
 
+export async function viewOn<T>(contractId: string, method: string, args: Record<string, unknown> = {}): Promise<T> {
+  return (await provider().callFunction({ contractId, method, args } as any)) as T;
+}
+
 const keys = (env: string | undefined): KeyStr[] => (env || "").split(",").map((s) => s.trim()).filter(Boolean) as KeyStr[];
 /** Function-call-only keys per robot (comma separated), e.g. CURATOR_KEYS. */
 const ROBOT_KEYS: Record<Role, () => KeyStr[]> = {
@@ -81,7 +85,7 @@ async function call(accountId: string, keyList: KeyStr[], method: string, args: 
   throw new Error(errText(lastErr));
 }
 
-export const robotCall = (role: Role, method: string, args: object) => call(ROBOT_IDS[role], ROBOT_KEYS[role](), method, args);
+export const robotCall = (role: Role, method: string, args: object, gas?: bigint) => call(ROBOT_IDS[role], ROBOT_KEYS[role](), method, args, "0", gas);
 export const guardianCall = (method: string, args: object) => call(GUARDIAN_ID, keys(process.env.GUARDIAN_KEYS), method, args, "0", 30_000_000_000_000n);
 export const collectorCall = (method: string, args: object, deposit: string) => call(COLLECTOR_ID, keys(process.env.COLLECTOR_KEY), method, args, deposit, 100_000_000_000_000n);
 
