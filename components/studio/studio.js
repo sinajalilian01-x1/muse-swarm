@@ -14,6 +14,131 @@ function gem(k, color, r, kind = 'ico') {
 }
 function rand(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
+const FLOOR_NAMES = {
+  1: 'Warm oak planks',
+  2: 'Honey herringbone',
+  3: 'Terracotta tiles',
+  4: 'Sage green slabs',
+  5: 'Warm sand concrete',
+  6: 'Teal-and-cream checker',
+  7: 'Coral rug over light wood',
+  8: 'Dusty peach slabs',
+  9: 'Two-tone wood with a round rug',
+  10: 'Olive moss slabs',
+};
+function floorChoice() {
+  try {
+    const n = parseInt(new URLSearchParams(location.search).get('floor') || '2', 10);
+    return (n >= 1 && n <= 10) ? n : 2;
+  } catch { return 2; }
+}
+function addFloorSlab(k, scene, color) {
+  scene.add(k.at(k.rbox(9.0, 0.1, 9.0, 0.04, k.mat(color, { rough: 0.9 })), 0, 0, 0));
+}
+function addPlanks(k, scene, colors, grout, w = 0.34, minLen = 1.15, maxLen = 2.15) {
+  addFloorSlab(k, scene, grout);
+  const mats = colors.map((c) => k.mat(c, { rough: 0.88 }));
+  const gap = 0.018, th = 0.028, half = 4.5, y = 0.058;
+  let row = 0;
+  for (let z = -half; z < half - 0.01; z += w + gap, row++) {
+    let x = -half + ((row % 2) ? 0.55 : 0);
+    let i = 0;
+    while (x < half - 0.12) {
+      const jitter = ((row * 7 + i * 13) % 5) * 0.18;
+      const len = Math.min(minLen + jitter, maxLen, half - x);
+      if (len < 0.2) break;
+      const p = k.box(len - gap, th, w, mats[(row + i * 2) % mats.length]);
+      p.position.set(x + len / 2, y, Math.min(z + w / 2, half - w / 2));
+      p.castShadow = false;
+      scene.add(p);
+      x += len; i++;
+    }
+  }
+}
+function addHerringbone(k, scene, colors, grout) {
+  addFloorSlab(k, scene, grout);
+  const mats = colors.map((c) => k.mat(c, { rough: 0.88 }));
+  const cell = 0.26, gap = 0.016, th = 0.028, y = 0.058, half = 4.5;
+  const L = cell * 2 - gap, Wd = cell - gap;
+  let n = 0;
+  const inB = (x, z) => Math.abs(x) < half - 0.06 && Math.abs(z) < half - 0.06;
+  for (let j = -18; j < 18; j++) {
+    for (let i = -18; i < 18; i++) {
+      const t = ((i + j) % 4 + 4) % 4;
+      if (t === 0) {
+        const cx = i * cell + cell, cz = j * cell + cell / 2;
+        if (!inB(cx, cz)) continue;
+        const p = k.box(L, th, Wd, mats[n++ % mats.length]);
+        p.position.set(cx, y, cz); p.castShadow = false; scene.add(p);
+      } else if (t === 2) {
+        const cx = i * cell + cell / 2, cz = j * cell + cell;
+        if (!inB(cx, cz)) continue;
+        const p = k.box(Wd, th, L, mats[n++ % mats.length]);
+        p.position.set(cx, y, cz); p.castShadow = false; scene.add(p);
+      }
+    }
+  }
+}
+function addTiles(k, scene, colors, grout, size, gap = 0.03) {
+  addFloorSlab(k, scene, grout);
+  const mats = colors.map((c) => k.mat(c, { rough: 0.86 }));
+  const th = 0.026, half = 4.5, y = 0.056;
+  let xi = 0;
+  for (let x = -half; x < half - 0.02; x += size + gap, xi++) {
+    let zi = 0;
+    for (let z = -half; z < half - 0.02; z += size + gap, zi++) {
+      const w = Math.min(size, half - x), d = Math.min(size, half - z);
+      if (w < 0.1 || d < 0.1) continue;
+      const t = k.box(w, th, d, mats[(xi + zi * 3) % mats.length]);
+      t.position.set(x + w / 2, y, z + d / 2); t.castShadow = false; scene.add(t);
+    }
+  }
+}
+function addRectRug(k, scene, w, d, color, x, z, rot = 0, border) {
+  if (border) {
+    const edge = k.box(w, 0.028, d, k.mat(border, { rough: 0.92 }));
+    edge.position.set(x, 0.068, z); edge.rotation.y = rot; edge.castShadow = false; scene.add(edge);
+    const inner = k.box(w - 0.16, 0.03, d - 0.16, k.mat(color, { rough: 0.92 }));
+    inner.position.set(x, 0.072, z); inner.rotation.y = rot; inner.castShadow = false; scene.add(inner);
+  } else {
+    const r = k.box(w, 0.03, d, k.mat(color, { rough: 0.92 }));
+    r.position.set(x, 0.07, z); r.rotation.y = rot; r.castShadow = false; scene.add(r);
+  }
+}
+function addRoundRug(k, scene, r, color, x, z, border) {
+  const edge = k.cyl(r, r, 0.028, k.mat(border || color, { rough: 0.92 }), 12);
+  edge.position.set(x, 0.068, z); edge.castShadow = false; scene.add(edge);
+  if (border) {
+    const inner = k.cyl(r - 0.14, r - 0.14, 0.03, k.mat(color, { rough: 0.92 }), 12);
+    inner.position.set(x, 0.072, z); inner.castShadow = false; scene.add(inner);
+  }
+}
+// Returns whether the default pink rug + lemon hex should still be added.
+function buildFloor(k, scene, id) {
+  if (id === 1) { addPlanks(k, scene, ['#C9955A', '#D4A56A', '#C08648', '#DBB078'], '#A87B42'); return true; }
+  if (id === 2) { addHerringbone(k, scene, ['#E0B45A', '#D4A44A', '#E8C06A', '#C99440'], '#C9A050'); return true; }
+  if (id === 3) { addTiles(k, scene, ['#C86A3E', '#D4784A', '#C45D3A', '#E08958'], '#E8D5C0', 0.58, 0.036); return true; }
+  if (id === 4) { addTiles(k, scene, ['#A3B58A', '#9AAD82', '#A8BA90'], '#8A9B72', 1.85, 0.04); return true; }
+  if (id === 5) { addTiles(k, scene, ['#CDBA96', '#C4B08C', '#D2C09E'], '#B8A480', 2.15, 0.035); return true; }
+  if (id === 6) { addTiles(k, scene, ['#4EABA6', '#F2E6CC'], '#E4D6B8', 0.55, 0.028); return true; }
+  if (id === 7) {
+    addPlanks(k, scene, ['#E6C49A', '#E0BA8E', '#ECCAA8', '#DAB286'], '#D4B07A', 0.32, 1.3, 2.2);
+    addRectRug(k, scene, 3.15, 2.05, '#F4A58C', 0.15, 0.4, 0.14, '#E07A5C');
+    return 'hex';
+  }
+  if (id === 8) { addTiles(k, scene, ['#D9A690', '#D2A088', '#E0B09A'], '#C4927C', 1.85, 0.04); return true; }
+  if (id === 9) {
+    addPlanks(k, scene, ['#E0BE88', '#C48A4C', '#E8C894', '#B87E44'], '#B88850', 0.33, 1.2, 2.0);
+    addRoundRug(k, scene, 1.62, '#E9A08A', 0.2, 0.3, '#D97A68');
+    return 'hex';
+  }
+  if (id === 10) { addTiles(k, scene, ['#8C9A5C', '#849454', '#94A264'], '#738048', 1.85, 0.04); return true; }
+  // Default (and any unknown id): honey herringbone, Sina's pick.
+  addHerringbone(k, scene, ['#E0B45A', '#D4A44A', '#E8C06A', '#C99440'], '#C9A050');
+  return true;
+}
+
+
 // Bake every static room mesh into one mesh per material (keeps draw calls low on mobile).
 function bake(scene, roots, skip) {
   scene.updateMatrixWorld(true); const buckets = new Map(), kill = [];
@@ -33,7 +158,7 @@ function buildRoom(k, scene, ctx) {
   const before = new Set(scene.children), skip = new Set();
   // ---- shell: floor, two solid walls, glass wall with sliding door, balcony deck
   scene.add(at(rbox(9.7, 0.5, 9.7, 0.12, mat('#E2E3E1')), 0, -0.27, 0));
-  scene.add(at(rbox(9.0, 0.1, 9.0, 0.04, mat(C.floor)), 0, 0, 0));
+  const floorId = floorChoice(); const floorAccents = buildFloor(k, scene, floorId);
   const WM = mat(C.wall);
   scene.add(at(rbox(0.36, 3.2, 9.7, 0.08, WM), -W - 0.18, 1.6, 0.0));           // left wall (plant wall side)
   scene.add(at(rbox(5.2, 3.2, 0.36, 0.08, WM), -2.2, 1.6, -W - 0.18));           // back wall, solid part
@@ -106,8 +231,8 @@ function buildRoom(k, scene, ctx) {
   const seat = new THREE.Object3D(); seat.position.set(0.1, -1.12, 0); ham.add(seat);
   ctx.hammock = { group: ham, seat }; skip.add(ham);
   // ---- floor accents + plants (kept sparse)
-  const rug = box(2.0, 0.03, 1.35, mat(C.pink, { rough: 0.9 })); rug.position.set(-0.35, 0.065, 0.95); rug.rotation.y = 0.22; rug.castShadow = false; scene.add(rug);
-  const hex = cyl(0.8, 0.8, 0.03, mat(C.lemon, { rough: 0.9 }), 6); hex.position.set(2.6, 0.065, 3.35); hex.castShadow = false; scene.add(hex);
+  if (floorAccents === true) { const rug = box(2.0, 0.03, 1.35, mat(C.pink, { rough: 0.9 })); rug.position.set(-0.35, 0.065, 0.95); rug.rotation.y = 0.22; rug.castShadow = false; scene.add(rug); }
+  if (floorAccents) { const hex = cyl(0.8, 0.8, 0.03, mat(C.lemon, { rough: 0.9 }), 6); hex.position.set(2.6, 0.065, 3.35); hex.castShadow = false; scene.add(hex); }
   const pouf = cyl(0.3, 0.32, 0.34, mat(C.teal), 8); pouf.position.set(0.75, 0.2, -3.75); scene.add(pouf);
   scene.add(at(plant(C.lemon, C.teal, 1.05, 21, 'spiky'), -3.95, 0.05, 4.0));
   scene.add(at(plant('#FFFFFF', C.pink, 0.95, 4, 'spiky'), 3.95, 0.05, 3.95));
@@ -122,14 +247,14 @@ function buildRoom(k, scene, ctx) {
 }
 
 // stations (world x, z) and route graph (world x, z)
-const home = { curator: [-2.3, 0.9], painter: [-1.0, -2.2], critic: [2.0, -0.2], seller: [1.0, 2.6] };
+const home = { curator: [-2.3, 0.9], painter: [-3.05, -2.45], critic: [2.0, -0.2], seller: [1.0, 2.6] };
 const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
 
 export function mountStudio({ container, overlay, director, hooks }) {
   const cam = { fov: 26, target: [0.0, 0.8, -1.0], azimuth: Math.PI / 4, elevation: 0.62, radius: 31, focusRadius: 20, orbitAmp: 0.08, parallax: 0.06 };
   const white = '#F7F7F4';
   const nodes = {
-    hub: [0.2, 0.5], Vc: add(home.curator, [0.81, 0.81]), Vp: add(home.painter, [-0.79, 0.79]), peek: add(home.painter, [-0.07, 1.13]), Vcr: add(home.critic, [-0.81, 0.81]), Vs: add(home.seller, [-0.81, 0.81]),
+    hub: [0.2, 0.5], Vc: add(home.curator, [0.81, 0.81]), Vp: add(home.painter, [0.70, 0.90]), peek: add(home.painter, [1.25, 1.20]), Vcr: add(home.critic, [-0.81, 0.81]), Vs: add(home.seller, [-0.81, 0.81]),
     M: [1.35, -2.1], Din: [3.0, -3.75], Dout: [3.0, -5.05], Bal: [2.6, -5.6], railA: [4.05, -5.6], railB: [4.05, -6.4], railC: [2.3, -6.45], hamA: [1.7, -5.78],
     cof: [-3.45, 2.73], pw: [-3.5, -1.2], win: [1.65, -3.75], lounge: [-0.4, -1.0],
   };
@@ -151,6 +276,18 @@ export function mountStudio({ container, overlay, director, hooks }) {
     cups: { curator: C.teal, painter: C.tang, critic: C.lemon, seller: C.pink },
     ...hooks,
   });
+  const hookFloor = () => {
+    if (!window.__ms) return setTimeout(hookFloor, 0);
+    window.__ms.floor = floorChoice();
+    window.__ms.floors = FLOOR_NAMES;
+    window.__ms.setFloor = (n) => {
+      const u = new URL(location.href);
+      if (n >= 1 && n <= 10) u.searchParams.set('floor', String(n));
+      else u.searchParams.delete('floor');
+      location.assign(u.toString());
+    };
+  };
+  hookFloor();
   const fit = () => { const a = innerWidth / innerHeight; const need = 6.3 / (Math.tan((26 / 2) * Math.PI / 180) * a); cam.radius = Math.max(32.5, need); cam.focusRadius = cam.radius * 0.667; };
   fit(); addEventListener('resize', fit);
   return { studio, dispose() { removeEventListener('resize', fit); } };
