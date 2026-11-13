@@ -127,9 +127,21 @@ export function fallbackCritique(m: Painted["metrics"], seedStr: string) {
   const score = Math.round(Math.max(40, Math.min(97, 32 + raw * 52 + (r() - 0.5) * 22)));
   const best = Object.entries(parts).sort((a, b) => b[1] - a[1])[0][0];
   const worst = Object.entries(parts).sort((a, b) => a[1] - b[1])[0][0];
-  const praise: Record<string, string> = { contrast: "Strong light and dark", harmony: "The palette sings", balance: "Lovely composition", detail: "Rich facets" };
-  const fix: Record<string, string> = { contrast: "needs more contrast", harmony: "colors fight a bit", balance: "the focal point drifts", detail: "a little flat" };
-  return { score, note: score >= 70 ? `${praise[best]}. Only nit: ${fix[worst]}.` : `${praise[best]}, but ${fix[worst]}. Not good enough to mint.`, parts };
+  const pick = (a: string[]) => a[Math.floor(r() * a.length)];
+  const praise: Record<string, string[]> = {
+    contrast: ["Strong light and dark", "The values really pop", "Bold contrast carries it"],
+    harmony: ["The palette sings", "Colors sit together beautifully", "Lovely, calm color harmony"],
+    balance: ["Lovely composition", "The eye lands right where it should", "Well-balanced layout"],
+    detail: ["Rich facets", "The low-poly texture is gorgeous", "Plenty of detail to explore"],
+  };
+  const fix: Record<string, string[]> = {
+    contrast: ["needs more contrast", "the darks are a bit muddy", "it reads a little washed out"],
+    harmony: ["colors fight a bit", "one hue shouts over the rest", "the palette feels busy"],
+    balance: ["the focal point drifts", "the weight sits off to one side", "the horizon feels crowded"],
+    detail: ["a little flat", "too few facets up close", "the foreground lacks texture"],
+  };
+  const stat = `(contrast ${parts.contrast.toFixed(2)}, harmony ${parts.harmony.toFixed(2)}, balance ${parts.balance.toFixed(2)}, detail ${parts.detail.toFixed(2)})`;
+  return { score, note: (score >= 70 ? `${pick(praise[best])}. Only nit: ${pick(fix[worst])}.` : `${pick(praise[best])}, but ${pick(fix[worst])}. Not good enough to mint.`) + ` ${stat}`, parts };
 }
 
 export function titleFor(trend: string, scene: Scene, palette: Palette, seed: number) {
