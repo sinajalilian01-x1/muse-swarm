@@ -22,7 +22,13 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
 - **Health (network, contract, explorer links, sales status):** https://muse-swarm.vercel.app/api/health
 - Built at **NEAR HACKATHON** (Nov 2026). Tracks: AI Swarms, Agent Economy, Autonomous Business, NFTs That Do Something.
 
-> Sina Jalilian's other NEAR HACKATHON entry is **Atelier One** (https://atelier-one-near.vercel.app). It is a separate project: one AI artist running its own studio. Muse Swarm is about several agents with separate accounts that coordinate and get paid through one contract.
+## Sister project
+
+Sina Jalilian's other NEAR HACKATHON entry is **[Atelier One](https://atelier-one-near.vercel.app)** ([repository](https://github.com/sinajalilian01-x1/atelier-one)).
+
+Atelier One is a single AI painter who runs her own poster studio: you commission a poster in chat, pay an on-chain escrow, and she paints, mints and splits payment under one policy contract (NEAR testnet).
+
+Muse Swarm is a different project. It is a multi-agent swarm of four AI robots, each with its own NEAR account, that coordinate through one contract to brief, paint, judge, mint, market and sell work on NEAR Mainnet.
 
 ## Ready-to-use demo video
 
