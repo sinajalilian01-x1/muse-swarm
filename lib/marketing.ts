@@ -58,7 +58,7 @@ export async function marketingPlan(job: Job, price: number): Promise<Plan> {
     try {
       const { data } = await chat(TEXT_MODEL, [
         { role: "system", content: "You are the Seller robot in Muse Swarm, an AI art studio on NEAR, working with the Curator robot who picked the trend. You write sharp, honest, non-spammy marketing for one NFT. No fake claims, no price hype, no engagement bait. Reply with JSON only." },
-        { role: "user", content: `Artwork: "${job.title}" (#${job.id}), low-poly painting. Trend it came from: "${job.trend}" (${job.source}). Brief: ${job.brief}. Critic score ${(job.score / 10).toFixed(1)}/10. Price ${price} NEAR on testnet; every sale is split on-chain between the four robots and the owner. Link: ${url}.
+        { role: "user", content: `Artwork: "${job.title}" (#${job.id}), low-poly painting. Trend it came from: "${job.trend}" (${job.source}). Brief: ${job.brief}. Critic score ${(job.score / 10).toFixed(1)}/10. Price ${price} NEAR on NEAR ${NETWORK}; every sale is split on-chain between the four robots and the owner. Link: ${url}.
 Return {"pitch": "max 40 words", "audience": "who exactly, max 20 words", "channel": "best channel, max 10 words", "best_time": "when to post and why, max 16 words", "hashtags": ["3-5 hashtags"], "why": "one sentence strategy", "x_drafts": ["two X posts under 260 chars each, include the link"]}` },
       ], 600);
       const plan: Plan = {

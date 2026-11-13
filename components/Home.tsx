@@ -7,7 +7,7 @@ import { toNear, txUrl as txLink, NETWORK, NET_NAME } from "@/lib/config";
 import { PAY_ASSETS } from "@/lib/intents";
 
 interface Latest { img: string; title: string; price: string | number; status: "listed" | "sold"; buyer?: string; tokenId?: string | null; jobId?: string; priceY?: string }
-interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; testRevenue: number; realBuyers: number; realCommissions: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; links: Record<string, string> }
+interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; testRevenue: number; realBuyers: number; realCommissions: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; ai?: { nearAi: boolean; provider: string }; links: Record<string, string> }
 interface FeedTx { hash: string; signer: string; method?: string; ok: boolean; error?: string; fresh?: boolean }
 
 let mounted = false;
@@ -235,6 +235,7 @@ export default function Home() {
             <a href={board?.links.contract || "/ledger"} target="_blank" rel="noreferrer" title="Buys by our own test wallets, shown separately"><b>{board ? board.testRevenue.toFixed(2) : "…"}</b> NEAR test buys ↗</a>
             <a href="/robots" title="Robots paying robots for briefs and appraisals"><b>{board ? board.agentPayments : "…"}</b> agent→agent payments</a>
             <a href={board?.links.treasury || "/robots"} target="_blank" rel="noreferrer" title="AI fees the robots paid into the treasury"><b>{board ? board.treasury.toFixed(2) : "…"}</b> NEAR treasury ↗</a>
+            <a href="/how#real" title={board?.ai?.nearAi ? "Curator brief, Painter image, Critic review and Seller pricing + marketing run on NEAR AI Cloud. A labeled fallback takes over only if a call fails." : "No NEAR AI key: labeled local fallback brains"}>{board ? (board.ai?.nearAi ? <><b>NEAR AI Cloud</b> brains</> : <>AI: <b>fallback</b></>) : "…"}</a>
             <a href="/gallery" title="Sold on Mintbase's market or commissioned by visitors"><b>{board ? board.delivered + board.marketSales : "…"}</b> commissions + market sales</a>
           </div>
         </div>

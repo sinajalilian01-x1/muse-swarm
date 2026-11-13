@@ -31,7 +31,7 @@ function MarketPanel({ j, m, acct, busy, onDirect, onMarket }: { j: Job; m?: Mar
       <div className="venue"><div className="v"><b>Any NEAR wallet</b><small>NEP-171 token with NEP-177 metadata (title, description, image URL{m.planCid ? ", reference JSON" : ""})</small></div>
         <a className="lnk" href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${j.token_id}`} target="_blank" rel="noreferrer">token ↗</a></div>
       {m.plan ? <>
-        <h4>Seller&apos;s marketing plan <span className={`pill ${m.plan.ai ? "ok" : "listed"}`} style={{ marginLeft: 4 }}>{m.plan.ai ? m.plan.model : "fallback marketer"}</span></h4>
+        <h4>Seller&apos;s marketing plan <span className={`pill ${m.plan.ai ? "ok" : "listed"}`} style={{ marginLeft: 4 }}>{m.plan.ai ? `NEAR AI Cloud · ${(m.plan.model || "").split("/").pop()}` : "fallback marketer"}</span></h4>
         <div className="plan">
           <p>“{m.plan.pitch}”</p>
           <div className="kv2"><span>Audience</span><span>{m.plan.audience}</span><span>Channel</span><span>{m.plan.channel}</span><span>Best time</span><span>{m.plan.best_time}</span></div>

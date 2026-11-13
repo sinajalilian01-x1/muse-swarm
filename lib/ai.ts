@@ -10,6 +10,8 @@ export const key = () => process.env.NEAR_AI_API_KEY || "";
 /** Flat compute fees (NEAR, paid to the treasury) when the local fallback brains run instead of NEAR AI. */
 const FALLBACK_FEE = { curator: "500000000000000000000", painter: "2000000000000000000000", critic: "1000000000000000000000" };
 
+/** Last real NEAR AI call on this server instance (so the UI can say if inference is actually answering). */
+const lastAi: { ok: boolean | null; at: number; error?: string } = { ok: null, at: 0 };
 export function aiMode() {
   const on = !!key();
   return {
@@ -18,6 +20,9 @@ export function aiMode() {
     curator: on ? TEXT_MODEL : "fallback: keyword curator",
     painter: on ? IMAGE_MODEL : "fallback: low-poly generative painter",
     critic: on ? VISION_MODEL : "fallback: measured contrast/harmony/composition",
+    seller: on ? TEXT_MODEL : "fallback: score + demand pricing, rule-based marketer",
+    lastCall: lastAi.at ? { ok: lastAi.ok, at: lastAi.at, error: lastAi.error } : null,
+    fallbackOnError: true,
   };
 }
 
@@ -40,13 +45,17 @@ const tokenUsd = (u: any, inP: number, outP: number) => (u?.prompt_tokens || 0) 
 export async function chat(model: string, messages: any[], maxTokens = 500) {
   const r = await fetch(`${BASE}/chat/completions`, {
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key()}` },
-    body: JSON.stringify({ model, temperature: 0.8, max_tokens: maxTokens, messages }), signal: AbortSignal.timeout(30_000),
+    // Qwen3 text models think by default and can spend the whole budget reasoning: ask for the answer directly.
+    body: JSON.stringify({ model, temperature: 0.8, max_tokens: maxTokens, messages, ...(/qwen/i.test(model) && !/-VL-/i.test(model) ? { chat_template_kwargs: { enable_thinking: false } } : {}) }),
+    signal: AbortSignal.timeout(30_000),
   });
-  if (!r.ok) throw new Error(`NEAR AI ${model} ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) { const err = `NEAR AI ${model} ${r.status}: ${(await r.text()).slice(0, 200)}`; Object.assign(lastAi, { ok: false, at: Date.now(), error: err.slice(0, 120) }); throw new Error(err); }
   const j = await r.json();
-  const text: string = (j.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "");
+  const msg = j.choices?.[0]?.message || {};
+  const text: string = (msg.content || msg.reasoning_content || "").replace(/<think>[\s\S]*?<\/think>/g, "");
   const m = text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error("NEAR AI returned no JSON");
+  if (!m) { Object.assign(lastAi, { ok: false, at: Date.now(), error: "no JSON in reply" }); throw new Error("NEAR AI returned no JSON"); }
+  Object.assign(lastAi, { ok: true, at: Date.now(), error: undefined });
   return { data: JSON.parse(m[0]), usage: j.usage || {} };
 }
 
@@ -64,7 +73,7 @@ export async function curatorPick(trends: Trend[], recent: string[]): Promise<Pi
       const list = pool.map((t, i) => `${i}. ${t.name} (${t.source}${t.context ? `: ${t.context.slice(0, 90)}` : ""})`).join("\n");
       const { data, usage } = await chat(TEXT_MODEL, [
         { role: "system", content: "You are the Curator robot in Muse Swarm, an AI art studio on NEAR. You pick live trends that make beautiful, uplifting abstract low-poly paintings. Never pick tragedies, politics or real people's likeness. Reply with JSON only." },
-        { role: "user", content: `Live trends right now:\n${list}\n\nPalettes: ${PALETTES.map((p) => p.name).join(", ")}.\nScenes: sea, peaks, hills, city, cosmos, bloom.\nReturn {"index": n, "title": "2-4 word artwork title", "brief": "one vivid sentence (max 30 words) describing a low-poly painting inspired by the trend, no people", "palette": "...", "scene": "...", "line": "max 10 words you say to the Painter"}` },
+        { role: "user", content: `${pool[0].source === "Commission" ? `A paying patron commissioned this exact piece: "${pool[0].name}". Pick index 0 and write a brief that is faithful to their request.\n` : ""}Live trends right now:\n${list}\n\nPalettes: ${PALETTES.map((p) => p.name).join(", ")}.\nScenes: sea, peaks, hills, city, cosmos, bloom.\nReturn {"index": n, "title": "2-4 word artwork title", "brief": "one vivid sentence (max 30 words) describing a low-poly painting inspired by the trend, no people", "palette": "...", "scene": "...", "line": "max 10 words you say to the Painter"}` },
       ]);
       const t = pool[Math.max(0, Math.min(pool.length - 1, Number(data.index) || 0))];
       const palette = PALETTES.find((p) => p.name === data.palette)?.name || PALETTES[hashSeed(t.name) % PALETTES.length].name;
@@ -100,6 +109,7 @@ export async function painterPaint(jobId: string, trend: string, brief: string, 
       const b64 = j.data?.[0]?.b64_json;
       const bytes = b64 ? Buffer.from(b64, "base64") : j.data?.[0]?.url ? Buffer.from(await (await fetch(j.data[0].url)).arrayBuffer()) : null;
       if (!bytes) throw new Error("NEAR AI image: empty response");
+      Object.assign(lastAi, { ok: true, at: Date.now(), error: undefined });
       return { bytes, mime: "image/png", title, model: IMAGE_MODEL, feeYocto: await usdToYocto(0.012), ai: true };
     } catch (e) { error = (e as Error).message; }
   }
@@ -147,4 +157,30 @@ export async function criticReview(jobId: string, brief: string, bytes: Buffer, 
   const m = mime.includes("svg") ? metricsFromSvg(bytes.toString("utf8")) : null;
   const c = fallbackCritique(m || { contrast: 0.15, harmony: 0.6, balance: 0.6, detail: 0.6 }, jobId);
   return { score: c.score, note: c.note, line: c.score >= 70 ? "A keeper!" : "Hmm. Not this one.", model: "fallback-critic", feeYocto: FALLBACK_FEE.critic, ai: false, error };
+}
+
+export interface SellerPrice { price: number; reason: string; model: string; ai: boolean; error?: string }
+
+/** Seller: NEAR AI proposes a price inside the owner's floor..max (the contract enforces the bounds too).
+ *  Falls back to the rule-based price on any error. */
+export async function sellerPrice(job: { title: string; trend: string; score: number }, base: { price: number; reason: string },
+  floor: number, max: number, recent: { title: string; price: number; sold: boolean }[]): Promise<SellerPrice> {
+  let error: string | undefined;
+  if (key()) {
+    try {
+      const { data } = await chat(TEXT_MODEL, [
+        { role: "system", content: "You are the Seller robot in Muse Swarm, an AI art studio on NEAR. You price one-of-one NFTs to actually sell, honestly. Reply with JSON only." },
+        { role: "user", content: `New work: "${job.title}" from the trend "${job.trend}", Critic score ${(job.score / 10).toFixed(1)}/10.
+Owner's rules: price must be between ${floor} and ${max} NEAR.
+Rule-based suggestion: ${base.price} NEAR (${base.reason}).
+Recent works: ${recent.slice(0, 8).map((r) => `"${r.title}" ${r.price} NEAR ${r.sold ? "SOLD" : "unsold"}`).join("; ") || "none"}.
+Return {"price": number in NEAR, "reason": "max 14 words why"}` },
+      ], 200);
+      const p = Number(data.price);
+      if (!(p > 0)) throw new Error("NEAR AI gave no price");
+      const price = Math.max(floor, Math.min(max, Math.round(p * 200) / 200));
+      return { price, reason: String(data.reason || "").slice(0, 120), model: TEXT_MODEL, ai: true };
+    } catch (e) { error = (e as Error).message; }
+  }
+  return { ...base, model: "fallback-pricer", ai: false, error };
 }

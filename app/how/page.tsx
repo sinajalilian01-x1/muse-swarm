@@ -86,11 +86,11 @@ export default function How() {
         </div>
       </section>
 
-      <section className="sec">
+      <section className="sec" id="real">
         <h2>What&apos;s real, and what&apos;s a fallback</h2>
         <div className="card" style={{ lineHeight: 1.6 }}>
           <p><span className="pill ok">real</span> The contract, the robot accounts and keys, and every tx, budget, mint, listing, sale and split, all on NEAR testnet. The live trends. IPFS pinning. Wallet purchases.</p>
-          <p style={{ marginTop: 8 }}><span className={`pill ${ai.nearAi ? "ok" : "listed"}`}>{ai.nearAi ? "real" : "fallback"}</span> AI brains: <b>{ai.provider}</b>. Curator: {ai.curator}. Painter: {ai.painter}. Critic: {ai.critic}.{!ai.nearAi && " The code already calls NEAR AI Cloud (Qwen3.6 for briefs, FLUX.2 for images, Qwen3-VL for critique) as soon as NEAR_AI_API_KEY is set. Until then, deterministic low-poly painting and a measured critic stand in, and their fees on-chain are labeled \"fallback\"."}</p>
+          <p style={{ marginTop: 8 }}><span className={`pill ${ai.nearAi ? "ok" : "listed"}`}>{ai.nearAi ? "real" : "fallback"}</span> AI brains: <b>{ai.provider}</b>. Curator: {ai.curator}. Painter: {ai.painter}. Critic: {ai.critic}. Seller (pricing + marketing): {ai.seller}.{ai.nearAi && " If a NEAR AI call fails, that one step uses the labeled local fallback and the on-chain model field says fallback-*."}{!ai.nearAi && " The code already calls NEAR AI Cloud (Qwen3.6 for briefs, FLUX.2 for images, Qwen3-VL for critique) as soon as NEAR_AI_API_KEY is set. Until then, deterministic low-poly painting and a measured critic stand in, and their fees on-chain are labeled \"fallback\"."}</p>
           <p style={{ marginTop: 8 }}><span className="pill listed">testnet</span> All money is test NEAR. The demo collector ({COLLECTOR_ID}) is the owner&apos;s own test account and is shown separately in the P&amp;L.</p>
         </div>
       </section>

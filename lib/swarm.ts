@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "crypto";
 import { view, robotCall, accountBalance } from "./near";
 import { fetchTrends } from "./trends";
-import { curatorPick, painterPaint, criticReview, aiMode } from "./ai";
+import { curatorPick, painterPaint, criticReview, aiMode, sellerPrice } from "./ai";
 import { pin, fetchIpfs } from "./ipfs";
 import { marketingPlan, pinPlan, MARKET_ID, type Plan } from "./marketing";
 import { ROBOT_IDS, APP_URL, nearNum, nearToYocto, type Role } from "./config";
@@ -174,7 +174,10 @@ export async function advance(token?: string): Promise<StepResult> {
           extra: { delivered: cm.patron, commission: cm, price: nearNum(cm.amount), plan: sa.plan, planCid: sa.planCid } });
       }
       const recent = await getJobs(undefined, 12);
-      const p = priceFor(job.score, sw, recent);
+      const base = priceFor(job.score, sw, recent);
+      const sp = await sellerPrice(job, base, nearNum(sw.rules.floor), nearNum(sw.rules.max_price),
+        recent.filter((j) => j.id !== job.id && (j.status === "listed" || j.status === "sold")).map((j) => ({ title: j.title, price: nearNum(j.price), sold: j.status === "sold" })));
+      const p = { price: sp.price, reason: sp.reason };
       const r = await maybeRefuel("seller"); if (r) txs.push(r);
       const sa = await sellerArgs(job, p.price);
       const tx = await robotCall("seller", "seller_list", sa.args, SELLER_GAS);
@@ -183,7 +186,7 @@ export async function advance(token?: string): Promise<StepResult> {
       const crossListed = (tx.events || []).some((e) => e.event === "cross_listed");
       const rp = await maybeReprice(sw).catch(() => null); if (rp) txs.push(rp);
       return take({ stage: "listed", job: tx.returnValue as Job, txs, say: crossListed ? `Listed for ${p.price} NEAR, here and on Mintbase` : `Listed for ${p.price} NEAR`,
-        extra: { price: p.price, reason: p.reason, plan: sa.plan, planCid: sa.planCid, market: crossListed ? MARKET_ID : null } });
+        extra: { price: p.price, reason: p.reason, priceModel: sp.model, priceAi: sp.ai, priceError: sp.error, plan: sa.plan, planCid: sa.planCid, market: crossListed ? MARKET_ID : null } });
     }
     return { stage: "error", txs, error: `Unexpected job status ${job.status}`, job };
   } finally {

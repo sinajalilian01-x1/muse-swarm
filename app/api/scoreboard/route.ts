@@ -1,4 +1,4 @@
-import { getSwarm, getJobs, getCommissions } from "@/lib/swarm";
+import { getSwarm, getJobs, getCommissions, aiMode } from "@/lib/swarm";
 import { accountBalance, view } from "@/lib/near";
 import { ledger } from "@/lib/ledger";
 import { json } from "@/lib/ratelimit";
@@ -34,7 +34,7 @@ export async function GET() {
       realCommissions: cms.filter((c) => c.status === "delivered" && !isTestBuyer(c.patron)).length, ownerPaid: nearNum(sw.stats.owner_paid_total),
       robotsEarned: nearNum(sw.stats.robots_earned_total), jobs: sw.stats.jobs, minted: sw.stats.minted, sold: sw.stats.sold, rejected: sw.stats.rejected,
       agentPayments: a2a, agentPaid: nearNum(a2aAmt.toString()), treasury: nearNum(treasury), commissions: cms.length,
-      delivered: cms.filter((c) => c.status === "delivered").length, marketSales, txs: led.total, live: sw.live,
+      delivered: cms.filter((c) => c.status === "delivered").length, marketSales, txs: led.total, live: sw.live, ai: { nearAi: aiMode().nearAi, provider: aiMode().provider },
       links: { contract: `${EXPLORER}/address/${CONTRACT_ID}`, treasury: `${EXPLORER}/address/${TREASURY_ID}`, ledger: "/ledger", robots: "/robots", gallery: "/gallery" },
     };
     cache = { t: Date.now(), v };
