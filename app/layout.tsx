@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import "@near-wallet-selector/modal-ui/styles.css";
 import "@/components/studio/overlay.css";
 import "@/components/studio/home.css";
 import "./extra.css";

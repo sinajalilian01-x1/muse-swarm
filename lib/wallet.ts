@@ -1,28 +1,61 @@
 "use client";
-// NEAR Wallet Selector (testnet): connect a wallet and buy a listed artwork directly from the swarm contract.
+// NEAR Connect (testnet): connect a wallet, buy a listed artwork or back a robot, straight from the swarm contract.
 import { CONTRACT_ID, NETWORK, RPC_URLS, nearToYocto } from "./config";
 
 type Listener = (account: string | null) => void;
-let selector: any = null, modal: any = null, account: string | null = null;
+let connector: any = null, account: string | null = null, ready: Promise<any> | null = null;
 const listeners = new Set<Listener>();
 const notify = () => listeners.forEach((f) => f(account));
 
-export async function initWallet() {
-  if (selector) return selector;
-  const [{ setupWalletSelector }, { setupModal }, { setupMyNearWallet }, { setupMeteorWallet }, { setupHereWallet }] = await Promise.all([
-    import("@near-wallet-selector/core"), import("@near-wallet-selector/modal-ui"), import("@near-wallet-selector/my-near-wallet"),
-    import("@near-wallet-selector/meteor-wallet"), import("@near-wallet-selector/here-wallet"),
-  ]);
-  selector = await setupWalletSelector({ network: NETWORK, modules: [setupMyNearWallet(), setupMeteorWallet(), setupHereWallet()] as any });
-  modal = setupModal(selector, { contractId: CONTRACT_ID, description: "Connect a NEAR testnet wallet to collect the swarm's art." } as any);
-  const sync = () => { const accs = selector.store.getState().accounts; account = accs.find((a: any) => a.active)?.accountId || accs[0]?.accountId || null; notify(); };
-  selector.store.observable.subscribe(sync); sync();
-  return selector;
+/**
+ * NEAR Connect (@hot-labs/near-connect), the connector NEAR now recommends in place of the deprecated
+ * Wallet Selector. Wallet code runs in sandboxed iframes from a live manifest. We show only wallets that
+ * support testnet + signAndSendTransaction (Meteor, Intear, Nightly, HOT, Ledger, WalletConnect, NEAR CLI…).
+ * MyNearWallet is excluded: it entered limited mode in Nov 2026 and no longer approves app transactions.
+ */
+export function initWallet() {
+  if (ready) return ready;
+  ready = (async () => {
+    const { NearConnector } = await import("@hot-labs/near-connect");
+    connector = new NearConnector({
+      network: NETWORK,
+      features: { signAndSendTransaction: true, [NETWORK]: true } as any,
+      excludedWallets: ["mynearwallet"],
+      providers: { [NETWORK]: RPC_URLS } as any,
+      footerBranding: { heading: "Muse Swarm", link: "https://docs.near.org/tools/near-connect", linkText: "New to NEAR? Get a wallet" } as any,
+    });
+    connector.on("wallet:signIn", (t: any) => { account = t?.accounts?.[0]?.accountId || account; notify(); });
+    connector.on("wallet:signOut", () => { account = null; notify(); });
+    try { const c = await connector.getConnectedWallet(); account = c.accounts?.[0]?.accountId || null; notify(); } catch {}
+    return connector;
+  })();
+  return ready;
 }
 export function onAccount(f: Listener) { listeners.add(f); f(account); return () => { listeners.delete(f); }; }
-export function hasSession() { try { return Object.keys(localStorage).some((k) => k.startsWith("near-wallet-selector") || k.includes("near_app_wallet")); } catch { return false; } }
-export async function connect() { await initWallet(); modal?.show(); }
-export async function disconnect() { const s = await initWallet(); const w = await s.wallet(); await w.signOut(); account = null; notify(); }
+export function hasSession() { return true; }
+export async function connect() {
+  const c = await initWallet();
+  try { const w = await c.connect(); const accs = await w.getAccounts(); account = accs?.[0]?.accountId || account; notify(); return account; }
+  catch { return null; }
+}
+export async function disconnect() { const c = await initWallet(); try { await c.disconnect(); } catch {} account = null; notify(); }
+
+async function signedInWallet() {
+  const c = await initWallet();
+  if (!account) { await connect(); if (!account) throw new Error("Connect a wallet first"); }
+  return c.wallet();
+}
+const fnCall = (methodName: string, args: object, gas: bigint, deposit: string | bigint) =>
+  ({ type: "FunctionCall", params: { methodName, args, gas: gas.toString(), deposit: String(deposit) } });
+function parseResult(res: any) {
+  const r = Array.isArray(res) ? res[0] : res;
+  const hash = r?.transaction?.hash || r?.transaction_outcome?.id;
+  const logs: string[] = (r?.receipts_outcome || []).flatMap((x: any) => x?.outcome?.logs || []);
+  const events = logs.filter((l) => l.startsWith("EVENT_JSON:")).map((l) => { try { return JSON.parse(l.slice(11)); } catch { return null; } }).filter(Boolean)
+    .flatMap((e: any) => (e.data || []).map((d: any) => ({ standard: e.standard, event: e.event, data: d })));
+  const failed = (r?.status && typeof r.status === "object" && "Failure" in r.status) || (r?.receipts_outcome || []).some((x: any) => "Failure" in (x?.outcome?.status || {}));
+  return { hash, events, ok: !!hash && !failed };
+}
 
 /** Turn wallet errors into something a visitor understands. */
 export function walletError(e: unknown): string {
@@ -75,33 +108,15 @@ export async function consumeWalletReturn(): Promise<{ hashes: string[]; ok: boo
 
 /** Anyone can back a robot: attach NEAR to the contract's payable `fund(role)`; it lands in that robot's on-chain budget. */
 export async function fund(role: string, amountNear: string) {
-  const s = await initWallet();
-  if (!s.isSignedIn()) { modal?.show(); throw new Error("Connect a wallet first"); }
-  const w = await s.wallet();
-  const { actionCreators } = await import("@near-js/transactions");
-  const res: any = await w.signAndSendTransaction({
-    receiverId: CONTRACT_ID,
-    actions: [actionCreators.functionCall("fund", { role }, 30_000_000_000_000n, BigInt(nearToYocto(amountNear)))],
-  } as any);
-  const hash = res?.transaction?.hash || res?.transaction_outcome?.id;
-  const failed = res?.status && "Failure" in res.status;
-  return { hash, ok: !!hash && !failed };
+  const w = await signedInWallet();
+  const res = await w.signAndSendTransaction({ signerId: account, receiverId: CONTRACT_ID, actions: [fnCall("fund", { role }, 30_000_000_000_000n, nearToYocto(amountNear))] });
+  const r = parseResult(res);
+  return { hash: r.hash, ok: r.ok };
 }
 
-/** Buy a listed token. Returns the tx result when the wallet returns one (popup wallets); redirect wallets come back with ?transactionHashes=. */
+/** Buy a listed token from the swarm contract. The contract transfers the NFT and pays the split in the same tx. */
 export async function buy(tokenId: string, priceYocto: string) {
-  const s = await initWallet();
-  if (!s.isSignedIn()) { modal?.show(); throw new Error("Connect a wallet first"); }
-  const w = await s.wallet();
-  const { actionCreators } = await import("@near-js/transactions");
-  const res: any = await w.signAndSendTransaction({
-    receiverId: CONTRACT_ID,
-    actions: [actionCreators.functionCall("buy", { token_id: tokenId }, 100_000_000_000_000n, BigInt(priceYocto))],
-  } as any);
-  const hash = res?.transaction?.hash || res?.transaction_outcome?.id;
-  const logs: string[] = (res?.receipts_outcome || []).flatMap((r: any) => r?.outcome?.logs || []);
-  const events = logs.filter((l) => l.startsWith("EVENT_JSON:")).map((l) => { try { return JSON.parse(l.slice(11)); } catch { return null; } }).filter(Boolean)
-    .flatMap((e: any) => (e.data || []).map((d: any) => ({ standard: e.standard, event: e.event, data: d })));
-  const failed = res?.status && "Failure" in res.status;
-  return { hash, events, ok: !!hash && !failed, account };
+  const w = await signedInWallet();
+  const res = await w.signAndSendTransaction({ signerId: account, receiverId: CONTRACT_ID, actions: [fnCall("buy", { token_id: tokenId }, 100_000_000_000_000n, priceYocto)] });
+  return { ...parseResult(res), account };
 }
