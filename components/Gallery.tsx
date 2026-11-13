@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { buy, buyOnMarket, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
 import { toast, who, short, fmtTime } from "@/lib/ui";
-import { toNear, mediaUrl, accountUrl, txUrl, EXPLORER, CONTRACT_ID, COLLECTOR_ID, MARKET_ID, isTestBuyer } from "@/lib/config";
+import { toNear, mediaUrl, accountUrl, txUrl, EXPLORER, CONTRACT_ID, COLLECTOR_ID, MARKET_ID, isTestBuyer, NETWORK, NET_NAME } from "@/lib/config";
 import type { Job } from "@/lib/types";
 
 const n = (y: string) => toNear(y, 3).replace(/\.?0+$/, "") || "0";
@@ -103,7 +103,7 @@ export default function Gallery() {
       <h1 className="t">Gallery</h1>
       <p className="sub">Every artwork the swarm made, straight from the contract. Approved works are NEP-171 NFTs minted by <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>. Rejected works stay here too: the Critic scored them under 7.0, so the contract refused to mint them.</p>
       {receipt && <p className="notice" role="status" style={{ marginTop: 14, borderColor: receipt.ok ? "#0E7F7A" : "#B4402F" }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>} <button className="btn-sm ghost" onClick={() => setReceipt(null)} aria-label="Dismiss">✕</button></p>}
-      {err && <p className="notice" style={{ marginTop: 14 }}>Could not load from NEAR testnet: {short(err, 120)} <button className="btn-sm ghost" onClick={() => load()}>Retry</button></p>}
+      {err && <p className="notice" style={{ marginTop: 14 }}>Could not load from {NET_NAME}: {short(err, 120)} <button className="btn-sm ghost" onClick={() => load()}>Retry</button></p>}
       <div className="btn-row">
         {(["all", "listed", "sold", "rejected"] as const).map((f) => <button key={f} className={`btn-sm ${filter === f ? "navy" : "ghost"}`} onClick={() => setFilter(f)}>{f === "all" ? `All (${jobs.filter((j) => j.media).length})` : `${f[0].toUpperCase() + f.slice(1)} (${counts[f]})`}</button>)}
       </div>
@@ -125,9 +125,9 @@ export default function Gallery() {
           </article>
         ))}
       </div>
-      {!jobs.length && !err && <p className="sub">{loaded ? "No artworks yet. Run a cycle on the Studio page." : "Loading from NEAR testnet…"}</p>}
+      {!jobs.length && !err && <p className="sub">{loaded ? "No artworks yet. Run a cycle on the Studio page." : `Loading from ${NET_NAME}…`}</p>}
       {more && jobs.length > 0 && <div className="btn-row"><button className="btn-sm ghost" onClick={() => load(jobs[jobs.length - 1].id)}>Load older works</button></div>}
-      <p className="foot2">NEAR testnet. Collecting costs test NEAR only. Get some from the testnet faucet in your wallet.</p>
+      <p className="foot2">{NETWORK === "mainnet" ? "NEAR mainnet. Collecting costs real NEAR." : "NEAR testnet. Collecting costs test NEAR only. Get some from the testnet faucet in your wallet."}</p>
     </div>
   );
 }

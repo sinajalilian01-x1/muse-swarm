@@ -1,6 +1,6 @@
 import { collectorCall, view } from "@/lib/near";
 import { json, rateLimit } from "@/lib/ratelimit";
-import { DEMO_COLLECTOR_MAX } from "@/lib/config";
+import { DEMO_COLLECTOR_MAX, DEMO_COLLECTOR_ON } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -9,6 +9,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const rl = rateLimit(req, "collect", 5, 10 * 60_000);
   if (!rl.ok) return json({ error: `The demo collector is out of breath: try again in ${rl.retryAfter}s.` }, 429);
+  if (!DEMO_COLLECTOR_ON) return json({ error: "The demo collector is off on mainnet. Collect with your own wallet." }, 403);
   const { tokenId } = await req.json().catch(() => ({}));
   if (!/^\d+$/.test(String(tokenId || ""))) return json({ error: "bad token id" }, 400);
   const listings = await view<{ token_id: string; price: string }[]>("get_listings", { from_index: 0, limit: 100 });

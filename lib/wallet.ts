@@ -61,7 +61,7 @@ function parseResult(res: any) {
 export function walletError(e: unknown): string {
   const m = String((e as any)?.message || e || "");
   if (/reject|cancel|denied|closed|User (didn't|did not)/i.test(m)) return "You cancelled in your wallet. Nothing was charged.";
-  if (/NotEnoughBalance|insufficient|not enough/i.test(m)) return "Not enough testnet NEAR in your wallet. Top up from the testnet faucet and try again.";
+  if (/NotEnoughBalance|insufficient|not enough/i.test(m)) return NETWORK === "mainnet" ? "Not enough NEAR in your wallet for this payment plus gas." : "Not enough testnet NEAR in your wallet. Top up from the testnet faucet and try again.";
   if (/Not for sale|not listed|Token not/i.test(m)) return "Someone just collected this work. Pick another listed one.";
   if (/Attached deposit|price/i.test(m)) return "The price changed. Refresh and try again.";
   return m.slice(0, 160) || "Wallet error";

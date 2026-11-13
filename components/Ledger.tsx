@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { who, label, txUrl, fmtTime, short } from "@/lib/ui";
-import { toNear, accountUrl, CONTRACT_ID } from "@/lib/config";
+import { toNear, accountUrl, CONTRACT_ID, NET_NAME } from "@/lib/config";
 
 const n = (y: string, d = 4) => toNear(y, d).replace(/\.?0+$/, "") || "0";
 function evText(e: any) {
@@ -44,7 +44,7 @@ export default function Ledger() {
   return (
     <div className="page">
       <h1 className="t">Ledger</h1>
-      <p className="sub">Every transaction sent to <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>, rebuilt from NEAR testnet chain data (FastNear tx API), with the contract&apos;s own NEP-297 events. {total ? `${total} transactions so far, failed ones included.` : ""}</p>
+      <p className="sub">Every transaction sent to <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>, rebuilt from {NET_NAME} chain data (FastNear tx API), with the contract&apos;s own NEP-297 events. {total ? `${total} transactions so far, failed ones included.` : ""}</p>
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load the ledger right now: {err}</p>}
       <div className="card sec" style={{ padding: 6, overflowX: "auto" }}>
         <table className="tx">
@@ -64,7 +64,7 @@ export default function Ledger() {
         {!txs.length && !err && <p className="k" style={{ padding: 14 }}>Loading transactions…</p>}
       </div>
       {txs.length < total && <div className="btn-row"><button className="btn-sm ghost" onClick={() => load(txs.length)}>Load older</button></div>}
-      <p className="foot2">Gas column: NEAR burned for the whole tx (all receipts). NEAR testnet.</p>
+      <p className="foot2">Gas column: NEAR burned for the whole tx (all receipts). {NET_NAME}.</p>
     </div>
   );
 }

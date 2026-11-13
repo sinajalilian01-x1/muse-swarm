@@ -13,6 +13,8 @@ export const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID || `sina.${ROOT}`;
 export const TREASURY_ID = process.env.NEXT_PUBLIC_TREASURY_ID || `treasury.${ROOT}`;
 export const GUARDIAN_ID = process.env.NEXT_PUBLIC_GUARDIAN_ID || `guardian.${ROOT}`;
 export const COLLECTOR_ID = process.env.NEXT_PUBLIC_COLLECTOR_ID || `collector.${ROOT}`;
+/** "NEAR testnet" or "NEAR", for user-facing text. */
+export const NET_NAME = NETWORK === "mainnet" ? "NEAR" : "NEAR testnet";
 export const RPC_URLS = NETWORK === "mainnet"
   ? ["https://rpc.mainnet.fastnear.com", "https://rpc.mainnet.near.org"]
   : ["https://rpc.testnet.fastnear.com", "https://test.rpc.fastnear.com", "https://rpc.testnet.near.org"];
@@ -26,6 +28,8 @@ export const mediaUrl = (cid?: string | null) => (!cid ? "" : /^(https?:|data:)/
 export const ipfsUrl = (cid: string) => IPFS_GATEWAY + cid;
 /** The demo collector never pays more than this for one work (yoctoNEAR). */
 export const DEMO_COLLECTOR_MAX = 250_000_000_000_000_000_000_000n; // 0.25 NEAR
+/** The demo collector spends our own NEAR, so it is a testnet-only convenience unless explicitly enabled on mainnet. */
+export const DEMO_COLLECTOR_ON = NETWORK !== "mainnet" || process.env.DEMO_COLLECTOR_MAINNET === "yes";
 export const YOCTO = 10n ** 24n;
 export function toNear(y: string | bigint | number | undefined | null, digits = 4): string {
   const v = typeof y === "bigint" ? y : BigInt(String(y ?? "0").split(".")[0] || "0");

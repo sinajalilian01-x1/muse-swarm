@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buy as walletBuy, onAccount, connect, consumeWalletReturn, walletError, commission as walletCommission, commissionWnear } from "@/lib/wallet";
 import { toast, who, label, txUrl, short } from "@/lib/ui";
-import { toNear, txUrl as txLink, NETWORK } from "@/lib/config";
+import { toNear, txUrl as txLink, NETWORK, NET_NAME } from "@/lib/config";
 import { PAY_ASSETS } from "@/lib/intents";
 
 interface Latest { img: string; title: string; price: string | number; status: "listed" | "sold"; buyer?: string; tokenId?: string | null; jobId?: string; priceY?: string }
@@ -19,7 +19,7 @@ export default function Home() {
   const [stats, setStats] = useState({ minted: 0, sold: 0, revenue: "0", live: true, jobs: 0 });
   const [mode, setMode] = useState<{ mode: string; jobId: string | null; running: boolean }>({ mode: "idle", jobId: null, running: false });
   const [status, setStatus] = useState("");
-  const [autoSell, setAutoSell] = useState(true);
+  const [autoSell, setAutoSell] = useState(NETWORK !== "mainnet");
   const [feed, setFeed] = useState<FeedTx[]>([]);
   const [acct, setAcct] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
@@ -157,7 +157,7 @@ export default function Home() {
 
   /** Commission: the patron pays first (NEAR, or wNEAR = the NEAR Intents delivery path), then the robots hire each other live. */
   const commissionPiece = async (how: "near" | "wnear") => {
-    if (!acct) { connect(); toast("Connect a NEAR testnet wallet to commission a piece."); return; }
+    if (!acct) { connect(); toast(`Connect a ${NET_NAME} wallet to commission a piece.`); return; }
     const b = brief.trim(); if (b.length < 3) { toast("Tell the robots what to paint."); return; }
     setCBusy(true); setCDone(null);
     try {
@@ -189,7 +189,7 @@ export default function Home() {
   const run = () => { if (!dir.current) return; setStatus("Curator is reading live trends…"); dir.current.run({ autoSell }); };
   const collect = async () => {
     if (!latest?.tokenId || latest.status !== "listed") return;
-    if (!acct) { connect(); toast("Connect a NEAR testnet wallet to collect."); return; }
+    if (!acct) { connect(); toast(`Connect a ${NET_NAME} wallet to collect.`); return; }
     const priceY = latest.priceY || dir.current?.state?.jobs?.find((j: any) => j.id === latest.jobId)?.price;
     try {
       toast("Confirm the purchase in your wallet…");
@@ -256,7 +256,7 @@ export default function Home() {
           <p className="c-note">You pay first; the contract holds it. The robots brief, paint, judge and mint it, then the Seller delivers the NFT to you and the payment is split on-chain. Not delivered in 30 min? Cancel for a full refund.</p>
         </div>}
         {cDone && <p className={`c-done ${cDone.ok ? "ok" : ""}`}>{cDone.text} {cDone.hash && <a href={txLink(cDone.hash)} target="_blank" rel="noreferrer">tx ↗</a>} <a href="/gallery">gallery →</a></p>}
-        {!cOpen && !cDone && <label className="auto"><input type="checkbox" checked={autoSell} onChange={(e) => setAutoSell(e.target.checked)} /> Free cycle: if no wallet buys within 12 s, the demo collector buys it · <a href="#" onClick={(e) => { e.preventDefault(); setFocus(true); }}>watch them work</a></label>}
+        {!cOpen && !cDone && NETWORK !== "mainnet" && <label className="auto"><input type="checkbox" checked={autoSell} onChange={(e) => setAutoSell(e.target.checked)} /> Free cycle: if no wallet buys within 12 s, the demo collector buys it · <a href="#" onClick={(e) => { e.preventDefault(); setFocus(true); }}>watch them work</a></label>}
         <p className="status">{mode.running && <i />}{status}</p>
         <aside className="latest" id="latest" style={cOpen ? { display: "none" } : undefined}>
           {latest?.img ? <img src={latest.img} alt={latest.title} /> : <img alt="" />}
@@ -267,7 +267,7 @@ export default function Home() {
           </div>
           <div className="lt-btns">
             <button className="btn-sm" disabled={latest?.status !== "listed"} onClick={collect}>{latest?.status === "sold" ? "Sold" : acct ? "Collect" : "Collect"}</button>
-            {latest?.status === "listed" && !mode.running && <button className="btn-sm ghost" onClick={demoBuy} title="Our testnet demo account buys it (max 0.25 NEAR)">Demo buy</button>}
+            {latest?.status === "listed" && !mode.running && NETWORK !== "mainnet" && <button className="btn-sm ghost" onClick={demoBuy} title="Our testnet demo account buys it (max 0.25 NEAR)">Demo buy</button>}
           </div>
         </aside>
       </main>
@@ -291,7 +291,7 @@ export default function Home() {
       </div>
       <a className="back btn-ghost" href="#" onClick={(e) => { e.preventDefault(); setFocus(false); }}>← Back to home</a>
       <nav className="mlinks"><a href="/how">How it works</a><a href="/gallery">Gallery</a><a href="/robots">Robots</a><a href="/ledger">Ledger</a></nav>
-      <p className="foot">NEAR testnet · real transactions with test NEAR · {stats.jobs} jobs so far · <a href="/how">how it works</a></p>
+      <p className="foot">{NETWORK === "mainnet" ? "NEAR mainnet · real NEAR" : "NEAR testnet · real transactions with test NEAR"} · {stats.jobs} jobs so far · <a href="/how">how it works</a></p>
     </>
   );
 }

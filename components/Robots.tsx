@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast, short } from "@/lib/ui";
 import { fund, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
-import { toNear, txUrl, accountUrl, ROBOT_META, ROLES, CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID } from "@/lib/config";
+import { toNear, txUrl, accountUrl, ROBOT_META, ROLES, CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, NET_NAME } from "@/lib/config";
 
 const n = (y: string | bigint, d = 4) => toNear(String(y), d).replace(/\.?0+$/, "") || "0";
 const pct = (a: string, b: string) => Math.min(100, Number((BigInt(a) * 10000n) / (BigInt(b) || 1n)) / 100);
@@ -41,7 +41,7 @@ export default function Robots() {
   useEffect(() => onAccount(setAcct), []);
   useEffect(() => { consumeWalletReturn().then((r) => { if (r) setReceipt(r.error ? { ok: false, text: r.error } : { ok: r.ok, hash: r.hashes[0], text: r.ok ? "Thanks, patron! The NEAR is now in that robot's on-chain budget." : "The transaction failed on-chain." }); }); }, []);
   const back = async (role: string) => {
-    if (!acct) { connect(); toast("Connect a NEAR testnet wallet to back a robot."); return; }
+    if (!acct) { connect(); toast(`Connect a ${NET_NAME} wallet to back a robot.`); return; }
     setBacking(role);
     try { const r = await fund(role, "0.1"); if (r?.hash) { setReceipt({ ok: r.ok, hash: r.hash, text: r.ok ? "Thanks, patron! 0.1 NEAR is now in that robot's on-chain budget." : "The transaction failed on-chain." }); load(); } }
     catch (e) { toast(walletError(e), 4500); } finally { setBacking(null); }
@@ -69,7 +69,7 @@ export default function Robots() {
       <p className="sub">Agents that hire each other: on every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal, budget to budget inside the contract. Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
       {receipt && <p className="notice" role="status" style={{ marginTop: 14 }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>}</p>}
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load chain data: {err}</p>}
-      {!d && !err && <p className="sub">Reading accounts and keys from NEAR testnet…</p>}
+      {!d && !err && <p className="sub">Reading accounts and keys from {NET_NAME}…</p>}
       {d && <>
         <div className="grid g2 sec">
           {ROLES.map((r, i) => { const m = ROBOT_META[r], rb = s.robots[i], a = acc(rb.account_id); return (
@@ -139,7 +139,7 @@ export default function Robots() {
               <div className="card" key={id}><b>{t}</b> · <a className="lnk mono" href={accountUrl(id)} target="_blank" rel="noreferrer">{id}</a><div className="k" style={{ marginTop: 4 }}>{txt} Balance {n(a?.balance || "0", 3)} NEAR.</div><KeyList keys={a?.keys || []} /></div>); })}
           </div>
         </section>
-        <p className="foot2">All live from NEAR testnet: view calls, access-key lists and the tx ledger ({d.ledgerTxs} txs).</p>
+        <p className="foot2">All live from {NET_NAME}: view calls, access-key lists and the tx ledger ({d.ledgerTxs} txs).</p>
       </>}
     </div>
   );
