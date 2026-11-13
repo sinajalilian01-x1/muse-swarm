@@ -139,7 +139,7 @@ npm run cycle                   # one full real cycle from the CLI (add -- --no-
 To set up a fresh swarm:
 
 ```bash
-ROOT=<you>.testnet ROOT_KEY=... KEYS_OUT=/secure/keys.json node scripts/setup-testnet.mjs
+ROOT=<you>.testnet ROOT_KEY_FILE=/secure/root.json WASM=../contract-target/near/muse_swarm.wasm KEYS_OUT=/secure/keys.json node scripts/setup-testnet.mjs
 ```
 
 This creates the accounts, then deploys and initializes the contract. It adds the function-call keys, deletes the full keys of the robots and the guardian, and funds the robots. Keys are written only to `KEYS_OUT`, never to the repo.
