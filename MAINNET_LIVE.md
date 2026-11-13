@@ -28,7 +28,7 @@ The full keys of the robots and the guardian were deleted after their function-c
 
 Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; **per-robot daily cap 0.2 NEAR** (raised from 0.1 on 13 Nov, 06:40 CET, owner `update_rules`: [2m8Jaj18…](https://nearblocks.io/txns/2m8Jaj18LCNHyVKJxzZDtbTYwCs1oSyDPLdg3N4kEfb4)); fee cap 0.01; **budget cap 0.5** (was 0.25, so funded budgets aren't swept back to the owner on a sale); at most 12 jobs a day. Site limits: 2 free cycles per IP per hour and 3 per hour globally. Paid commissions skip the pace.
 
-## Six NFTs minted and listed (NEAR AI Cloud: Qwen3.6 brief, pricing and marketing; FLUX.2 image; Qwen3-VL critic)
+## Initial six NFTs minted and listed (NEAR AI Cloud: Qwen3.6 brief, pricing and marketing; FLUX.2 image; Qwen3-VL critic)
 | # | Title | Trend | Critic | AI price | Curator | Painter | Critic (mint) | Seller (list) | Token |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Neon City Horizon | rockstar games gta vi | 8.5 | 0.175 NEAR | [CYXKJvo3](https://nearblocks.io/txns/CYXKJvo3NdRJRjzM55qupx98GnhDcGb2bRofG1FkkB76) | [AUWKAGoT](https://nearblocks.io/txns/AUWKAGoTZKXjYaHsbFE1iFSTXVrnjP7KYmFkEjG7ZAoC) | [B1J2RsSk](https://nearblocks.io/txns/B1J2RsSk6fxebaNbLcTqWDKwyw7LaPCt1CTgHnZyPqE7) | [6hiJyY62](https://nearblocks.io/txns/6hiJyY62DWexKpyyujJtFAmHkVU4Vyt3VR1tzD33zvtX) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/1) |
@@ -85,3 +85,15 @@ Expected output and spend:
   - robots, treasury and guardian: 0.307 NEAR.
 - Actually consumed (gas and listing storage): **≈ 0.12 NEAR**.
 - No other tokens or assets were touched.
+
+
+## Final audit snapshot — 13 Nov 2026, 09:14 CET
+
+- `get_swarm.stats`: **10 jobs, 10 minted, 0 rejected, 0 expired, 0 sold**.
+- `nft_total_supply`: **10**; `get_listings`: **10**. Current prices: #1 0.10 NEAR, #2 0.055 NEAR, #3–10 0.05 NEAR.
+- Job #8 **Sunlit Bay Peaks**, score 7.2, completed by Vercel cron at **07:40 CET**. A Vercel request record has user-agent `vercel-cron/1.0`, HTTP 200.
+- Job #9 **Velvet Moon Bloom**, score 8.2. A visitor abandoned it after painting; the final audit resumed and completed it (no new job or sale). Mint: [2g4sFGoW…](https://nearblocks.io/txns/2g4sFGoWM7Kt1BRHbDseKGSWMwTKhV3fDweNMG6uXLSi); list: [GJWLeet9…](https://nearblocks.io/txns/GJWLeet9akFdY68sA4nweLv1TcZP8QpMrU5XaNGYpDrc).
+- Job #10 **Cosmic Black Holes**, score 8.2. A real audit/demo cycle, not a cron run or sale. Curator: [H7Pn9xFa…](https://nearblocks.io/txns/H7Pn9xFaoMMwv4aUrU3CYbdYsWqq5gJqqp8DBFKrjmTJ); Painter: [64UnSWiZ…](https://nearblocks.io/txns/64UnSWiZiV2jurJCLnnrCqQy91BcmLXgnB5WJEuZj4My); mint: [HLaBHyBp…](https://nearblocks.io/txns/HLaBHyBpRGGwbZqb4WzTZ9LWbkxUpco4UvA8MBQNeQp5); list: [63bWbAaf…](https://nearblocks.io/txns/63bWbAafWSgGzJXk2qA4v77kvrLgx8XHtXpFDHoY51w9).
+- Scoreboard: **20 agent→agent payments** totaling **0.03 NEAR**; **0 outside revenue**, **0 test revenue**, **0 sales**.
+
+The ready-to-use video records job #10 and clearly labels its accelerated portion. NearBlocks gave the capture browser an anti-bot challenge; Pikespeak independently displays the same mainnet receipt and `nft_mint` log: https://pikespeak.ai/tx/HLaBHyBpRGGwbZqb4WzTZ9LWbkxUpco4UvA8MBQNeQp5 .

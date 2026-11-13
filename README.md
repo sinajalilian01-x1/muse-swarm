@@ -15,7 +15,7 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
   - token page: [nearblocks.io/nft-token/swarm.hlpok1lad.tg/5](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/5).
 - **Contract deploy:** [4DWzVfi3…](https://nearblocks.io/txns/4DWzVfi3DR4aGLeYp6UZs3gKMqxUGSCMQ4pvx6Lc3tW3). Every mainnet tx is in `MAINNET_LIVE.md` and on the [Ledger](https://muse-swarm.vercel.app/ledger).
 
-**Status (13 Nov 2026, 06:50 CET):** 7 NFTs have been minted and listed on mainnet by the robots, priced by NEAR AI Cloud at 0.05–0.175 NEAR, with Seller markdowns since. The robots now run on their own, up to 12 jobs a day through 17 Nov 2026, so the live count on the site and the Ledger will be higher. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
+**Status (13 Nov 2026, 09:14 CET):** 10 jobs, 10 NFTs minted and listed on NEAR Mainnet. Current prices are 0.05–0.10 NEAR after Seller markdowns (initial NEAR AI Cloud prices were 0.05–0.175 NEAR). The robots now run on their own, up to 12 jobs a day through 17 Nov 2026, so the live count on the site and the Ledger will be higher. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
 
 **Development history (testnet):** [`swarm.museswarm.testnet`](https://testnet.nearblocks.io/address/swarm.museswarm.testnet) holds 33 earlier jobs and every tested money path (see "Development history" below).
 
@@ -23,6 +23,10 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
 - Built at **NEAR HACKATHON** (Nov 2026). Tracks: AI Swarms, Agent Economy, Autonomous Business, NFTs That Do Something.
 
 > Sina Jalilian's other NEAR HACKATHON entry is **Atelier One** (https://atelier-one-near.vercel.app). It is a separate project: one AI artist running its own studio. Muse Swarm is about several agents with separate accounts that coordinate and get paid through one contract.
+
+## Ready-to-use demo video
+
+The submission pack includes **`muse-swarm-demo.mp4`** (88.47 s, 1920×1080, 30 fps; captions, no voiceover) and **`muse-swarm-thumbnail.png`** (1280×720). It shows a real mainnet cycle (#10), the live commission quote (no purchase), gallery/marketing, scoped keys and owner caps, and an independent explorer receipt. NearBlocks challenged automated playback, so the video uses Pikespeak for the `critic_review` / `nft_mint` proof; all NearBlocks links remain in the docs. No sales or revenue are staged. See `FINAL_AUDIT.md` for the final judge-style checks and deployment evidence.
 
 ## Try it in under 2 minutes (do X, see Y)
 
@@ -32,7 +36,7 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
 | Press **Commission a piece · 0.06 NEAR**, type a brief, **Pay** with a NEAR wallet (or **Pay in wNEAR**) | This is real NEAR on mainnet. You pay first, and the contract holds the money. The robots brief, paint, judge and mint *your* piece, and the Seller delivers the NFT to your wallet (`commission_delivered`). The split is paid on-chain. A rejected piece is retried automatically. You can cancel for a full refund after 30 min. About 1–2 min. |
 | Open **Any token ▾** in the commission panel and press **Pay with …** | A live **NEAR Intents 1Click** quote (e.g. 0.0025 SOL ≈ $0.20 → 0.06 wNEAR, ~22 s) and a real deposit address with swap status. The swapped wNEAR pays the contract via `ft_on_transfer`. Refunds go to your own Intents balance. |
 | Or press **Free demo cycle** (mainnet: 2 per visitor per hour, 3 per hour overall) | Four robots act in the 3D studio, and four mainnet transactions (`curator_open_job` → `painter_submit` → `critic_review` → `seller_list`) appear in **Live on-chain activity**. The new NFT is then listed for sale. There is no demo collector on mainnet. |
-| In the [Gallery](https://muse-swarm.vercel.app/gallery), open **Where this piece is for sale** on a listed work | The venues (Muse Swarm direct, the **Mintbase market contract**, any NEAR wallet) and the Seller's **marketing plan**: pitch, audience, channel and time, hashtags, and X post drafts with a Copy button. The app never posts. **Buy via Mintbase** buys through Mintbase's market, which calls our NEP-199 `nft_transfer_payout`, and the same split is paid. |
+| In the [Gallery](https://muse-swarm.vercel.app/gallery), open **Sales & marketing** on a listed work | The venues (Muse Swarm direct, the **Mintbase market contract**, any NEAR wallet) and the Seller's **marketing plan**: pitch, audience, channel and time, hashtags, and X post drafts with a Copy button. The app never posts. **Buy via Mintbase** buys through Mintbase's market, which calls our NEP-199 `nft_transfer_payout`, and the same split is paid. |
 | Press **Connect wallet** and pick a NEAR wallet (Meteor, Intear, Nightly, Ledger or NEAR CLI), then press **Collect** on a listed work in [Gallery](https://muse-swarm.vercel.app/gallery) | Your wallet signs `buy(token_id)`. The NFT moves to you, and a receipt shows the split with a tx link. |
 | Open [Robots](https://muse-swarm.vercel.app/robots) | Each agent's account, its scoped key (method names and allowance read live from chain), budget, daily spend against the cap, earnings, fees, storage, gas, and an honest P&L that separates outside revenue from our own test buys. |
 | Press **Back the Painter with 0.1 NEAR** on Robots | Your wallet calls the public payable `fund(role)`, and the NEAR lands in that agent's on-chain budget. |
@@ -294,7 +298,7 @@ The site runs on mainnet behind `NEXT_PUBLIC_NETWORK=mainnet`, with these parts:
 
 On mainnet the robots prepay 30 Tgas (the Seller 70 Tgas), so a robot account holding 0.05 NEAR can pay its own gas.
 
-The robots minted and listed 7 NFTs by 06:50 CET at NEAR AI Cloud prices (0.05–0.175 NEAR, with Seller markdowns since). They now run autonomously, up to 12 jobs a day through 17 Nov 2026, both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** Launching cost ≈ 4.85 NEAR from the root. ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
+The robots minted and listed 10 NFTs by 13 Nov 2026, 09:14 CET (current prices 0.05–0.10 NEAR after Seller markdowns). They now run autonomously, up to 12 jobs a day through 17 Nov 2026, both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** At initial launch, deployment and funding cost ≈ 4.85 NEAR from the root (historical snapshot; see live budget balances). ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
 
 ## License
 
