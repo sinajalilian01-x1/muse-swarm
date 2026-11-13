@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:contract": "cd contract && cargo test",
+    "smoke": "node scripts/e2e/hosted-cycle.mjs",
     "cycle": "NODE_OPTIONS=--conditions=react-server tsx scripts/cycle.mts"
   },
   "dependencies": {

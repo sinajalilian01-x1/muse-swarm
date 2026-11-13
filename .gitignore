@@ -5,3 +5,7 @@ node_modules
 *.tsbuildinfo
 .vercel
 contract/target
+AGENTS.md
+*.pem
+**/keys*.json
+.near-credentials
