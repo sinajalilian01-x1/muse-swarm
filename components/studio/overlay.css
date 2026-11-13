@@ -47,3 +47,10 @@ body.room-fs .stage,.stage.is-fs{position:fixed;left:var(--vvl,0px);top:var(--vv
 .stage:fullscreen .fs-btn,.stage:-webkit-full-screen .fs-btn,body.room-fs .fs-btn,.stage.is-fs .fs-btn{top:auto;right:20px;bottom:20px}
 body.room-fs .nav,body.room-fs .hero-copy,body.room-fs .feed,body.room-fs .statbar,body.room-fs .foot,body.room-fs .mlinks,body.room-fs .back,body.room-fs .features{opacity:0!important;pointer-events:none!important;visibility:hidden}
 .stage:fullscreen .feed,.stage:-webkit-full-screen .feed{display:none}
+/* Full sentences wrap inside the bubble, including long account IDs. */
+.ms-bubble{width:max-content;max-width:min(240px,calc(100vw - 24px));white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+.ms-bubble::after{left:var(--tail-x,50%)}
+.ms-chip{max-width:calc(100vw - 24px);line-height:1.25}
+.ms-chip .ms-t{white-space:normal;max-width:150px;overflow-wrap:anywhere}
+.ms-chip .ms-dot,.ms-chip .ms-bar{flex:none}
+@media(max-width:760px){.ms-bubble{max-width:min(190px,calc(100vw - 24px));font-size:12px}.ms-chip{font-size:10px}}

@@ -20,7 +20,7 @@ export default function Nav() {
       </nav>
       <div className="nav-r">
         <span className="live" title={NETWORK === "mainnet" ? "Live on NEAR Mainnet with real NEAR" : "Everything runs on NEAR testnet with test NEAR"}><svg viewBox="0 0 24 24"><path d="M6 18V6l12 12V6" /></svg>Live on NEAR{NETWORK === "mainnet" ? <span className="tn main">Mainnet</span> : <span className="tn">testnet</span>}</span>
-        <button className="wallet" onClick={() => (acct ? (confirm(`Disconnect ${acct}?`) && disconnect()) : connect())}>{acct ? acct : "Connect wallet"}</button>
+        <button className="wallet" title={acct || "Connect a NEAR wallet"} onClick={() => (acct ? (confirm(`Disconnect ${acct}?`) && disconnect()) : connect())}>{acct ? acct : "Connect wallet"}</button>
       </div>
     </header>
   );

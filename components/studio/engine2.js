@@ -590,13 +590,58 @@ export function runStudio2(cfg) {
   }
   const pv = new THREE.Vector3();
   function place(v, el, extra = '') { v.project(camera); el.style.transform = `translate3d(${((v.x * 0.5 + 0.5) * W).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * H).toFixed(1)}px, 0)${extra}`; }
+  // Speech bubbles: keep them inside the stage and clear of each other. They ease to the free spot so nothing snaps.
+  const BUB_PAD = 10, BUB_GAP = 6;
+  function layoutBubbles() {
+    const live = [];
+    for (const k of roles) { const r = R[k], el = r.bubble;
+      if (!el.classList.contains('show')) { if (r.bx != null) el.style.transform = `translate3d(${(r.ax + r.bx).toFixed(1)}px, ${(r.ay + r.by).toFixed(1)}px, 0)`; continue; }
+      const key = el.className + '|' + r.bubbleText.textContent + '|' + W;
+      if (key !== r.bKey) { r.bKey = key; r.bw = el.offsetWidth; r.bh = el.offsetHeight; }
+      live.push(r); }
+    // bubbles already on screen keep their spot; a new one finds space around them
+    live.sort((a, b) => (a.bWas === b.bWas ? b.ay - a.ay : a.bWas ? -1 : 1));
+    const placed = roles.map((k) => { const r = R[k]; return { l: r.cx - r.cw / 2, r: r.cx + r.cw / 2, t: r.cy, b: r.cy + r.ch, chip: r }; });
+    for (const r of live) {
+      const w = r.bw, h = r.bh, half = w / 2;
+      const clampX = (x) => Math.min(W - BUB_PAD - half, Math.max(BUB_PAD + half, x));
+      let x = clampX(r.ax), y = Math.max(r.ay, BUB_PAD + 12 + h);
+      const box = (x, y) => ({ l: x - half, r: x + half, t: y - 12 - h, b: y - 6 });
+      const hit = (b) => placed.find((o) => o.chip !== r && b.l < o.r + BUB_GAP && b.r > o.l - BUB_GAP && b.t < o.b + BUB_GAP && b.b > o.t - BUB_GAP);
+      if (hit(box(x, y))) {
+        // nearest free spot: slide sideways first, then lift by up to two bubble heights
+        let best = null, bd = 1e9;
+        for (let dy = 0, maxDy = W < 600 ? 0 : 2; dy <= maxDy; dy++) for (let k = -6; k <= 6; k++) {
+          const cx = clampX(r.ax + k * w / 4), cy = y - dy * (h + BUB_GAP + 4);
+          if (cy - 12 - h < BUB_PAD || hit(box(cx, cy))) continue;
+          const d = Math.hypot(cx - r.ax, (cy - r.ay) * 1.6); if (d < bd) { bd = d; best = [cx, cy]; }
+        }
+        if (best) [x, y] = best;
+        else if (W < 600) { // small screens: no room for two, so the newest line wins and the older one fades out
+          const b0 = box(x, y); for (const o of placed.filter((o) => o.who && b0.l < o.r + BUB_GAP && b0.r > o.l - BUB_GAP && b0.t < o.b + BUB_GAP && b0.b > o.t - BUB_GAP)) { o.who.bubble.classList.remove('show'); o.who.bubbleHide = 0; placed.splice(placed.indexOf(o), 1); }
+        }
+      }
+      placed.push({ ...box(x, y), who: r });
+      const tx = x - r.ax, ty = y - r.ay;
+      if (r.bx == null || !r.bWas) { r.bx = tx; r.by = ty; } else { r.bx = damp(r.bx, tx, 12, curDt); r.by = damp(r.by, ty, 12, curDt); }
+      const fx = r.ax + r.bx, fy = r.ay + r.by;
+      r.bubble.style.transform = `translate3d(${fx.toFixed(1)}px, ${fy.toFixed(1)}px, 0)`;
+      const tail = Math.min(w - 16, Math.max(16, half + (r.ax - fx)));
+      r.bubble.style.setProperty('--tail-x', `${tail.toFixed(1)}px`);
+    }
+    for (const k of roles) R[k].bWas = R[k].bubble.classList.contains('show');
+  }
   function updateOverlay() {
     for (const k of roles) { const r = R[k];
-      pv.copy(wp(r.headTop)); pv.y += 0.42 * S; place(pv.clone(), r.chip); place(pv, r.bubble);
-      const s = r.status + (r.progress != null ? ` ${Math.round(r.progress * 100)}%` : ''); if (s !== r.lastChip) { r.chipT.textContent = s; r.lastChip = s; }
+      pv.copy(wp(r.headTop)); pv.y += 0.42 * S; pv.project(camera); r.ax = (pv.x * 0.5 + 0.5) * W; r.ay = (-pv.y * 0.5 + 0.5) * H;
+      const s = r.status + (r.progress != null ? ` ${Math.round(r.progress * 100)}%` : ''); if (s !== r.lastChip) { r.chipT.textContent = s; r.lastChip = s; r.cKey = null; }
       r.chipBarWrap.style.display = r.progress != null ? '' : 'none'; if (r.progress != null) r.chipBar.style.width = (r.progress * 100).toFixed(0) + '%';
       r.chip.classList.toggle('active', r.busy);
+      const ck = r.lastChip + '|' + (r.progress != null) + '|' + W; if (ck !== r.cKey) { r.cKey = ck; r.cw = r.chip.offsetWidth; r.ch = r.chip.offsetHeight; }
+      r.cx = Math.min(W - 6 - r.cw / 2, Math.max(6 + r.cw / 2, r.ax)); r.cy = r.ay;
+      r.chip.style.transform = `translate3d(${r.cx.toFixed(1)}px, ${r.cy.toFixed(1)}px, 0)`;
       if (r.bubble.classList.contains('show')) { if (time > r.typedAt) r.bubble.classList.add('typed'); if (time > r.bubbleHide) r.bubble.classList.remove('show'); } }
+    layoutBubbles();
     for (let i = pops.length - 1; i >= 0; i--) { const o = pops[i]; const age = time - o.born; if (age > o.life) { o.d.remove(); pops.splice(i, 1); continue; } pv.copy(wp(o.anchor)); pv.y += o.dy + age * 0.45; place(pv, o.d, ` translateX(${o.x}px)`); }
   }
   function logic(dt) { time += dt; curDt = dt; frameNo++; runTasks(); for (const k of roles) updateRobot(R[k], dt); scene.updateMatrixWorld(); updateItems(); updateFx(dt); updateCamera(dt); updateOverlay(); }

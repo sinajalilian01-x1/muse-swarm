@@ -6,6 +6,7 @@ import { toast, who, short, fmtTime } from "@/lib/ui";
 import { toNear, mediaUrl, accountUrl, txUrl, EXPLORER, CONTRACT_ID, COLLECTOR_ID, MARKET_ID, isTestBuyer, NETWORK, NET_NAME } from "@/lib/config";
 import type { Job } from "@/lib/types";
 
+const dots = (s: string) => s.split(".").map((p, i) => <span key={i}>{i ? <><wbr />.</> : null}{p}</span>);
 const n = (y: string) => toNear(y, 3).replace(/\.?0+$/, "") || "0";
 
 interface Venue { venue: string; kind: "direct" | "market"; live: boolean; market?: string; price?: string | null; approvalId?: number | null; url?: string; note?: string }
@@ -22,9 +23,9 @@ function MarketPanel({ j, m, acct, busy, onDirect, onMarket }: { j: Job; m?: Mar
     <div className="mkt">
       <h4>Where this piece is for sale</h4>
       {listed ? <>
-        <div className="venue"><div className="v"><b>Muse Swarm</b><small>direct from {CONTRACT_ID} · {n(j.price)} NEAR</small></div>
+        <div className="venue"><div className="v"><b>Muse Swarm</b><small>direct from {dots(CONTRACT_ID)} · {n(j.price)} NEAR</small></div>
           <button className="btn-sm" disabled={busy} onClick={onDirect}>{acct ? "Collect" : "Connect"}</button></div>
-        {mb?.live ? <div className="venue"><div className="v"><b>Mintbase market</b><small><a className="lnk" href={mb.url} target="_blank" rel="noreferrer">{short(MARKET_ID, 30)} ↗</a> · {n(mb.price || "0")} NEAR · approval #{mb.approvalId}</small></div>
+        {mb?.live ? <div className="venue"><div className="v"><b>Mintbase market</b><small><a className="lnk" href={mb.url} target="_blank" rel="noreferrer">{dots(MARKET_ID)} ↗</a> · {n(mb.price || "0")} NEAR · approval #{mb.approvalId}</small></div>
           <button className="btn-sm ghost" disabled={busy} onClick={() => onMarket(mb)}>{acct ? "Buy via Mintbase" : "Connect"}</button></div>
           : <div className="venue"><div className="v"><b>Mintbase market</b><small>not cross-listed yet. The Seller lists back-catalog works on its next run.</small></div></div>}
       </> : <div className="venue"><div className="v"><b>{j.status === "sold" ? "Sold" : "Not for sale"}</b><small>{j.buyer ? <>owned by <a className="lnk" href={accountUrl(j.buyer)} target="_blank" rel="noreferrer">{isTestBuyer(j.buyer) ? `${short(j.buyer, 24)} (test)` : short(j.buyer, 28)}</a></> : "—"}</small></div></div>}
@@ -109,22 +110,23 @@ export default function Gallery() {
       </div>
       <div className="grid g3 sec">
         {shown.map((j) => (
-          <article className="art" key={j.id} id={`job-${j.id}`}>
+          <article className="art" key={j.id} id={`job-${j.id}`} tabIndex={-1}>
             <div className="im"><img src={mediaUrl(j.media)} alt={j.title} loading="lazy" /><span className={`pill ${j.status}`}>{j.status}</span></div>
             <div className="meta">
               <b>{j.title}</b>
-              <div className="row"><span>Trend: {short(j.trend, 30)}</span><span>#{j.id}</span></div>
+              <div className="row"><span>Trend: {j.trend}</span><span>#{j.id}</span></div>
               <div className="row"><span>Critic: <b style={{ fontSize: 13, color: j.score >= 70 ? "#0E7F7A" : "#B4402F" }}>{(j.score / 10).toFixed(1)}</b>/10</span>{j.price !== "0" && <span>{n(j.price)} NEAR</span>}</div>
-              {j.note && <p className="note" title={j.note}>“{short(j.note.replace(/\s*\([a-z]+ [\d.]+(, [a-z]+ [\d.]+)*\)\s*$/i, ""), 140)}”</p>}
+              {j.note && <p className="note" title={j.note}>“{j.note.replace(/\s*\([a-z]+ [\d.]+(, [a-z]+ [\d.]+)*\)\s*$/i, "")}”</p>}
               <div className="row"><span>{fmtTime(Number(j.updated_at_ms))}</span><a className="lnk" href={`https://gateway.pinata.cloud/ipfs/${j.media}`} target="_blank" rel="noreferrer">IPFS ↗</a></div>
               {j.token_id && <div className="row"><a className="lnk" href={`${EXPLORER}/nft-token/${CONTRACT_ID}/${j.token_id}`} target="_blank" rel="noreferrer">NFT {j.token_id} ↗</a>{j.buyer && <a className="lnk" href={accountUrl(j.buyer)} target="_blank" rel="noreferrer">{isTestBuyer(j.buyer) ? <>test buy · {j.buyer === COLLECTOR_ID ? "demo collector" : who(j.buyer).name}</> : <>owner: {who(j.buyer).name}</>}</a>}</div>}
               {j.status === "listed" && <button className="btn-sm" disabled={busy === j.id} onClick={() => collect(j)}>{busy === j.id ? "Confirm in your wallet…" : acct ? `Collect for ${n(j.price)} NEAR` : "Connect wallet to collect"}</button>}
-              {j.token_id && <button className="mkt-toggle" aria-expanded={!!open[j.id]} onClick={() => setOpen((o) => ({ ...o, [j.id]: !o[j.id] }))}>{open[j.id] ? "Hide sales & marketing ▴" : `Where it's for sale · marketing plan ▾${market[j.token_id]?.venues.some((v) => v.kind === "market" && v.live) ? " · on Mintbase" : ""}`}</button>}
+              {j.token_id && <button className="mkt-toggle" aria-expanded={!!open[j.id]} onClick={() => setOpen((o) => ({ ...o, [j.id]: !o[j.id] }))}>{open[j.id] ? "Hide sales & marketing ▴" : `Sales & marketing${market[j.token_id]?.venues.some((v) => v.kind === "market" && v.live) ? " · also on Mintbase" : ""} ▾`}</button>}
               {j.token_id && open[j.id] && <MarketPanel j={j} m={market[j.token_id]} acct={acct} busy={busy === j.id} onDirect={() => collect(j)} onMarket={(v) => collectOnMarket(j, v)} />}
             </div>
           </article>
         ))}
       </div>
+      {loaded && jobs.length > 0 && !shown.length && !err && <p className="sub" role="status">{filter === "sold" ? "No sales yet. Listed works are available to collect." : filter === "rejected" ? "No rejected works yet. Every completed review has passed the mint threshold." : "No works in this category yet."}</p>}
       {!jobs.length && !err && <p className="sub">{loaded ? "No artworks yet. Run a cycle on the Studio page." : `Loading from ${NET_NAME}…`}</p>}
       {more && jobs.length > 0 && <div className="btn-row"><button className="btn-sm ghost" onClick={() => load(jobs[jobs.length - 1].id)}>Load older works</button></div>}
       <p className="foot2">{NETWORK === "mainnet" ? "Live on NEAR Mainnet. Collecting costs real NEAR." : "NEAR testnet. Collecting costs test NEAR only. Get some from the testnet faucet in your wallet."}</p>

@@ -52,7 +52,7 @@ export default async function How() {
         <div className="grid g3">
           {[
             ["Cross-listed on Mintbase", <>Every new listing is also listed on Mintbase&apos;s market contract (<a className="lnk" href={accountUrl(MARKET_ID)} target="_blank" rel="noreferrer">{MARKET_ID}</a>). When someone buys there, Mintbase calls our <code>nft_transfer_payout</code> (NEP-199) and the contract pays the same owner/robot split. {NETWORK === "mainnet" ? <>The Gallery&apos;s <b>Buy via Mintbase</b> button calls the market contract directly. On testnet the same path already sold works: <a className="lnk" href="https://testnet.nearblocks.io/txns/9xXN7jQpjGsZdDWfYSBCEDmBvCJoZ3KQUrnyTrFNh1pQ" target="_blank" rel="noreferrer">9xXN7jQp… ↗</a>.</> : <>The first market sale is on-chain: <a className="lnk" href="https://testnet.nearblocks.io/txns/9xXN7jQpjGsZdDWfYSBCEDmBvCJoZ3KQUrnyTrFNh1pQ" target="_blank" rel="noreferrer">9xXN7jQp… ↗</a>. Mintbase&apos;s testnet website is paused, so the Gallery has a <b>Buy via Mintbase</b> button that calls the market contract directly.</>}</>],
-            ["A marketing plan per piece", <>The Seller, using the Curator&apos;s trend context, writes a pitch, target audience, channel, best posting time and hashtags for every piece{ai.nearAi ? " with NEAR AI" : " (labeled rule-based fallback until the NEAR AI key is added)"}. Open any work in the <a className="lnk" href="/gallery">Gallery</a> and press <b>Where it&apos;s for sale</b>.</>],
+            ["A marketing plan per piece", <>The Seller, using the Curator&apos;s trend context, writes a pitch, target audience, channel, best posting time and hashtags for every piece{ai.nearAi ? " with NEAR AI" : " (labeled rule-based fallback until the NEAR AI key is added)"}. Open any work in the <a className="lnk" href="/gallery">Gallery</a> and press <b>Sales &amp; marketing</b>.</>],
             ["Drafts, never posts", "Each plan includes two X post drafts with a Copy button. The app never posts to X or any other account. A human decides what goes out. Wallets and marketplaces read the NEP-177 metadata: title, description, absolute image URL and the plan as reference JSON."],
           ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
@@ -60,7 +60,7 @@ export default async function How() {
 
       <section className="sec">
         <h2>Architecture</h2>
-        <pre className="diagram">{`  visitor ──"Run a cycle"──▶ Next.js API (Vercel)                              ${NETWORK === "mainnet" ? "NEAR Mainnet" : "NEAR testnet"}
+        <pre className="diagram" tabIndex={0} aria-label="Architecture diagram. Scroll horizontally to explore.">{`  visitor ──"Run a cycle"──▶ Next.js API (Vercel)                              ${NETWORK === "mainnet" ? "NEAR Mainnet" : "NEAR testnet"}
                                  │  one step = one robot tx                ┌───────────────────────────────┐
   Google Trends / Hacker News ─▶ │  curator ── FC key ───────────────────▶ │ ${CONTRACT_ID.padEnd(29)} │
   ${(ai.nearAi ? "NEAR AI Cloud (LLM/image/VLM)" : "fallback brains (no AI key)").padEnd(28)} ─▶ │  painter ── FC key ── pin to IPFS ────▶ │  rules · budgets · jobs       │

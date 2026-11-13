@@ -27,11 +27,14 @@ function evText(e: any) {
     case "paused": return `${d.seconds}s, until ${new Date(Number(d.until_ms)).toLocaleTimeString()}`;
     case "kill_switch": return d.engaged ? "ENGAGED" : "released";
     case "funded": return `+${n(d.amount, 3)} NEAR`;
+    case "rules_updated": return `daily cap ${n(d.rules?.daily_cap || "0", 3)} NEAR per robot · max ${d.rules?.max_jobs_per_day ?? "—"} jobs/day`;
+    case "approvals_enabled": return "Marketplace approvals enabled";
+    case "metadata_patched": return `NFT ${d.token_id || ""} metadata updated`;
     case "withdrawn": return `${d.role} −${n(d.amount, 3)} NEAR → owner`;
     case "job_closed": return `job #${d.job_id} · ${d.status}`;
     case "nft_mint": return `minted ${(d.token_ids || []).join(", ")}`;
     case "nft_transfer": return `${(d.token_ids || []).join(", ")} → ${short(d.new_owner_id || "", 22)}`;
-    default: return JSON.stringify(d).slice(0, 80);
+    default: return Object.keys(d).length ? Object.entries(d).filter(([k]) => !["by", "rules", "budgets"].includes(k)).map(([k, v]) => `${k.replace(/_/g, " ")}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(" · ") : "";
   }
 }
 
@@ -47,17 +50,17 @@ export default function Ledger() {
       <p className="sub">Every transaction sent to <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>, rebuilt from {NET_NAME} chain data (FastNear tx API), with the contract&apos;s own NEP-297 events. {total ? `${total} transactions so far, failed ones included.` : ""}</p>
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load the ledger right now: {err}</p>}
       <div className="card sec" style={{ padding: 6, overflowX: "auto" }}>
-        <table className="tx">
+        <table className="tx" aria-label="On-chain transactions">
           <thead><tr><th>When</th><th>Who</th><th>What</th><th>Events</th><th>Gas</th><th>Tx</th></tr></thead>
           <tbody>
             {txs.map((t) => { const w = who(t.signer); return (
               <tr key={t.hash}>
-                <td className="k" style={{ whiteSpace: "nowrap" }}>{fmtTime(t.at)}</td>
-                <td style={{ whiteSpace: "nowrap" }}><span className="pill" style={{ background: w.color + "22", color: w.color === "#F6C53E" ? "#946A00" : w.color }}>{w.name}</span></td>
-                <td>{label(t.method)}{t.deposit !== "0" && <span className="k"> · {n(t.deposit, 3)} NEAR</span>}{!t.ok && <div className="pill fail" style={{ marginTop: 4 }}>failed: {short(t.error || "", 60)}</div>}</td>
-                <td>{t.events.map((e: any, i: number) => <span className="ev" key={i}><b>{e.event}</b> {evText(e)}</span>)}</td>
-                <td className="k mono">{n(t.burnt, 5)}</td>
-                <td><a className="lnk mono" href={txUrl(t.hash)} target="_blank" rel="noreferrer">{t.hash.slice(0, 8)}… ↗</a></td>
+                <td data-label="When" className="k" style={{ whiteSpace: "nowrap" }}>{fmtTime(t.at)}</td>
+                <td data-label="Who" style={{ whiteSpace: "nowrap" }}><span className="pill" style={{ background: w.color + "22", color: w.color === "#F6C53E" ? "#946A00" : w.color }}>{w.name}</span></td>
+                <td data-label="Action">{t.method === "storage_deposit" ? "paid a storage deposit" : t.method === "CreateAccount" ? "created an account" : label(t.method)}{t.deposit !== "0" && <span className="k"> · {n(t.deposit, 3)} NEAR</span>}{!t.ok && <div className="pill fail" style={{ marginTop: 4 }}>failed: {short(t.error || "", 60)}</div>}</td>
+                <td data-label="Events">{t.events.map((e: any, i: number) => <span className="ev" key={i}><b title={e.event}>{e.event.replace(/_/g, " ")}</b> {evText(e)}</span>)}</td>
+                <td data-label="Gas (NEAR)" className="k mono">{n(t.burnt, 5)}</td>
+                <td data-label="Transaction"><a className="lnk mono" href={txUrl(t.hash)} target="_blank" rel="noreferrer">{t.hash.slice(0, 8)}… ↗</a></td>
               </tr>); })}
           </tbody>
         </table>

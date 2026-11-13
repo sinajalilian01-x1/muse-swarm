@@ -229,8 +229,10 @@ export default function Home() {
       if (r?.hash) {
         pushTx({ hash: r.hash, signer: acct, method: "buy", ok: r.ok });
         const ev = r.events.find((e: any) => e.event === "split_paid");
-        dir.current?.walletSold(latest.tokenId, acct, ev, r.hash);
-        setLatest((c) => (c ? { ...c, status: "sold", buyer: acct } : c));
+        if (r.ok) {
+          dir.current?.walletSold(latest.tokenId, acct, ev, r.hash);
+          setLatest((c) => (c ? { ...c, status: "sold", buyer: acct } : c));
+        }
         toast(r.ok ? "It's yours! The contract split your payment between the robots and the owner." : "The wallet reported a failure. Check the tx.");
       }
     } catch (e: any) { toast(walletError(e), 4500); }
@@ -275,8 +277,9 @@ export default function Home() {
           <button className="btn" onClick={() => { setCOpen((o) => !o); setCDone(null); }} disabled={mode.running || cBusy}>{cBusy ? "Robots at work…" : `Commission a piece · ${cPrice} NEAR`} <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
           <button className="btn-2" onClick={run} disabled={mode.running}>{mode.running && !cBusy ? "Running…" : "Free demo cycle"}</button>
         </div>
-        {cOpen && <div className="commission">
-          <input value={brief} maxLength={100} placeholder="What should they paint? e.g. a lighthouse made of crystals" onChange={(e) => setBrief(e.target.value)} onKeyDown={(e) => e.key === "Enter" && commissionPiece("near")} autoFocus />
+        {cOpen && <div className="commission" role="region" aria-label="Commission an artwork">
+          <label className="c-label" htmlFor="art-brief">What should the robots paint?</label>
+          <textarea id="art-brief" value={brief} maxLength={100} rows={2} placeholder="e.g. a lighthouse made of crystals" onChange={(e) => setBrief(e.target.value)} autoFocus />
           <div className="c-row">
             <button className="btn-sm" disabled={cBusy} onClick={() => commissionPiece("near")}>{acct ? `Pay ${cPrice} NEAR` : "Connect wallet"}</button>
             <button className="btn-sm ghost" disabled={cBusy} onClick={() => commissionPiece("wnear")} title="ft_transfer_call from wNEAR: the same path a NEAR Intents swap from any token uses">Pay in wNEAR</button>
@@ -298,10 +301,10 @@ export default function Home() {
           <div className="lt-meta">
             <span className="mode" data-m={latest && latest.jobId === mode.jobId ? m : "replay"}>{!latest ? "Loading chain…" : latest.jobId !== mode.jobId ? <>Latest · <a href={`/gallery#job-${latest.jobId}`}>job #{latest.jobId}</a></> : m === "live" ? `Live · job #${mode.jobId}` : m === "watch" ? `Watching job #${mode.jobId}` : <>Replay · <a href={`/gallery#job-${mode.jobId}`}>job #{mode.jobId}</a></>}</span>
             <b>{latest?.title || "…"}</b>
-            <span className="lt-price">{latest ? `${latest.price} NEAR` : ""}{latest?.status === "sold" ? ` · sold to ${latest.buyer === "you" ? "you" : short(who(latest.buyer || "").name, 24)}` : latest ? <> · for sale · <a href={`/gallery#job-${latest.jobId}`}>where + plan</a></> : ""}</span>
+            <span className="lt-price">{latest ? `${latest.price} NEAR` : ""}{latest?.status === "sold" ? ` · sold to ${latest.buyer === "you" ? "you" : short(who(latest.buyer || "").name, 24)}` : latest ? <> · for sale · <a href={`/gallery#job-${latest.jobId}`}>details</a></> : ""}</span>
           </div>
           <div className="lt-btns">
-            <button className="btn-sm" disabled={latest?.status !== "listed"} onClick={collect}>{latest?.status === "sold" ? "Sold" : acct ? "Collect" : "Collect"}</button>
+            <button className="btn-sm" disabled={latest?.status !== "listed"} onClick={collect}>{latest?.status === "sold" ? "Sold" : "Collect"}</button>
             {latest?.status === "listed" && !mode.running && NETWORK !== "mainnet" && <button className="btn-sm ghost" onClick={demoBuy} title="Our testnet demo account buys it (max 0.25 NEAR)">Demo buy</button>}
           </div>
         </aside>

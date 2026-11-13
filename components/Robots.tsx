@@ -68,7 +68,7 @@ export default function Robots() {
       <h1 className="t">The robots</h1>
       <p className="sub">Agents that hire each other: on every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal, budget to budget inside the contract. Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
       {receipt && <p className="notice" role="status" style={{ marginTop: 14 }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>}</p>}
-      {err && <p className="notice" style={{ marginTop: 16 }}>Could not load chain data: {err}</p>}
+      {err && <p className="notice" style={{ marginTop: 16 }}>Could not load chain data: {err} <button className="btn-sm ghost" onClick={load}>Retry</button></p>}
       {!d && !err && <p className="sub">Reading accounts and keys from {NET_NAME}…</p>}
       {d && <>
         <div className="grid g2 sec">
@@ -135,7 +135,7 @@ export default function Robots() {
         <section className="sec">
           <h2>Other accounts</h2>
           <div className="grid g2">
-            {[[CONTRACT_ID, "Swarm contract", "Holds rules, budgets, jobs and the NFTs. Robots' budgets live here."], [OWNER_ID, "Owner", "Sets rules, funds and withdraws, gets the owner share. Its full key never touches the server."], [TREASURY_ID, "Treasury", "Receives every AI fee, so nothing gets stranded on function-call-only robot accounts."], [GUARDIAN_ID, "Guardian", "Can only pause the swarm for up to 120 s."], [COLLECTOR_ID, "Demo collector", "Testnet buyer for visitors without a wallet. Max 0.25 NEAR per buy, rate-limited."]].map(([id, t, txt]) => { const a = acc(id); return (
+            {[[CONTRACT_ID, "Swarm contract", "Holds rules, budgets, jobs and the NFTs. Robots' budgets live here."], [OWNER_ID, "Owner", "Sets rules, funds and withdraws, gets the owner share. Its full key never touches the server."], [TREASURY_ID, "Treasury", "Receives every AI fee, so nothing gets stranded on function-call-only robot accounts."], [GUARDIAN_ID, "Guardian", "Can only pause the swarm for up to 120 s."], ...(NETWORK === "mainnet" ? [] : [[COLLECTOR_ID, "Demo collector", "Testnet buyer for visitors without a wallet. Max 0.25 NEAR per buy, rate-limited."]])].map(([id, t, txt]) => { const a = acc(id); return (
               <div className="card" key={id}><b>{t}</b> · <a className="lnk mono" href={accountUrl(id)} target="_blank" rel="noreferrer">{id}</a><div className="k" style={{ marginTop: 4 }}>{txt} Balance {n(a?.balance || "0", 3)} NEAR.</div><KeyList keys={a?.keys || []} /></div>); })}
           </div>
         </section>
