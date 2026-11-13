@@ -14,14 +14,14 @@ export function runStudio2(cfg) {
   const kit = makeKit(true); const { mat, rbox, box, cyl, sphere, mesh } = kit; const S = cfg.robotScale ?? 1.18;
   const container = cfg.container, overlay = cfg.overlay;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const small = Math.min(innerWidth, innerHeight) < 700; renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 2)); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = cfg.exposure ?? 1;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; container.appendChild(renderer.domElement);
   const scene = new THREE.Scene(); const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = cfg.envIntensity ?? 0.45;
   const L = cfg.lights;
   scene.add(new THREE.HemisphereLight(L.sky, L.ground, L.hemi));
-  const sun = new THREE.DirectionalLight(L.sunColor, L.sun); sun.position.set(...L.sunPos); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  const sun = new THREE.DirectionalLight(L.sunColor, L.sun); sun.position.set(...L.sunPos); sun.castShadow = true; sun.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
   const sc = sun.shadow.camera, SS = L.shadowSize ?? 6.5; sc.left = -SS; sc.right = SS; sc.top = SS; sc.bottom = -SS; sc.near = 1; sc.far = 50; sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.025;
   scene.add(sun, sun.target);
   if (L.fill) { const f = new THREE.DirectionalLight(L.fillColor ?? '#fff', L.fill); f.position.set(...L.fillPos); scene.add(f); }
@@ -37,10 +37,11 @@ export function runStudio2(cfg) {
     const props = buildProps(kit, spec.role, cfg.props, ctx); station.add(props.group);
     const bot = buildRobot(kit, spec); bot.root.scale.setScalar(S); scene.add(bot.root);
     const r = Object.assign(bot, { k: spec.role, spec, station, props, home: V2(spec.x, spec.z), homeYaw: spec.ry, pos: V2(spec.x, spec.z), yaw: spec.ry, yawT: spec.ry,
-      path: [], endYaw: null, speed: 1.75, walkPh: 0, walkAmt: 0, pose: 'idle', poseT0: 0, look: null, lookAround: false, hY: 0, hP: 0, tilt: 0, tiltT: 0, nodT: -9, hopT: -9, hopH: 0.16, lastHop: 0,
+      path: [], curve: null, clen: 0, s: 0, v: 0, vPrev: 0, accel: 1.9, decel: 1.5, avoid: V2(0, 0), accLean: 0, leanC: 0, leanT: 0, sitC: 0, sitT: 0, seat: null, onBreak: null, breakId: 0, atSpot: null, chatted: false, nextBreak: 7 + i * 9 + Math.random() * 4, endYaw: null, speed: 1.35, walkPh: 0, walkAmt: 0, pose: 'idle', poseT0: 0, look: null, lookAround: false, hY: 0, hP: 0, tilt: 0, tiltT: 0, nodT: -9, hopT: -9, hopH: 0.16, lastHop: 0,
       busy: false, status: idleStatus[spec.role], progress: null, nextIdle: 2.5 + i * 1.9, phase: i * 1.7, blinkT: 1 + i, squint: 0, squintT: 0, extraYaw: 0 });
     r.carry = new THREE.Object3D(); r.carry.position.set(0, 0.62, 0.5); r.body.add(r.carry);
     r.headTop = new THREE.Object3D(); r.headTop.position.y = 0.62; r.head.add(r.headTop);
+    r.mouth = new THREE.Object3D(); r.mouth.position.set(0, 0.17, 0.34); r.head.add(r.mouth);
     R[spec.role] = r;
   });
   const P = R.painter, K = R.critic, Se = R.seller, Cu = R.curator;
@@ -74,13 +75,25 @@ export function runStudio2(cfg) {
   function route(r, dest) {
     const goal = dest === 'home' ? 'home_' + r.k : dest; const ok = (n) => !n.startsWith('home_') || n === 'home_' + r.k;
     let start = null, bd = 1e9; for (const n in N) { if (!ok(n)) continue; const d = N[n].distanceTo(r.pos); if (d < bd) { bd = d; start = n; } }
-    const prev = { [start]: null }; const q = [start];
-    while (q.length) { const n = q.shift(); if (n === goal) break; for (const m of ADJ[n] ?? []) if (ok(m) && !(m in prev)) { prev[m] = n; q.push(m); } }
+    // shortest walking distance (Dijkstra; the graph is tiny)
+    const prev = { [start]: null }, dist = { [start]: 0 }, done = new Set();
+    while (true) { let n = null, bd2 = 1e9; for (const k in dist) if (!done.has(k) && dist[k] < bd2) { bd2 = dist[k]; n = k; } if (n == null || n === goal) break; done.add(n);
+      for (const m of ADJ[n] ?? []) { if (!ok(m)) continue; const d = dist[n] + N[n].distanceTo(N[m]); if (dist[m] === undefined || d < dist[m]) { dist[m] = d; prev[m] = n; } } }
     const out = []; let n = goal; while (n) { out.unshift(N[n].clone()); n = prev[n]; }
-    if (out.length > 1 && out[0].distanceTo(r.pos) < 0.15) out.shift();
+    if (out.length > 1 && (out[0].distanceTo(r.pos) < 0.15 || out[1].distanceTo(r.pos) < out[0].distanceTo(out[1]))) out.shift();
     return out;
   }
   const yawTo = (r, v) => Math.atan2(v.x - r.pos.x, v.y - r.pos.y);
+  // smooth walking: waypoints become a centripetal Catmull-Rom curve, followed with eased speed (accelerate, cruise, brake)
+  function setPath(r, pts, endYaw) {
+    r.pos.add(r.avoid); r.avoid.set(0, 0); r.endYaw = endYaw;
+    const all = [r.pos.clone()]; for (const p of pts) if (p.distanceTo(all[all.length - 1]) > 0.12) all.push(p.clone());
+    if (all.length < 2) { r.path = []; r.curve = null; if (endYaw != null) r.yawT = endYaw; return; }
+    const v3 = all.map((p) => new THREE.Vector3(p.x, 0, p.y));
+    r.curve = v3.length === 2 ? new THREE.LineCurve3(v3[0], v3[1]) : new THREE.CatmullRomCurve3(v3, false, 'centripetal', 0.5);
+    r.clen = r.curve.getLength(); r.s = 0; r.path = all.slice(1);
+  }
+  const stopWalk = (r) => { r.path = []; r.curve = null; };
   const wp = (o) => { const v = new THREE.Vector3(); o.getWorldPosition(v); return v; };
 
   // ------------------------------------------------------------ overlay DOM
@@ -105,6 +118,19 @@ export function runStudio2(cfg) {
   const card = item(cardObj, Cu.hands[1]); cardObj.visible = false;
   const frameObj = new THREE.Group(); const fm = rbox(0.42, 0.5, 0.04, 0.02, mat('#ffffff')); const fArt = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.42), new THREE.MeshBasicMaterial({ color: '#fff' })); fArt.position.z = 0.022; frameObj.add(fm, fArt);
   const canvasIt = item(frameObj, P.props.anchor); frameObj.visible = false; let frameTex = null;
+  // break props: a coffee cup per robot (an item, so it can travel from the machine to a hand), cigarettes for Curator + Painter
+  const cupGeo = new THREE.CylinderGeometry(0.05, 0.042, 0.1, 7), cupHandleGeo = new THREE.TorusGeometry(0.028, 0.009, 4, 8), cupTopGeo = new THREE.CircleGeometry(0.044, 7);
+  roles.forEach((k) => { const r = R[k]; r.cupHold = new THREE.Object3D(); r.cupHold.position.set(0, -0.02, 0.085); r.hands[1].add(r.cupHold);
+    const g = new THREE.Group(); const cm = mat(cfg.cups?.[k] ?? '#ffffff'); const c = new THREE.Mesh(cupGeo, cm); c.castShadow = true; g.add(c); const h = new THREE.Mesh(cupHandleGeo, cm); h.position.x = 0.055; g.add(h);
+    const top = new THREE.Mesh(cupTopGeo, mat('#6B4428')); top.rotation.x = -Math.PI / 2; top.position.y = 0.047; g.add(top);
+    r.cupIt = item(g, r.cupHold); g.visible = false; r.cupIt.scT = null; });
+  [Cu, P].forEach((r) => { const g = new THREE.Group(); const st = cyl(0.011, 0.011, 0.12, mat('#FAFAF7'), 6); st.rotation.x = Math.PI / 2; g.add(st);
+    const f = cyl(0.0115, 0.0115, 0.035, mat('#E9A35E'), 6); f.rotation.x = Math.PI / 2; f.position.z = -0.045; g.add(f);
+    r.tipM = new THREE.MeshStandardMaterial({ color: '#7a3a22', emissive: '#FF6A2A', emissiveIntensity: 0.3, flatShading: true }); const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.0115, 0.0115, 0.012, 6), r.tipM); tip.rotation.x = Math.PI / 2; tip.position.z = 0.064; g.add(tip);
+    r.cigTip = new THREE.Object3D(); r.cigTip.position.z = 0.075; g.add(r.cigTip); g.position.set(0.03, -0.03, 0.06); g.visible = false; r.hands[1].add(g); r.cig = g; r.glowC = 0; r.glowT = 0; r.nextTip = 0; });
+  const wispGeo = new THREE.IcosahedronGeometry(0.05, 0);
+  const wisps = Array.from({ length: 28 }, () => { const m = new THREE.Mesh(wispGeo, new THREE.MeshStandardMaterial({ color: '#D3DAE0', transparent: true, opacity: 0, depthWrite: false, flatShading: true, roughness: 1 })); m.visible = false; m.castShadow = false; scene.add(m); return { m, v: new THREE.Vector3(), age: 0, life: 1, size: 1, op: 0.4, on: false, seed: Math.random() * 6 }; });
+  function wisp(p, vx, vy, vz, size, life, op) { const w = wisps.find((x) => !x.on); if (!w) return; w.on = true; w.m.visible = true; w.m.position.copy(p); w.v.set(vx, vy, vz); w.age = 0; w.life = life; w.size = size; w.op = op; w.m.rotation.set(Math.random() * 3, Math.random() * 3, 0); }
 
   // ------------------------------------------------------------ fx: coins, splats, droplets
   const coinGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.022, 8); const coinMat = new THREE.MeshStandardMaterial({ color: '#f5c23e', metalness: 0.55, roughness: 0.28, emissive: '#7a5200', emissiveIntensity: 0.15, flatShading: true });
@@ -133,24 +159,123 @@ export function runStudio2(cfg) {
   function runTasks() { for (const t of tasks.slice()) if (!t.done && (!t.wait || t.wait())) step(t); for (let i = tasks.length - 1; i >= 0; i--) if (tasks[i].done) tasks.splice(i, 1); }
   const later = (s, fn) => spawn((function* () { yield s; fn(); })());
 
-  function* walk(r, dest, endYaw = null) { r.path = route(r, dest); r.endYaw = endYaw; yield () => r.path.length === 0 && Math.abs(angDiff(r.yaw, r.yawT)) < 0.25; }
+  function* walk(r, dest, endYaw = null) { setPath(r, route(r, dest), endYaw); yield () => r.path.length === 0 && Math.abs(angDiff(r.yaw, r.yawT)) < 0.25; }
   function* walkHome(r) { r.look = null; yield* walk(r, 'home', r.homeYaw); }
   function face(a, b) { a.yawT = yawTo(a, b.pos); b.yawT = yawTo(b, a.pos); a.look = b.headTop; b.look = a.headTop; }
   const setPose = (r, p) => { r.pose = p; r.poseT0 = time; };
-  const hop = (r, h = 0.16) => { r.hopT = time; r.hopH = h; r.lastHop = time; };
-  function claim(r) { r.busy = true; setPose(r, 'idle'); r.lookAround = false; r.squintT = 0; r.look = null; handMug.visible = false; K.props.mug.visible = true; }
+  const hop = (r, h = 0.16) => { r.hopT = time; r.hopH = h * 0.5; r.lastHop = time; };
+  function claim(r) { if (r.onBreak) { endBreak(r); stopWalk(r); } r.busy = true; setPose(r, 'idle'); r.lookAround = false; r.squintT = 0; r.look = null; handMug.visible = false; K.props.mug.visible = true; }
   function release(r) { r.busy = false; r.look = null; setPose(r, 'idle'); r.status = idleStatus[r.k]; r.progress = null; r.nextIdle = time + 2 + Math.random() * 3; r.yawT = r.homeYaw; }
 
-  // ------------------------------------------------------------ idle bits
+  // ------------------------------------------------------------ breaks: small believable routines between jobs
+  // Painter / Curator: coffee or (sometimes) a cigarette on the balcony. Critic / Seller: coffee only, hammock, stretch.
+  // Any claim() by the story aborts a break at once; the story then walks the robot home (summon) before its beat.
+  const SP = cfg.spots || {}; const spotWho = {}; const cfx = ctx.coffee, hmk = ctx.hammock;
+  const BALC = Object.keys(SP).filter((n) => SP[n].out && n !== 'ham');
+  const shuffle = (a) => a.map((x) => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map((x) => x[1]);
+  const free = (n) => SP[n] && !spotWho[n];
+  const take = (r, names) => { const n = shuffle(names).find(free); if (n) spotWho[n] = r; return n; };
+  const atHome = (r) => r.path.length === 0 && r.pos.distanceTo(r.home) < 0.3;
+  let brewing = -9, nextSteam = 0;
+  const CHATS = [['Nice light today.', 'Perfect sunset palette.'], ['Busy morning, huh?', 'Trends never sleep.'], ['Saw the last score?', 'Critic was generous.'], ['Quick break?', 'Then back to it.']];
+  const CUP_CHATS = [['Good coffee.', 'Best part of the job.'], ['Second cup already?', 'Don\u2019t judge.']], SMOKE_CHATS = [['Just a quick one.', 'Same. Big queue today.'], ['Needed some air.', 'View helps, right?']];
+  function endBreak(r) {
+    if (!r.onBreak) return; r.onBreak = null; r.breakId++; for (const n in spotWho) if (spotWho[n] === r) delete spotWho[n];
+    r.atSpot = null; r.smoking = false; r.sitT = 0; r.leanT = 0; r.lookAround = false; r.squintT = 0;
+    if (r.cupIt.obj.visible) r.cupIt.scT = 0; if (r.cig) r.cig.visible = false; if (r === P) { P.props.brush.visible = true; P.props.palette.visible = true; }
+    if (r.pose !== 'idle') setPose(r, 'idle');
+  }
+  function exhale(r) { spawn((function* () { for (let i = 0; i < 6; i++) { const p = wp(r.mouth), fx = Math.sin(r.yaw), fz = Math.cos(r.yaw); wisp(p, fx * 0.3 + (Math.random() - 0.5) * 0.06, 0.1 + Math.random() * 0.06, fz * 0.3 + (Math.random() - 0.5) * 0.06, 0.5 + Math.random() * 0.3, 2.2 + Math.random() * 0.8, 0.55); yield 0.09; } })()); }
+  const R_ = () => roles.map((k) => R[k]);
+  function* brk(r, kind) {
+    if (kind === 'smoke' && !r.cig) kind = 'cof'; // only Curator + Painter ever smoke
+    const id = ++r.breakId; r.onBreak = kind; r.chatted = false; const alive = () => !r.busy && r.onBreak === kind && r.breakId === id;
+    function* go(node, yaw) { setPath(r, route(r, node), yaw); yield () => !alive() || (r.path.length === 0 && Math.abs(angDiff(r.yaw, r.yawT)) < 0.15); return !alive(); }
+    function* pause(s) { const u = time + s; yield () => !alive() || time >= u; return !alive(); }
+    function* gaze(s) {
+      const b = R_().find((o) => o !== r && o.onBreak && o.atSpot && SP[o.atSpot]?.out && !o.busy && o.pos.distanceTo(r.pos) < 3.4);
+      if (b && r.atSpot && SP[r.atSpot].out && !r.chatted && !b.chatted && !(speaker && time < speakerUntil)) {
+        r.chatted = b.chatted = true; const pool = r.smoking || b.smoking ? SMOKE_CHATS.concat(CHATS) : r.cupIt.obj.visible || b.cupIt.obj.visible ? CUP_CHATS.concat(CHATS) : CHATS; const L = pool[Math.floor(Math.random() * pool.length)]; const y0 = r.yawT, l0 = r.leanT;
+        r.leanT = 0; r.yawT = yawTo(r, b.pos); r.look = b.headTop; b.look = r.headTop; setPose(r, r.cupIt.obj.visible ? 'holdCup' : r.smoking ? 'smoke' : 'chat');
+        say(r, L[0], 2.0); if (yield* pause(2.3)) return true; if (b.onBreak && !b.busy) { say(b, L[1], 2.0); b.nodT = time; }
+        if (yield* pause(2.4)) return true; r.nodT = time; r.look = null; if (b.look === r.headTop) b.look = null; r.yawT = y0; r.leanT = l0; return yield* pause(0.8);
+      }
+      r.look = null; r.lookAround = Math.random() < 0.35; const ab = yield* pause(s); r.lookAround = false; return ab;
+    }
+    const REST = { cof: 'Coffee break', smoke: 'Fresh air', ham: 'Hammock break', plants: 'Checking the plants', win: 'Enjoying the view', stretch: idleStatus[r.k] };
+    r.status = REST[kind] || 'On a break'; if (r === P && kind !== 'stretch') { P.props.brush.visible = false; P.props.palette.visible = false; }
+    if (kind === 'cof') {
+      if (yield* go(SP.cof.node, SP.cof.yaw)) return;
+      r.look = cfx.button; setPose(r, 'brew'); if (yield* pause(0.9)) return; setPose(r, 'idle');
+      const cup = r.cupIt; cup.holder = cfx.cupSpot; cup.from = null; cup.poof = -1; cup.obj.visible = true; cup.obj.scale.setScalar(S * 0.05); cup.scT = 1; brewing = time;
+      r.look = cfx.cupSpot; if (yield* pause(2.7)) return;
+      setPose(r, 'reach'); if (yield* pause(0.45)) return; give(cup, r.cupHold, 0.4, 0.04); if (yield* pause(0.45)) return; setPose(r, 'holdCup'); r.look = null; delete spotWho.cof;
+      setPose(r, 'sipCup'); r.squintT = 0.45; if (yield* pause(1.3)) return; r.squintT = 0; setPose(r, 'holdCup'); if (yield* pause(0.4)) return;
+      const spot = take(r, BALC) || take(r, ['win']); if (!spot) return true;
+      r.status = SP[spot].out ? 'Coffee on the balcony' : 'Coffee by the window';
+      if (yield* go(SP[spot].node, SP[spot].yaw)) return; r.atSpot = spot; const rail = SP[spot].out;
+      for (let i = 0; i < 3; i++) {
+        setPose(r, rail ? 'leanCup' : 'holdCup'); r.leanT = rail ? 0.13 : 0; if (yield* gaze(2.2 + Math.random() * 1.8)) return;
+        setPose(r, rail ? 'leanSip' : 'sipCup'); r.squintT = 0.45; if (yield* pause(1.5)) return; r.squintT = 0;
+      }
+      r.leanT = 0; setPose(r, 'holdCup'); if (yield* pause(0.6)) return; return true;
+    }
+    if (kind === 'smoke') {
+      const spot = take(r, BALC); if (!spot) return true;
+      if (yield* go(SP[spot].node, SP[spot].yaw)) return; r.atSpot = spot;
+      setPose(r, 'puff'); if (yield* pause(0.55)) return; r.cig.visible = true; r.glowT = 1.2; wisp(wp(r.cigTip), 0, 0.15, 0, 0.3, 1.4, 0.3);
+      if (yield* pause(0.9)) return; setPose(r, 'smoke'); r.glowT = 0.2; r.smoking = true; exhale(r); r.leanT = 0.06;
+      const n = 3 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < n; i++) {
+        if (yield* gaze(2.6 + Math.random() * 2.2)) return;
+        setPose(r, 'puff'); r.glowT = 1; r.squintT = 0.3; if (yield* pause(1.25)) return; r.squintT = 0; setPose(r, 'smoke'); r.glowT = 0.2; exhale(r);
+      }
+      if (yield* pause(1.0)) return; setPose(r, 'reach'); if (yield* pause(0.5)) return; r.cig.visible = false; r.smoking = false; r.leanT = 0; setPose(r, 'idle'); if (yield* pause(0.4)) return; return true;
+    }
+    if (kind === 'ham') {
+      if (yield* go(SP.ham.node, SP.ham.yaw)) return; r.atSpot = 'ham';
+      r.seat = hmk.seat; r.sitT = 1; setPose(r, 'sit'); if (yield* pause(1.6)) return;
+      r.squintT = 0.55; if (!(speaker && time < speakerUntil) && Math.random() < 0.5) say(r, 'Ahh, that\u2019s nice.', 1.8); if (yield* pause(3.2)) return;
+      r.squintT = 0; if (yield* gaze(2.4)) return; r.squintT = 0.5; if (yield* pause(2.6 + Math.random() * 2)) return; r.squintT = 0;
+      r.sitT = 0; if (yield* pause(1.3)) return; setPose(r, 'idle'); return true;
+    }
+    if (kind === 'plants') {
+      if (yield* go(SP.pw.node, SP.pw.yaw)) return; r.atSpot = 'pw';
+      setPose(r, 'inspect'); r.tiltT = 0.15; if (yield* pause(1.8)) return; r.nodT = time; r.tiltT = 0;
+      if (!(speaker && time < speakerUntil)) say(r, ['Looking healthy.', 'Needs a little water.', 'New leaf!'][Math.floor(Math.random() * 3)], 1.6);
+      if (yield* pause(1.6)) return; setPose(r, 'idle'); r.lookAround = true; if (yield* pause(1.6)) return; r.lookAround = false; return true;
+    }
+    if (kind === 'win') {
+      if (yield* go(SP.win.node, SP.win.yaw)) return; r.atSpot = 'win';
+      if (yield* gaze(2.5)) return; r.lookAround = true; if (yield* pause(2.2)) return; r.lookAround = false; return true;
+    }
+    if (kind === 'stretch') { setPose(r, 'stretch'); r.squintT = 0.6; if (yield* pause(3.9)) return; r.squintT = 0; setPose(r, 'idle'); return true; }
+    return true;
+  }
+  function* runBreak(r, kind) {
+    const id0 = r.breakId + 1; yield* brk(r, kind); if (r.busy || r.breakId !== id0 || !r.onBreak) return;
+    const alive = () => !r.busy && r.breakId === id0 && !!r.onBreak;
+    if (r.sitC > 0.2) { r.sitT = 0; const u = time + 1.1; yield () => !alive() || time >= u; if (!alive()) return; }
+    r.status = 'Back to work'; r.leanT = 0; r.look = null; setPose(r, r.cupIt.obj.visible ? 'holdCup' : 'idle');
+    setPath(r, route(r, 'home'), r.homeYaw); yield () => !alive() || (r.path.length === 0 && Math.abs(angDiff(r.yaw, r.yawT)) < 0.2); if (!alive()) return;
+    if (r.cupIt.obj.visible) { setPose(r, 'place'); const u = time + 0.45; yield () => !alive() || time >= u; if (!alive()) return; }
+    endBreak(r); r.status = idleStatus[r.k]; r.yawT = r.homeYaw;
+  }
+  const BREAKS = { painter: [['cof', 4], ['smoke', 3], ['ham', 2], ['stretch', 1]], curator: [['cof', 3], ['smoke', 3], ['plants', 3], ['win', 1]], critic: [['cof', 5], ['ham', 3], ['win', 2]], seller: [['cof', 4], ['ham', 3], ['stretch', 1.5], ['plants', 1.5]] };
+  const NEED = { cof: () => free('cof'), smoke: () => BALC.some(free), ham: () => free('ham'), win: () => free('win'), plants: () => free('pw'), stretch: () => true };
+  function pickBreak(r) { const opts = BREAKS[r.k].filter(([k]) => NEED[k]()); const tot = opts.reduce((a, o) => a + o[1], 0); let x = Math.random() * tot; for (const [k, w] of opts) { if ((x -= w) <= 0) return k; } return null; }
   function* idleWait(r, s) { const u = time + s; yield () => r.busy || time >= u; }
   function* idle(r) {
     while (true) {
-      yield () => !r.busy && time > r.nextIdle && r.path.length === 0;
-      const opts = ['wave', 'yawn', 'look', 'look']; if (r === K) opts.push('sip', 'sip'); if (r === Se) opts.push('wave');
+      yield () => !r.busy && !r.onBreak && time > r.nextIdle && r.path.length === 0;
+      if (time > r.nextBreak && atHome(r) && R_().filter((o) => o.onBreak).length < 2) {
+        const kind = pickBreak(r); if (kind) { if (kind === 'cof') spotWho.cof = r; if (kind === 'ham') spotWho.ham = r; if (kind === 'plants') spotWho.pw = r; if (kind === 'win') spotWho.win = r; yield* runBreak(r, kind); r.nextBreak = time + 14 + Math.random() * 16; r.nextIdle = time + 2 + Math.random() * 2; continue; }
+      }
+      const opts = ['wave', 'look', 'look', 'look', 'yawn']; if (r === K) opts.push('sip', 'sip'); if (r === Se) opts.push('wave');
       const pick = opts[Math.floor(Math.random() * opts.length)];
       if (pick === 'wave') { r.look = 'camera'; setPose(r, 'wave'); if (!(speaker && time < speakerUntil)) say(r, ['Hi there!', 'Hello!', 'Welcome in!'][Math.floor(Math.random() * 3)], 1.4); yield* idleWait(r, 1.6); }
-      if (pick === 'yawn') { setPose(r, 'yawn'); r.squintT = 1; if (!(speaker && time < speakerUntil)) say(r, '*yaaawn*', 1.5); yield* idleWait(r, 1.7); r.squintT = 0; }
-      if (pick === 'look') { r.lookAround = true; yield* idleWait(r, 2.2); r.lookAround = false; }
+      if (pick === 'yawn') { setPose(r, 'yawn'); r.squintT = 1; yield* idleWait(r, 1.9); r.squintT = 0; }
+      if (pick === 'look') { r.lookAround = true; yield* idleWait(r, 2.4); r.lookAround = false; }
       if (pick === 'sip') { K.props.mug.visible = false; handMug.visible = true; setPose(r, 'sip'); r.squintT = 0.6; yield* idleWait(r, 1.8); handMug.visible = false; K.props.mug.visible = true; r.squintT = 0; }
       if (!r.busy) { setPose(r, 'idle'); r.look = null; }
       r.nextIdle = time + 3.5 + Math.random() * 4;
@@ -167,10 +292,11 @@ export function runStudio2(cfg) {
   function drawCard(th) { const c = cardCanvas.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, 256, 200); const g = c.createLinearGradient(0, 0, 256, 0); th.sky.forEach((s, i) => g.addColorStop(i / (th.sky.length - 1), s)); c.fillStyle = g; c.fillRect(0, 0, 256, 70);
     c.fillStyle = '#13243F'; c.font = '800 30px system-ui, sans-serif'; c.fillText('TREND', 16, 108); c.font = '600 22px system-ui, sans-serif'; c.fillText(short(th.name, 18), 16, 142); th.layers.forEach((s, i) => { c.fillStyle = s; c.beginPath(); c.arc(28 + i * 34, 176, 12, 0, 7); c.fill(); }); cardTex.needsUpdate = true; }
   let peekTask = null;
+  function* summon(r) { if (r.path.length || r.pos.distanceTo(r.home) > 0.2 || r.sitC > 0.05) { r.status = 'Heading back'; r.sitT = 0; if (r.sitC > 0.3) yield 0.9; yield* walkHome(r); } }
   function* allHome() {
     if (peekTask) peekTask.done = true;
-    for (const r of [Cu, P, K, Se]) { r.lookAround = false; r.tiltT = 0; r.squintT = 0; if (r.pose !== 'idle') setPose(r, 'idle'); spawn((function* () { yield* walkHome(r); release(r); })()); }
-    yield () => roles.every((k) => R[k].path.length === 0);
+    for (const r of [Cu, P, K, Se]) { if (r.onBreak && !r.busy) continue; r.lookAround = false; r.tiltT = 0; r.squintT = 0; if (r.pose !== 'idle') setPose(r, 'idle'); spawn((function* () { yield* walkHome(r); release(r); })()); }
+    yield () => roles.every((k) => R[k].onBreak || R[k].path.length === 0);
   }
   function* wrapUp(say1) {
     card.obj.visible = false; if (canvasIt.obj.visible && canvasIt.poof < 0) canvasIt.poof = time; magnifier.visible = false; K.props.paddle.visible = false; ctx.painting.blank();
@@ -185,7 +311,7 @@ export function runStudio2(cfg) {
       flip.rotation.y = 0; flipT = -9;
       const cards = Cu.props.cards; cards.forEach((cd, i) => { cd.visible = i < 2; cd.scale.setScalar(1); });
       // Beat 1 — Curator reads live trends (pins cards) until the chain confirms the job
-      claim(Cu); Cu.status = cyc.mode === 'replay' ? 'Replaying job #' + cyc.jobId : 'Reading live trends'; Cu.progress = 0; Cu.yawT = Cu.homeYaw + 0.55; Cu.look = Cu.props.focus;
+      claim(Cu); yield* summon(Cu); Cu.status = cyc.mode === 'replay' ? 'Replaying job #' + cyc.jobId : 'Reading live trends'; Cu.progress = 0; Cu.yawT = Cu.homeYaw + 0.55; Cu.look = Cu.props.focus;
       let pins = 0;
       while (pins < 3 || (cyc.get('trend') === undefined && !stopped(cyc))) {
         if (pins < 3) { setPose(Cu, 'pin'); yield 0.45; const nx = cards.find((x) => !x.visible); if (nx) { nx.visible = true; nx.scale.setScalar(0.01); } hop(Cu, 0.12); pins++; Cu.progress = Math.min(0.9, pins / 4); yield 0.6; }
@@ -197,8 +323,8 @@ export function runStudio2(cfg) {
       Cu.yawT = Cu.homeYaw; Cu.look = 'camera'; setPose(Cu, 'thumbs'); say(Cu, short(tr.line || `${tr.name} is trending!`, 34)); Cu.status = 'Trend: ' + short(tr.name.toLowerCase(), 18); yield 1.9;
       // Beat 2 — Curator walks the trend card over to the Painter
       card.obj.visible = true; card.holder = Cu.hands[1]; card.from = null; card.obj.scale.setScalar(S * 1.3); setPose(Cu, 'holdCard'); Cu.status = 'Delivering the brief';
-      claim(P); P.status = 'Waiting for a brief';
-      yield* walk(Cu, cfg.visitOf.painter); face(Cu, P); yield 0.3;
+      claim(P); spawn(summon(P)); P.status = 'Waiting for a brief';
+      yield* walk(Cu, cfg.visitOf.painter); yield () => P.path.length === 0; face(Cu, P); yield 0.3;
       say(Cu, "Here's the brief!"); setPose(Cu, 'give1'); yield 0.35; setPose(P, 'give1'); yield 0.35; give(card, P.hands[1], 0.4, 0.12); yield 0.45;
       setPose(Cu, 'idle'); hop(P, 0.12); say(P, 'On it, painting now'); yield 0.5; give(card, cardSpot, 0.5, 0.25); setPose(P, 'idle');
       // Beat 3 — Painter paints; the real artwork (from IPFS) is revealed stroke by stroke
@@ -224,8 +350,8 @@ export function runStudio2(cfg) {
       frameTex?.dispose(); frameTex = ctx.painting.snapshotTexture(); fArt.material.map = frameTex; fArt.material.needsUpdate = true;
       canvasIt.obj.visible = true; canvasIt.poof = -1; canvasIt.holder = P.props.anchor; canvasIt.from = null; canvasIt.obj.scale.setScalar(S * 1.12); updateItems(0); ctx.painting.blank();
       P.yawT = P.homeYaw + 0.45; give(canvasIt, P.carry, 0.4, 0.15); setPose(P, 'carry'); P.status = 'Delivering art'; yield 0.45;
-      claim(K); K.status = 'Waiting for art'; K.look = P.headTop;
-      yield* walk(P, cfg.visitOf.critic); face(P, K); setPose(K, 'carry'); yield 0.3; say(P, 'Fresh off the easel!'); give(canvasIt, K.carry, 0.45, 0.12); yield 0.55;
+      claim(K); spawn(summon(K)); K.status = 'Waiting for art'; K.look = P.headTop;
+      yield* walk(P, cfg.visitOf.critic); yield () => K.path.length === 0; face(P, K); setPose(K, 'carry'); yield 0.3; say(P, 'Fresh off the easel!'); give(canvasIt, K.carry, 0.45, 0.12); yield 0.55;
       setPose(P, 'idle'); spawn((function* () { yield 0.2; yield* walkHome(P); release(P); })());
       // Beat 5 — Critic inspects until the on-chain review lands
       K.yawT = K.homeYaw + 0.5; yield 0.35; give(canvasIt, K.props.anchor, 0.45, 0.15); yield 0.3; setPose(K, 'idle'); K.look = canvasIt.obj; K.status = 'Reviewing'; K.progress = 0;
@@ -250,8 +376,8 @@ export function runStudio2(cfg) {
       }
       // Beat 6 — Critic hands the minted work to the Seller
       K.yawT = K.homeYaw + 0.5; yield 0.25; give(canvasIt, K.carry, 0.4, 0.15); setPose(K, 'carry'); K.status = 'Minted \u00b7 delivering'; yield 0.45;
-      claim(Se); Se.look = K.headTop; Se.status = 'Waiting for art';
-      yield* walk(K, cfg.visitOf.seller); face(K, Se); setPose(Se, 'carry'); yield 0.3; say(K, 'Minted! Sell it!'); give(canvasIt, Se.carry, 0.45, 0.12); yield 0.55;
+      claim(Se); spawn(summon(Se)); Se.look = K.headTop; Se.status = 'Waiting for art';
+      yield* walk(K, cfg.visitOf.seller); yield () => Se.path.length === 0; face(K, Se); setPose(Se, 'carry'); yield 0.3; say(K, 'Minted! Sell it!'); give(canvasIt, Se.carry, 0.45, 0.12); yield 0.55;
       setPose(K, 'idle'); spawn((function* () { yield 0.2; yield* walkHome(K); release(K); })());
       // Beat 7 — Seller hangs it, prices it inside the owner's rules, lists it on-chain
       Se.yawT = Se.homeYaw + 0.55; Se.look = display; yield 0.4; setPose(Se, 'place'); give(canvasIt, display, 0.5, 0.2); yield 0.55; setPose(Se, 'idle');
@@ -283,14 +409,14 @@ export function runStudio2(cfg) {
       // Beat 9 — the on-chain split: Seller tosses each robot its real share
       for (const k of ['painter', 'critic', 'curator']) {
         const r = R[k]; yield () => r.path.length === 0; Se.yawT = yawTo(Se, r.pos); Se.look = r.headTop; yield 0.3;
-        setPose(Se, 'toss'); if (!r.busy) { r.look = Se.headTop; setPose(r, 'catch'); } r.yawT = yawTo(r, Se.pos);
-        tossCoin(Se.hands[1], r.hands[1], () => { pop(r.headTop, `+${sale.shares[k]} NEAR`, '', 0.35); hop(r, 0.14); later(0.4, () => { if (r.pose === 'catch') setPose(r, 'idle'); if (!r.busy) { r.yawT = r.homeYaw; r.look = null; } }); });
+        setPose(Se, 'toss'); if (!r.busy && !r.onBreak) { r.look = Se.headTop; setPose(r, 'catch'); r.yawT = yawTo(r, Se.pos); } else if (r.busy) r.yawT = yawTo(r, Se.pos);
+        tossCoin(Se.hands[1], r.hands[1], () => { pop(r.headTop, `+${sale.shares[k]} NEAR`, '', 0.35); hop(r, 0.14); later(0.4, () => { if (r.pose === 'catch') setPose(r, 'idle'); if (!r.busy && !r.onBreak) { r.yawT = r.homeYaw; r.look = null; } }); });
         yield 0.5; setPose(Se, 'idle');
       }
       Se.yawT = Se.homeYaw; Se.look = 'camera'; yield 0.6; pop(Se.headTop, `+${sale.shares.seller} NEAR`, '', 0.35); hop(Se, 0.12); yield 0.5;
       pop(Se.headTop, `Owner +${sale.shares.owner}`, 'fx', 0.75); yield 0.7;
       // Beat 10 — happy dance, then the Curator high-fives the Seller
-      for (const k of roles) { const r = R[k]; if (r.path.length) continue; if (!r.busy) claim(r); setPose(r, 'dance'); r.squintT = 0.8; r.look = 'camera'; r.yawT = r.homeYaw; }
+      for (const k of roles) { const r = R[k]; if (r.path.length || (r.onBreak && !r.busy)) continue; if (!r.busy) claim(r); setPose(r, 'dance'); r.squintT = 0.8; r.look = 'camera'; r.yawT = r.homeYaw; }
       yield 1.9; for (const k of roles) { const r = R[k]; if (r.pose === 'dance') { setPose(r, 'idle'); r.squintT = 0; } }
       [P, K].forEach((r) => { if (r.busy && r.path.length === 0) release(r); });
       if (peekTask) peekTask.done = true;
@@ -320,9 +446,9 @@ export function runStudio2(cfg) {
       case 'carry': lx = rx = -1.2 + Math.sin(r.walkPh * 2) * 0.06 * w; lz = 0.24; rz = -0.24; break;
       case 'pin': { const c = Math.sin(clamp(t / 0.9) * Math.PI); rz = 0.35 + c * 1.2; rx = -0.4 - c * 0.6; break; }
       case 'paint': rz = 0.95 + Math.sin(time * 6) * 0.15; rx = -0.7 - Math.max(0, Math.sin(time * 13)) * 0.42; lz = -0.5; lx = -0.6; break;
-      case 'yay': lz = -2.5 + Math.sin(time * 16) * 0.2; rz = 2.5 - Math.sin(time * 16) * 0.2; lx = rx = -0.2; break;
-      case 'thumbs': rx = -2.0 + Math.sin(time * 10) * 0.12; rz = 0.15; break;
-      case 'wave': rz = 2.55 + Math.sin(time * 13) * 0.35; rx = -0.2; break;
+      case 'yay': lz = -2.3 + Math.sin(time * 7) * 0.1; rz = 2.3 - Math.sin(time * 7) * 0.1; lx = rx = -0.2; break;
+      case 'thumbs': rx = -2.0 + Math.sin(time * 5) * 0.05; rz = 0.15; break;
+      case 'wave': rz = 2.45 + Math.sin(time * 7.5) * 0.25; rx = -0.2; break;
       case 'yawn': lz = -2.85; rz = 2.85; lx = rx = 0.1; break;
       case 'sip': rx = -2.15; rz = -0.5; break;
       case 'magnify': rx = -1.35 + Math.sin(time * 3) * 0.1; rz = -0.12; lx = -0.5; lz = 0.1; break;
@@ -332,38 +458,69 @@ export function runStudio2(cfg) {
       case 'place': lx = rx = -1.4; lz = 0.2; rz = -0.2; break;
       case 'tap': rx = -1.1 - Math.max(0, Math.sin(t * 16)) * 0.4; rz = 0.45; break;
       case 'highfive': rx = -2.55; rz = 0.2; break;
-      case 'dance': lz = -2.2 + Math.sin(time * 9) * 0.6; rz = 2.2 + Math.sin(time * 9) * 0.6; lx = rx = -0.3; break;
+      case 'dance': lz = -2.0 + Math.sin(time * 5) * 0.35; rz = 2.0 + Math.sin(time * 5) * 0.35; lx = rx = -0.3; break;
+      // break routines
+      case 'holdCup': rx = -0.95; rz = 0.12; break;
+      case 'reach': rx = -1.25; rz = 0.05; break;
+      case 'sipCup': { const u = smooth(clamp(t / 0.6)); rx = lerp(-0.95, -2.12, u); rz = lerp(0.12, -0.45, u); break; }
+      case 'leanCup': lx = -1.12; lz = 0.2; rx = -0.95; rz = 0.1; break;
+      case 'leanSip': { const u = smooth(clamp(t / 0.6)); lx = -1.12; lz = 0.2; rx = lerp(-0.95, -2.12, u); rz = lerp(0.1, -0.45, u); break; }
+      case 'smoke': rx = -0.8; rz = 0.16; lx = -0.12; break;
+      case 'puff': { const u = smooth(clamp(t / 0.7)); rx = lerp(-0.8, -2.05, u); rz = lerp(0.16, -0.42, u); break; }
+      case 'brew': { const c = Math.sin(clamp(t / 0.85) * Math.PI); rx = -0.95 - c * 0.4; rz = 0.15; break; }
+      case 'stretch': { const u = smooth(clamp(t / 1.3)) * (1 - smooth(clamp((t - 2.5) / 1.2))); lz = -0.12 - u * 2.7; rz = 0.12 + u * 2.7; lx = rx = -0.08 * u; break; }
+      case 'sit': lx = rx = -0.5; lz = -0.34; rz = 0.34; break;
+      case 'inspect': rx = -1.35 + Math.sin(time * 1.4) * 0.06; rz = -0.05; break;
+      case 'chat': rx = -0.55 + Math.sin(time * 2.0) * 0.1; rz = 0.2; break;
     }
     return [lx, lz, rx, rz];
   }
-  const tv = new THREE.Vector3();
+  const tv = new THREE.Vector3(), seatV = new THREE.Vector3();
   function updateRobot(r, dt) {
     let moving = false;
-    if (r.path.length) { const p = r.path[0]; const dx = p.x - r.pos.x, dz = p.y - r.pos.y, d = Math.hypot(dx, dz);
-      if (d < 0.06) { r.path.shift(); if (!r.path.length && r.endYaw != null) r.yawT = r.endYaw; }
-      else { r.yawT = Math.atan2(dx, dz); const al = Math.max(0, Math.cos(angDiff(r.yaw, r.yawT))); const st = Math.min(d, r.speed * dt * al * al); r.pos.x += (dx / d) * st; r.pos.y += (dz / d) * st; moving = st > 1e-4; } }
-    if (moving) for (const k of roles) { const o = R[k]; if (o === r) continue; const dx = r.pos.x - o.pos.x, dz = r.pos.y - o.pos.y, d = Math.hypot(dx, dz); if (d < 0.7 && d > 1e-4) { const push = (0.7 - d) * 0.35; r.pos.x += (dx / d) * push; r.pos.y += (dz / d) * push; } }
-    r.yaw += angDiff(r.yaw, r.yawT) * (1 - Math.exp(-9 * dt));
-    r.walkAmt = damp(r.walkAmt, moving ? 1 : 0, 10, dt); if (moving) r.walkPh += dt * r.speed * 7.2;
+    if (r.curve) {
+      const rem = r.clen - r.s; const tan = r.curve.getTangentAt(clamp(r.s / r.clen)); r.yawT = Math.atan2(tan.x, tan.z);
+      const al = clamp((Math.cos(angDiff(r.yaw, r.yawT)) - 0.2) / 0.8), vAl = r.speed * (0.15 + 0.85 * al * al);
+      let nv = r.v < vAl ? Math.min(vAl, r.v + r.accel * dt) : Math.max(vAl, r.v - 3.5 * dt);
+      r.v = Math.min(nv, Math.max(0.12, Math.sqrt(2 * r.decel * Math.max(0, rem))));
+      r.s = Math.min(r.clen, r.s + r.v * dt); const pt = r.curve.getPointAt(clamp(r.s / r.clen)); r.pos.set(pt.x, pt.z);
+      if (r.clen - r.s < 0.004) { r.curve = null; r.path = []; r.v = 0; if (r.endYaw != null) r.yawT = r.endYaw; }
+      moving = r.v > 0.03;
+    } else r.v = 0;
+    if (moving) { let px = 0, pz = 0; for (const k of roles) { const o = R[k]; if (o === r) continue; const dx = r.pos.x + r.avoid.x - o.pos.x - o.avoid.x, dz = r.pos.y + r.avoid.y - o.pos.y - o.avoid.y, d = Math.hypot(dx, dz); if (d < 0.85 && d > 1e-4) { px += (dx / d) * (0.85 - d); pz += (dz / d) * (0.85 - d); } }
+      const L = Math.hypot(px, pz); if (L > 0.4) { px *= 0.4 / L; pz *= 0.4 / L; } r.avoid.x = damp(r.avoid.x, px, 3, dt); r.avoid.y = damp(r.avoid.y, pz, 3, dt); }
+    { const d = angDiff(r.yaw, r.yawT); const st = d * (1 - Math.exp(-6 * dt)); r.yaw += Math.sign(st) * Math.min(Math.abs(st), 4.2 * dt); }
+    const turning = !moving && r.sitC < 0.1 && Math.abs(angDiff(r.yaw, r.yawT)) > 0.3;
+    r.walkAmt = damp(r.walkAmt, moving ? 0.35 + 0.65 * clamp(r.v / r.speed) : turning ? 0.28 : 0, 7, dt);
+    if (moving) r.walkPh += dt * (2.2 + r.v * 4.6); else if (turning) r.walkPh += dt * 6;
+    r.accLean = damp(r.accLean, clamp((r.v - r.vPrev) / Math.max(dt, 1e-3) * 0.03, -0.06, 0.06), 6, dt); r.vPrev = r.v;
     const w = r.walkAmt, ph = r.walkPh;
-    r.root.position.set(r.pos.x, 0, r.pos.y);
-    r.legs[-1].rotation.x = Math.sin(ph) * 0.75 * w; r.legs[1].rotation.x = -Math.sin(ph) * 0.75 * w;
-    if (r.pose === 'dance' && time - r.lastHop > 0.62) hop(r, 0.13);
-    let hopY = 0, sq = 0; const ht = (time - r.hopT) / 0.55;
-    if (ht >= 0 && ht < 1) { if (ht < 0.2) sq = -0.14 * Math.sin((ht / 0.2) * Math.PI); else { const u = (ht - 0.2) / 0.8; hopY = Math.sin(u * Math.PI) * r.hopH; sq = 0.1 * Math.sin(u * Math.PI); if (u > 0.85) sq -= 0.12 * Math.sin(((u - 0.85) / 0.15) * Math.PI); } }
-    const squash = -Math.cos(ph * 2) * 0.06 * w + sq;
-    r.body.position.y = Math.sin(time * 2.2 + r.phase) * 0.018 * (1 - w) + Math.abs(Math.sin(ph)) * 0.1 * w + hopY;
+    // position (hammock: blend into the swaying seat)
+    r.sitC = damp(r.sitC, r.sitT, 2.6, dt); if (r.sitT === 0 && r.sitC < 0.01) r.seat = null;
+    let x = r.pos.x + r.avoid.x, z = r.pos.y + r.avoid.y, y = 0;
+    if (r.seat && r.sitC > 0.001) { r.seat.getWorldPosition(seatV); const e = smooth(clamp(r.sitC)); x = lerp(x, seatV.x, e); z = lerp(z, seatV.z, e); y = (seatV.y - 0.31 * S) * smooth(clamp(r.sitC * 1.15 - 0.1)); }
+    r.root.position.set(x, y, z);
+    const sit = smooth(clamp(r.sitC));
+    r.legs[-1].rotation.x = lerp(Math.sin(ph) * 0.6 * w, -1.45, sit); r.legs[1].rotation.x = lerp(-Math.sin(ph) * 0.6 * w, -1.4, sit);
+    if (r.pose === 'dance' && time - r.lastHop > 0.9) hop(r, 0.13);
+    let hopY = 0, sq = 0; const ht = (time - r.hopT) / 0.6;
+    if (ht >= 0 && ht < 1) { if (ht < 0.2) sq = -0.06 * Math.sin((ht / 0.2) * Math.PI); else { const u = (ht - 0.2) / 0.8; hopY = Math.sin(u * Math.PI) * r.hopH; sq = 0.04 * Math.sin(u * Math.PI); if (u > 0.85) sq -= 0.05 * Math.sin(((u - 0.85) / 0.15) * Math.PI); } }
+    const still = (1 - w) * (1 - sit), ws = Math.sin(time * 0.55 + r.phase) * still; // slow weight shift when standing
+    const squash = -Math.cos(ph * 2) * 0.018 * w + sq;
+    r.body.position.y = Math.sin(time * 1.8 + r.phase) * 0.01 * still + Math.abs(Math.sin(ph)) * 0.035 * w + hopY;
+    r.body.position.x = ws * 0.015;
     r.body.scale.set(1 - squash * 0.5, 1 + squash, 1 - squash * 0.5);
-    r.body.rotation.z = Math.sin(ph) * 0.07 * w + (r.pose === 'yay' ? Math.sin(time * 15) * 0.13 : 0) + (r.pose === 'dance' ? Math.sin(time * 4.5) * 0.12 : 0);
-    r.body.rotation.x = 0.1 * w;
-    r.extraYaw = damp(r.extraYaw, r.pose === 'dance' ? Math.sin(time * 4.5) * 0.7 : 0, 8, dt);
+    r.body.rotation.z = Math.sin(ph) * 0.035 * w + ws * 0.025 + (r.pose === 'yay' ? Math.sin(time * 7) * 0.05 : 0) + (r.pose === 'dance' ? Math.sin(time * 3.2) * 0.07 : 0);
+    r.leanC = damp(r.leanC, r.leanT, 3, dt);
+    r.body.rotation.x = 0.05 * w + r.accLean + r.leanC - 0.14 * sit;
+    r.extraYaw = damp(r.extraYaw, r.pose === 'dance' ? Math.sin(time * 3.2) * 0.35 : 0, 6, dt);
     r.root.rotation.y = r.yaw + r.extraYaw;
     const [lx, lz, rx, rz] = armTargets(r);
-    r.arms[-1].rotation.x = damp(r.arms[-1].rotation.x, lx, 11, dt); r.arms[-1].rotation.z = damp(r.arms[-1].rotation.z, lz, 11, dt);
-    r.arms[1].rotation.x = damp(r.arms[1].rotation.x, rx, 11, dt); r.arms[1].rotation.z = damp(r.arms[1].rotation.z, rz, 11, dt);
+    r.arms[-1].rotation.x = damp(r.arms[-1].rotation.x, lx, 8, dt); r.arms[-1].rotation.z = damp(r.arms[-1].rotation.z, lz, 8, dt);
+    r.arms[1].rotation.x = damp(r.arms[1].rotation.x, rx, 8, dt); r.arms[1].rotation.z = damp(r.arms[1].rotation.z, rz, 8, dt);
     // head
     let yawT = 0, pitchT = 0, tgt = null; const talking = speaker === r && time < speakerUntil;
-    if (r.lookAround) { yawT = Math.sin(time * 1.9) * 0.95; pitchT = -0.1; }
+    if (r.lookAround) { yawT = Math.sin(time * 0.9 + r.phase) * 0.85; pitchT = -0.08; }
     else if (r.look === 'camera') tgt = camera.position;
     else if (r.look && r.look.isObject3D) tgt = wp(r.look);
     else if (!r.busy && speaker && speaker !== r && time < speakerUntil) tgt = wp(speaker.headTop);
@@ -372,9 +529,9 @@ export function runStudio2(cfg) {
     else { yawT = Math.sin(time * 0.35 + r.phase) * 0.35; pitchT = Math.sin(time * 0.5 + r.phase) * 0.08; }
     const soft = !r.busy && r.look == null && !talking ? 0.6 : 1;
     if (tgt) { tv.copy(tgt); r.root.worldToLocal(tv); yawT = clamp(Math.atan2(tv.x, tv.z), -1.2, 1.2) * soft; pitchT = clamp(Math.atan2(1.1 - tv.y, Math.hypot(tv.x, tv.z)) * 0.7, -0.4, 0.45); }
-    if (r.pose === 'yawn') pitchT = -0.4; if (r.pose === 'sip') pitchT = -0.3;
+    if (r.pose === 'yawn') pitchT = -0.4; if (r.pose === 'sip' || r.pose === 'sipCup' || r.pose === 'leanSip' || r.pose === 'puff') pitchT = -0.25; if (r.pose === 'stretch') pitchT = -0.3; if (r.pose === 'inspect') pitchT = 0.15; pitchT -= 0.08 * sit;
     const nt = time - r.nodT; if (nt >= 0 && nt < 0.8) pitchT += Math.sin(nt * 18) * 0.28;
-    r.hY = damp(r.hY, yawT, 7, dt); r.hP = damp(r.hP, pitchT, 7, dt); r.tilt = damp(r.tilt, r.tiltT + (talking ? Math.sin(time * 6) * 0.07 : 0), 7, dt);
+    r.hY = damp(r.hY, yawT, 5, dt); r.hP = damp(r.hP, pitchT, 5, dt); r.tilt = damp(r.tilt, r.tiltT + (talking ? Math.sin(time * 6) * 0.07 : 0), 7, dt);
     r.head.rotation.set(r.hP, r.hY, r.tilt, 'YXZ');
     r.blinkT -= dt; const bl = r.blinkT < 0.12 && r.blinkT > 0 ? 0.15 : 1; if (r.blinkT < 0) r.blinkT = 2 + Math.random() * 3.5;
     r.squint = damp(r.squint, r.squintT, 8, dt); r.eyes.forEach((e) => (e.scale.y = 1.35 * bl * (1 - 0.72 * r.squint)));
@@ -382,6 +539,7 @@ export function runStudio2(cfg) {
   }
   function updateItems() {
     for (const it of items) { if (!it.obj.visible) continue;
+      if (it.scT != null) { const c = damp(it.obj.scale.x / S, it.scT, 9, curDt); it.obj.scale.setScalar(S * c); if (it.scT === 0 && c < 0.04) { it.obj.visible = false; it.scT = null; continue; } }
       if (it.poof >= 0) { const p = clamp((time - it.poof) / 0.7); it.obj.position.y += 0.02; it.obj.scale.setScalar(S * 1.12 * (1 - smooth(p))); it.obj.rotation.y += 0.25; if (p >= 1) { it.obj.visible = false; it.poof = -1; } continue; }
       const h = wp(it.holder);
       if (it.from) { const p = clamp((time - it.t0) / it.dur); it.obj.position.lerpVectors(it.from, h, smooth(p)); it.obj.position.y += Math.sin(p * Math.PI) * it.arc; if (p >= 1) it.from = null; } else it.obj.position.copy(h);
@@ -400,7 +558,19 @@ export function runStudio2(cfg) {
     const bt = time - bellT; bell.rotation.z = bt < 1.2 ? Math.sin(bt * 32) * 0.35 * Math.exp(-bt * 4) : 0;
     flip.rotation.y = flipT > 0 ? Math.PI * smooth(clamp((time - flipT) / 0.5)) : 0;
     Cu.props.cards.forEach((cd) => { if (cd.visible && cd.scale.x < 1) cd.scale.setScalar(Math.min(1, cd.scale.x + dt * 5)); });
+    // smoke + steam wisps
+    for (const w of wisps) { if (!w.on) continue; w.age += dt; const u = w.age / w.life; if (u >= 1) { w.on = false; w.m.visible = false; continue; }
+      const f = Math.exp(-1.2 * dt); w.v.x *= f; w.v.z *= f; w.v.y = damp(w.v.y, 0.2, 1.5, dt); w.m.position.addScaledVector(w.v, dt);
+      w.m.position.x += Math.sin(w.age * 2.1 + w.seed) * 0.05 * dt; w.m.position.z += Math.cos(w.age * 1.7 + w.seed) * 0.05 * dt;
+      w.m.scale.setScalar(S * w.size * (0.5 + u * 2.4)); w.m.material.opacity = w.op * smooth(clamp(w.age / 0.3)) * Math.pow(1 - u, 1.6); w.m.rotation.y += dt * 0.4; }
+    for (const r of [Cu, P]) { r.glowC = damp(r.glowC, r.cig.visible ? r.glowT : 0, 5, dt); r.tipM.emissiveIntensity = 0.3 + r.glowC * 2.2;
+      if (r.smoking && r.cig.visible && r.pose !== 'puff' && time > r.nextTip) { r.nextTip = time + 0.55 + Math.random() * 0.3; wisp(wp(r.cigTip), (Math.random() - 0.5) * 0.03, 0.16, (Math.random() - 0.5) * 0.03, 0.22, 1.8, 0.38); } }
+    for (const k of roles) { const r = R[k]; if (r.cupIt.obj.visible && !r.cupIt.from && r.cupIt.holder === r.cupHold && Math.random() < dt * 0.9) { const p = r.cupIt.obj.position.clone(); p.y += 0.08; wisp(p, 0, 0.12, 0, 0.16, 1.4, 0.16); } }
+    if (cfx) { const on = time - brewing < 2.7; cfx.light.emissiveIntensity = damp(cfx.light.emissiveIntensity, on ? 0.9 + 0.3 * Math.sin(time * 8) : 0.2, 6, dt);
+      if (on && time > nextSteam) { nextSteam = time + 0.16; wisp(wp(cfx.steam), (Math.random() - 0.5) * 0.04, 0.22, (Math.random() - 0.5) * 0.04, 0.22, 1.3, 0.28); } }
+    if (hmk) { const occ = R_().some((r) => r.seat === hmk.seat && r.sitC > 0.3); hamAmp = damp(hamAmp, occ ? 0.05 : 0.022, 1.5, dt); hmk.group.rotation.z = Math.sin(time * 0.75) * hamAmp; }
   }
+  let hamAmp = 0.022, curDt = 1 / 60;
   // camera
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 }; let focus = 0, focusT = 0, W = 1, H = 1;
   addEventListener('pointermove', (e) => { mouse.tx = (e.clientX / innerWidth - 0.5) * 2; mouse.ty = (e.clientY / innerHeight - 0.5) * 2; }, { passive: true });
@@ -424,10 +594,11 @@ export function runStudio2(cfg) {
       if (r.bubble.classList.contains('show')) { if (time > r.typedAt) r.bubble.classList.add('typed'); if (time > r.bubbleHide) r.bubble.classList.remove('show'); } }
     for (let i = pops.length - 1; i >= 0; i--) { const o = pops[i]; const age = time - o.born; if (age > o.life) { o.d.remove(); pops.splice(i, 1); continue; } pv.copy(wp(o.anchor)); pv.y += o.dy + age * 0.45; place(pv, o.d, ` translateX(${o.x}px)`); }
   }
-  function logic(dt) { time += dt; frameNo++; runTasks(); for (const k of roles) updateRobot(R[k], dt); scene.updateMatrixWorld(); updateItems(); updateFx(dt); updateCamera(dt); updateOverlay(); }
+  function logic(dt) { time += dt; curDt = dt; frameNo++; runTasks(); for (const k of roles) updateRobot(R[k], dt); scene.updateMatrixWorld(); updateItems(); updateFx(dt); updateCamera(dt); updateOverlay(); }
 
   // boot
-  window.__ms = { R, get time() { return time; }, step(s) { for (let i = 0; i < s * 30; i++) logic(1 / 30); } }; spawn(story());
+  window.__ms = { R, get time() { return time; }, get calls() { return renderer.info.render.calls; }, get tris() { return renderer.info.render.triangles; }, step(s) { for (let i = 0; i < s * 30; i++) logic(1 / 30); },
+    brk(role, kind) { const r = R[role]; if (!r || r.busy || r.onBreak) return false; if (['cof', 'ham', 'win'].includes(kind)) spotWho[kind] = r; if (kind === 'plants') spotWho.pw = r; spawn(runBreak(r, kind)); return true; } }; spawn(story());
   const q = new URLSearchParams(location.search); const warp = parseFloat(q.get('warp')) || 0; const speed = parseFloat(q.get('speed')) || 1;
   for (let i = 0; i < warp * 30; i++) logic(1 / 30);
   let last = performance.now(), started = false;
