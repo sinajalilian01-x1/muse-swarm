@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 import { aiMode } from "@/lib/ai";
 import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, accountUrl } from "@/lib/config";
 
@@ -18,6 +19,17 @@ export default function How() {
     <div className="page">
       <h1 className="t">How it works</h1>
       <p className="sub">Muse Swarm is a small art business run by four AI robots. Each robot is its own NEAR account with its own budget. The owner sets the rules once, and a smart contract enforces them on every move.</p>
+      <section className="sec">
+        <h2>Try it in 60 seconds</h2>
+        <div className="grid g3">
+          {[
+            ["1 · Run a real cycle", <>On the <a className="lnk" href="/">Studio</a>, press <b>Run a real cycle</b>. Four robot transactions land on NEAR testnet in about 20 s, and each one appears in the live activity feed with an explorer link.</>],
+            ["2 · Collect the work", <>Connect a testnet wallet (MyNearWallet, Meteor or HERE) and press <b>Collect</b>, or let the demo collector buy it. The contract transfers the NFT and splits the payment in the same tx.</>],
+            ["3 · Check the receipts", <>Open <a className="lnk" href="/robots">Robots</a> for each agent&apos;s budget, earnings, keys and P&amp;L, <a className="lnk" href="/ledger">Ledger</a> for every tx, and <a className="lnk" href="/api/health">/api/health</a> for live status.</>],
+          ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
+        </div>
+      </section>
+
       <div className="steps sec">
         {STEPS.map(([c, n, t, p], i) => (
           <div className="card" key={n}><div className="n" style={{ background: c }}>{i + 1}</div><div><b style={{ fontSize: 17 }}>{n}: {t}</b><p>{p}</p></div></div>
@@ -44,9 +56,20 @@ export default function How() {
             ["Function-call keys only", "Robot keys can call only their own method (plus robot_refuel). They can't send NEAR, deploy code or add keys."],
             ["Budgets, caps and a floor", "A daily spend cap and a per-call fee cap for each robot, a jobs-per-day limit, a minimum and maximum price, and a budget cap with sweeps to the owner."],
             ["Kill switch", "The owner can freeze every robot action. For the public demo, a guardian can pause the swarm for up to 120 s, and the pause always releases itself."],
-            ["No public budget drain", "Running a cycle is rate-limited per visitor, and only one job runs at a time across the whole swarm. Only the server holds the robot keys, and a signed driver token stops two visitors driving the same job."],
+            ["No public budget drain", "Running a cycle is rate-limited per visitor and paced swarm-wide from on-chain job timestamps (12 per 10 min, across every server instance). Only one job runs at a time, and a signed driver token stops two visitors driving the same job."],
             ["Nothing stranded", "AI fees go to a treasury account rather than piling up on keys that can't withdraw. The owner can withdraw any robot's budget."],
             ["Lean storage", "Each robot pays for the storage it adds. NFT metadata holds only the IPFS CID, title and short text, and the image itself lives on IPFS."],
+          ].map(([t, p]) => <div className="card" key={t}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
+        </div>
+      </section>
+
+      <section className="sec">
+        <h2>Why it matters</h2>
+        <div className="grid g3">
+          {[
+            ["Agents with accounts, not API keys", "Each AI agent is a NEAR account with a budget, a scoped key and a public track record. You can audit what it spent, what it earned and every decision it made, on-chain."],
+            ["A business that pays for itself", "Sales refill the robots' budgets, and they spend that on AI, storage and gas within caps the owner set. A daily cron runs a cycle with no human in the loop. Anyone can back a robot with fund(role)."],
+            ["A template for agent teams", "Swap the art for any pipeline (research, design, moderation). The pattern is the same: one contract that holds the rules and the money, many agents with their own accounts, and a split paid on every sale."],
           ].map(([t, p]) => <div className="card" key={t}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
       </section>
