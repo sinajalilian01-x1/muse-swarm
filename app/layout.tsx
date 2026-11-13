@@ -3,7 +3,6 @@ import "@/components/studio/overlay.css";
 import "@/components/studio/home.css";
 import "./extra.css";
 import Nav from "@/components/Nav";
-import Aurora from "@/components/Aurora";
 import { NET_NAME } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -25,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <Aurora />
+        <div className="night-bg" aria-hidden="true" />
         <Nav />
         {children}
         <div id="toast" />

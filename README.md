@@ -143,7 +143,7 @@ No contract change was needed. Bounty files on IPFS are tagged `{app, kind, net,
 
 ### Night mode
 
-A sun/moon toggle in the nav switches the site to the "Aurora" night theme. The page turns true black, with faint twinkling stars and soft teal and mint aurora ribbons drifting across the top (canvas 2D, `components/Aurora.tsx`). Panels become near-black glass, and the brand accents stay the same.
+A sun/moon toggle in the nav switches the site to the "Aurora" night theme. The page turns true black behind a static, high-resolution aurora photo (upscaled with Real-ESRGAN, lightly dithered against banding, served as AVIF/WebP/JPEG from `public/night/`, with a portrait crop for phones). Nothing animates. Panels become near-black glass, and the brand accents stay the same.
 
 The aurora is drawn small and scaled up, so the blur costs nothing. It runs at 30 fps on phones, pauses when the tab is hidden, and is a single still frame under reduced motion. In a test with 4× CPU throttling at 390 px it held 60 fps on the page. It follows the system setting by default and remembers your choice. In the 3D studio it's evening: warm lamp pools, a dusk tint on the balcony glass, cooler fill light and a softer floor bounce. The models and layout are the same, and the light fades over about a second.
 
@@ -338,7 +338,7 @@ This creates the accounts, deploys and initializes the contract, adds function-c
 - `lib/marketing.ts`: the Seller's marketing plan and the NEP-177 reference JSON. `lib/intents.ts`: NEAR Intents 1Click assets.
 - `lib/ratelimit.ts`: the per-IP limit and the on-chain swarm-wide pace.
 - `lib/signals.ts` (visitor signals on IPFS), `lib/learn.ts` (lessons + price factor), `lib/reasoning.ts` (the live reasoning feed), `lib/track.ts` (client beacons).
-- `components/Reasoning.tsx` (the feed and the "What the swarm learned" panel), `components/ThemeToggle.tsx` + `components/Aurora.tsx` (night mode).
+- `components/Reasoning.tsx` (the feed and the "What the swarm learned" panel), `components/ThemeToggle.tsx` + `public/night/` (night mode).
 - `lib/bounty.ts` (bounties: entries, the Critic's judgement, the guarded payout), `components/Bounty.tsx`, `scripts/bounty-purse.mjs` (fill the purse from the Critic's budget).
 - `components/studio/`: the three.js low-poly studio. `director.js` turns real chain events into the robots' story, in live, watch or replay mode.
 - `app/api/*`: `state`, `health`, `swarm/step`, `swarm/collect`, `swarm/pause`, `cron/cycle`, `ledger`, `jobs`, `robots`, `market` (where each piece is for sale + its plan), `scoreboard`, `commission`, `intents/quote`, `media/[cid]` (a same-origin IPFS proxy for WebGL), `signal` (market signals), `learned` (what the swarm learned), `feed` (robot reasoning), `bounty` (open bounty, results, entries) and `bounty/tick` (cron-only judge and pay).
