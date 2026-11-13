@@ -3,8 +3,9 @@
 **Four AI agents run a small art business on NEAR with no humans in the loop. Commission a piece and watch them make it for you.**
 The Curator reads live trends (or your brief), the Painter paints, the Critic judges, and the Seller prices, markets and lists. Every piece is for sale on the studio site *and* on Mintbase's NEAR marketplace, and it comes with a marketing plan the Seller wrote. Each agent is its own NEAR account that holds only a function-call key. One smart contract holds the owner's rules and the money. It mints an NFT only if the Critic scores the work 7.0 or higher, and it splits every sale between the owner and the four agents' budgets. The agents then pay for their own AI, storage and gas out of those budgets.
 
-- **Live demo (NEAR testnet):** https://muse-swarm.vercel.app
-- **Contract:** [`swarm.museswarm.testnet`](https://testnet.nearblocks.io/address/swarm.museswarm.testnet)
+- **Live on NEAR mainnet:** https://muse-swarm.vercel.app. Five NFTs have been minted and listed by the robots, with their tx links in `MAINNET_LIVE.md`.
+- **Contract (mainnet):** [`swarm.hlpok1lad.tg`](https://nearblocks.io/address/swarm.hlpok1lad.tg). Robots: `curator/painter/critic/seller.hlpok1lad.tg`. Owner/payout: `hlpok1lad.tg`.
+- **Testnet build (earlier, full test history):** [`swarm.museswarm.testnet`](https://testnet.nearblocks.io/address/swarm.museswarm.testnet)
 - **Health:** https://muse-swarm.vercel.app/api/health
 - Built at **NEAR HACKATHON** (Nov 2026). Tracks: AI Swarms, Agent Economy, Autonomous Business, NFTs That Do Something.
 
@@ -102,7 +103,7 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 | Wallet purchases and patron funding | **Real:** NEAR Connect on testnet |
 | Commissions (NEAR and wNEAR) | **Real**, on testnet |
 | Mintbase marketplace listing and sales | **Real:** Mintbase's market contract `market-v2-beta.mintspace2.testnet`. Mintbase's *testnet website* is paused, so the Gallery's **Buy via Mintbase** calls the market contract directly |
-| Pay in any token (NEAR Intents 1Click) | **Mainnet only.** On testnet: a live 1Click dry-run price, clearly labeled. The wNEAR → `ft_on_transfer` → commission half is real on testnet |
+| Pay in any token (NEAR Intents 1Click) | **Live on mainnet:** a real deposit address with status polling. No outside deposit has arrived yet. On a testnet build it shows a labeled dry-run price |
 | Marketing plans | **Real:** written per piece, pinned to IPFS, logged on-chain. Written by NEAR AI when the key is set, otherwise by a labeled `fallback-marketer`. X posts are **drafts only, never posted** |
 | Sales numbers | Our own and test buys are labeled **test** and never counted as outside sales |
 | Daily autonomous cycle | **Real:** Vercel Cron → `/api/cron/cycle` |
@@ -246,15 +247,24 @@ This creates the accounts, deploys and initializes the contract, adds function-c
 - `components/studio/`: the three.js low-poly studio. `director.js` turns real chain events into the robots' story, in live, watch or replay mode.
 - `app/api/*`: `state`, `health`, `swarm/step`, `swarm/collect`, `swarm/pause`, `cron/cycle`, `ledger`, `jobs`, `robots`, `market` (where each piece is for sale + its plan), `scoreboard`, `commission`, `intents/quote`, `media/[cid]` (a same-origin IPFS proxy for WebGL).
 
-## Going to mainnet
+## Mainnet (live since 13 Nov 2026, 05:47 CET)
 
-The code is **mainnet-ready behind one flag** (`NEXT_PUBLIC_NETWORK=mainnet`):
-- wrap.near and the Mintbase mainnet market (same code hash as the testnet market we tested);
-- real 1Click deposits;
+The site runs on mainnet behind `NEXT_PUBLIC_NETWORK=mainnet`, with these parts:
+- wrap.near;
+- the Mintbase mainnet market `simple.market.mintbase1.near`;
+- real NEAR Intents 1Click deposit addresses;
 - the demo collector off;
 - network-aware copy.
 
-`scripts/setup-network.mjs` is dry-run by default and refuses mainnet without `--execute` **and** `CONFIRM_MAINNET=I_HAVE_SINAS_APPROVAL`. Sina approved mainnet with `hlpok1lad.tg` as root and payout. **Nothing is deployed yet:** the wallet holds 2.08 NEAR, and the lean launch needs ≥ 4.83 NEAR (the 394 KB contract alone locks ~3.94 NEAR). Steps, accounts and costs are in `MAINNET_PLAN.md`.
+`scripts/setup-network.mjs --execute` with `CONFIRM_MAINNET=I_HAVE_SINAS_APPROVAL` did these steps:
+- created the 7 sub-accounts of `hlpok1lad.tg`;
+- deployed the contract after 49 tests passed;
+- added function-call keys and deleted the robots' and guardian's full keys;
+- funded the robot budgets with 0.4 NEAR.
+
+On mainnet the robots prepay 30 Tgas (the Seller 70 Tgas), so a robot account holding 0.05 NEAR can pay its own gas.
+
+The robots minted and listed 5 NFTs at NEAR AI Cloud prices (0.05–0.175 NEAR), both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** Launching cost ≈ 4.85 NEAR from the root. ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
 
 ## License
 

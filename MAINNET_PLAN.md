@@ -2,9 +2,9 @@
 
 **Status (13 Nov 2026, ~05:45 CET):**
 - **Approved by Sina.** Root and payout account: `hlpok1lad.tg`.
-- **Blocked on funds.** The wallet holds **2.084 NEAR**, and the lean launch needs **≥ 4.83 NEAR**. The 394 KB contract alone locks ~3.94 NEAR of storage, and wasm-opt `-Oz` only shrinks it by 2 KB.
-- **Nothing has been sent and nothing has been spent.**
-- After a top-up of **≥ 2.75 NEAR** (3.5 recommended, for buffer and the test cycle), launch is the single command in "Exact steps" below.
+- **LIVE since 05:47 CET.** Sina funded the wallet (6.65 NEAR). The lean launch below ran as planned and spent ≈ 4.85 NEAR from the root; ≈ 4.73 NEAR of that is still in our accounts.
+- 5 NFTs are minted and listed. The full record is in `MAINNET_LIVE.md`.
+- Changed from the plan: the robots prepay 30 Tgas (the Seller 70) and refuel 0.03 NEAR at a time, because 100 Tgas prepaid reserves 0.1 NEAR, more than a robot's balance.
 
 ### Approved setup (hlpok1lad.tg)
 
@@ -104,7 +104,7 @@ The storage (~5 NEAR) stays locked in the contract account, not spent. Most of i
 1. **Sina** creates `museswarm.near` from his wallet and funds it with ~8.5 NEAR. He decides the owner/payout account (e.g. `sina.near`).
 2. On the box, keeping keys outside the repo:
    ```bash
-   cd contract && cargo test && cargo near build non-reproducible-wasm --no-abi   # 48 tests
+   cd app/contract && cargo test && cargo near build non-reproducible-wasm --no-abi   # 48 tests
    cd .. && NETWORK=mainnet ROOT=museswarm.near OWNER_ID=sina.near node scripts/setup-network.mjs   # DRY RUN: prints every step + cost
    ```
 3. Sina reviews the printed plan. Then:
