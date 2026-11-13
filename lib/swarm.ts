@@ -32,14 +32,16 @@ export function isDriver(jobId: string, token?: string) {
 export const DRIVER_GRACE_MS = 90_000;
 
 // Mainnet robots run lean gas wallets: top up small amounts, from their own capped budgets.
-const REFUEL_BELOW = NETWORK === "mainnet" ? 0.02 : 0.2, REFUEL_AMOUNT = NETWORK === "mainnet" ? "0.03" : "0.25";
+// The gas wallet must cover the prepaid-gas reservation (~0.001 NEAR per Tgas on mainnet): 30 Tgas, or 70 Tgas for the Seller.
+const REFUEL_AMOUNT = NETWORK === "mainnet" ? "0.03" : "0.25";
+const refuelBelow = (role: Role) => (NETWORK === "mainnet" ? (role === "seller" ? 0.08 : 0.035) : 0.2);
 const balanceCache = new Map<string, { v: number; t: number }>();
 async function maybeRefuel(role: Role): Promise<TxInfo | null> {
   const id = ROBOT_IDS[role];
   const c = balanceCache.get(id);
   const bal = c && Date.now() - c.t < 60_000 ? c.v : nearNum(await accountBalance(id));
   balanceCache.set(id, { v: bal, t: Date.now() });
-  if (bal >= REFUEL_BELOW) return null;
+  if (bal >= refuelBelow(role)) return null;
   const tx = await robotCall(role, "robot_refuel", { amount: nearToYocto(REFUEL_AMOUNT) });
   if (tx.ok) balanceCache.set(id, { v: bal + Number(REFUEL_AMOUNT), t: Date.now() });
   return tx;
@@ -58,7 +60,8 @@ export function priceFor(score: number, sw: Swarm, recent: Job[]) {
 
 /** Contract v2 rule: a listing may be re-priced once it has sat unsold this long. */
 const REPRICE_AFTER_MS = 15 * 60_000;
-const SELLER_GAS = 150_000_000_000_000n;
+// Seller: its own ~6 Tgas + 40 Tgas attached to the Mintbase calls (deposit 10, approve 20, callback 10).
+const SELLER_GAS = NETWORK === "mainnet" ? 70_000_000_000_000n : 150_000_000_000_000n;
 
 /** Seller writes the marketing plan, pins it as the token's NEP-177 reference, and builds the seller_list args. */
 async function sellerArgs(job: Job, price: number): Promise<{ args: Record<string, unknown>; plan: Plan | null; planCid?: string }> {

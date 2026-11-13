@@ -1,6 +1,6 @@
 import "server-only";
 import { Account, JsonRpcProvider, FailoverRpcProvider, KeyPairSigner, actions } from "near-api-js";
-import { COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, ROBOT_IDS, RPC_URLS, type Role } from "./config";
+import { COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, ROBOT_IDS, RPC_URLS, type Role, NETWORK } from "./config";
 import { extractEvents } from "./events";
 import type { TxInfo } from "./types";
 
@@ -85,7 +85,9 @@ async function call(accountId: string, keyList: KeyStr[], method: string, args: 
   throw new Error(errText(lastErr));
 }
 
-export const robotCall = (role: Role, method: string, args: object, gas?: bigint) => call(ROBOT_IDS[role], ROBOT_KEYS[role](), method, args, "0", gas);
+/** Robot steps burn 4–13 Tgas. Mainnet reserves prepaid gas at a pessimistic price (~0.001 NEAR per Tgas), so keep it tight there. */
+const ROBOT_GAS = NETWORK === "mainnet" ? 30_000_000_000_000n : 100_000_000_000_000n;
+export const robotCall = (role: Role, method: string, args: object, gas?: bigint) => call(ROBOT_IDS[role], ROBOT_KEYS[role](), method, args, "0", gas ?? ROBOT_GAS);
 export const guardianCall = (method: string, args: object) => call(GUARDIAN_ID, keys(process.env.GUARDIAN_KEYS), method, args, "0", 30_000_000_000_000n);
 export const collectorCall = (method: string, args: object, deposit: string) => call(COLLECTOR_ID, keys(process.env.COLLECTOR_KEY), method, args, deposit, 100_000_000_000_000n);
 
