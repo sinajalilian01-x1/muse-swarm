@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import { aiMode } from "@/lib/ai";
-import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, MARKET_ID, accountUrl } from "@/lib/config";
+import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, MARKET_ID, accountUrl, NETWORK, NET_NAME } from "@/lib/config";
 
 export const metadata = { title: "How it works · Muse Swarm" };
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ const STEPS = [
   ["#F47A38", "Painter", "Paints and pins to IPFS", "Turns the brief into an 800×1000 artwork, pins it to IPFS through Pinata, and records the CID with painter_submit. Its AI fee goes to the treasury, and the storage it adds is charged to its own budget. It also pays the Curator 0.002 NEAR for the brief, budget to budget inside the contract: agents hire agents."],
   ["#E9AE1C", "Critic", "Scores it, and the contract gates the mint", "Looks at the finished image and gives a score with a one-line review. critic_review mints a NEP-171 NFT only when the score is 7.0 or higher. Below that, the work is rejected for good and stays unminted in the gallery."],
   ["#E86A8C", "Seller", "Prices, markets and lists, beyond this website", "Prices the NFT from the score and recent demand (the contract refuses anything outside the owner's floor and max price) and pays the Critic 0.001 NEAR for the appraisal. With the Curator's trend context it writes a marketing plan: pitch, audience, channel, best time, hashtags and two X post drafts. The plan is pinned to IPFS as the token's NEP-177 reference and logged on-chain as a marketing_plan event. In the same seller_list call the contract approves Mintbase's market (NEP-178) and lists the NFT there, so it is for sale on our site and on a real NEAR marketplace at once. Unsold work is marked down 15% after 15 minutes, on both venues."],
-  ["#13243F", "Collector", "Buys, and the contract splits the money", "Anyone with a NEAR testnet wallet can call buy. The contract sends the token, pays the owner 30%, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. Anything above a robot's budget cap is swept to the owner. Robots pay for their next AI calls and gas from these budgets, so the swarm funds itself."],
+  ["#13243F", "Collector", "Buys, and the contract splits the money", `Anyone with a ${NET_NAME} wallet can call buy. The contract sends the token, pays the owner 30%, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. Anything above a robot's budget cap is swept to the owner. Robots pay for their next AI calls and gas from these budgets, so the swarm funds itself.`],
 ];
 
 export default function How() {
@@ -23,8 +23,8 @@ export default function How() {
         <h2>Try it in 60 seconds</h2>
         <div className="grid g3">
           {[
-            ["1 · Run a real cycle", <>On the <a className="lnk" href="/">Studio</a>, press <b>Run a real cycle</b>. Four robot transactions land on NEAR testnet in about 20 s, and each one appears in the live activity feed with an explorer link.</>],
-            ["2 · Collect the work", <>Connect a testnet wallet through NEAR Connect (Meteor, Intear, Nightly, Ledger or NEAR CLI) and press <b>Collect</b>, or let the demo collector buy it. The contract transfers the NFT and splits the payment in the same tx.</>],
+            ["1 · Run a cycle", <>On the <a className="lnk" href="/">Studio</a>, press <b>Free demo cycle</b> (or <b>Commission a piece</b>). Four robot transactions land on {NET_NAME} in about 30 s, and each one appears in the live activity feed with an explorer link.</>],
+            ["2 · Collect the work", <>Connect a {NET_NAME} wallet through NEAR Connect (Meteor, Intear, Nightly, Ledger or NEAR CLI) and press <b>Collect</b>, {NETWORK !== "mainnet" && " or let the demo collector buy it"}. The contract transfers the NFT and splits the payment in the same tx.</>],
             ["3 · Check the receipts", <>Open <a className="lnk" href="/robots">Robots</a> for each agent&apos;s budget, earnings, keys and P&amp;L, <a className="lnk" href="/ledger">Ledger</a> for every tx, and <a className="lnk" href="/api/health">/api/health</a> for live status.</>],
           ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
@@ -40,7 +40,7 @@ export default function How() {
         <h2>Selling beyond the website</h2>
         <div className="grid g3">
           {[
-            ["Cross-listed on Mintbase", <>Every new listing is also listed on Mintbase&apos;s market contract (<a className="lnk" href={accountUrl(MARKET_ID)} target="_blank" rel="noreferrer">{MARKET_ID}</a>). When someone buys there, Mintbase calls our <code>nft_transfer_payout</code> (NEP-199) and the contract pays the same owner/robot split. The first market sale is on-chain: <a className="lnk" href="https://testnet.nearblocks.io/txns/9xXN7jQpjGsZdDWfYSBCEDmBvCJoZ3KQUrnyTrFNh1pQ" target="_blank" rel="noreferrer">9xXN7jQp… ↗</a>. Mintbase&apos;s testnet website is paused, so the Gallery has a <b>Buy via Mintbase</b> button that calls the market contract directly.</>],
+            ["Cross-listed on Mintbase", <>Every new listing is also listed on Mintbase&apos;s market contract (<a className="lnk" href={accountUrl(MARKET_ID)} target="_blank" rel="noreferrer">{MARKET_ID}</a>). When someone buys there, Mintbase calls our <code>nft_transfer_payout</code> (NEP-199) and the contract pays the same owner/robot split. {NETWORK === "mainnet" ? <>The Gallery&apos;s <b>Buy via Mintbase</b> button calls the market contract directly. On testnet the same path already sold works: <a className="lnk" href="https://testnet.nearblocks.io/txns/9xXN7jQpjGsZdDWfYSBCEDmBvCJoZ3KQUrnyTrFNh1pQ" target="_blank" rel="noreferrer">9xXN7jQp… ↗</a>.</> : <>The first market sale is on-chain: <a className="lnk" href="https://testnet.nearblocks.io/txns/9xXN7jQpjGsZdDWfYSBCEDmBvCJoZ3KQUrnyTrFNh1pQ" target="_blank" rel="noreferrer">9xXN7jQp… ↗</a>. Mintbase&apos;s testnet website is paused, so the Gallery has a <b>Buy via Mintbase</b> button that calls the market contract directly.</>}</>],
             ["A marketing plan per piece", <>The Seller, using the Curator&apos;s trend context, writes a pitch, target audience, channel, best posting time and hashtags for every piece{ai.nearAi ? " with NEAR AI" : " (labeled rule-based fallback until the NEAR AI key is added)"}. Open any work in the <a className="lnk" href="/gallery">Gallery</a> and press <b>Where it&apos;s for sale</b>.</>],
             ["Drafts, never posts", "Each plan includes two X post drafts with a Copy button. The app never posts to X or any other account. A human decides what goes out. Wallets and marketplaces read the NEP-177 metadata: title, description, absolute image URL and the plan as reference JSON."],
           ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
@@ -49,7 +49,7 @@ export default function How() {
 
       <section className="sec">
         <h2>Architecture</h2>
-        <pre className="diagram">{`  visitor ──"Run a real cycle"──▶ Next.js API (Vercel)                         NEAR testnet
+        <pre className="diagram">{`  visitor ──"Run a cycle"──▶ Next.js API (Vercel)                              ${NETWORK === "mainnet" ? "NEAR mainnet" : "NEAR testnet"}
                                  │  one step = one robot tx                ┌───────────────────────────────┐
   Google Trends / Hacker News ─▶ │  curator ── FC key ───────────────────▶ │ ${CONTRACT_ID.padEnd(29)} │
   ${(ai.nearAi ? "NEAR AI Cloud (LLM/image/VLM)" : "fallback brains (no AI key)").padEnd(28)} ─▶ │  painter ── FC key ── pin to IPFS ────▶ │  rules · budgets · jobs       │
@@ -89,9 +89,9 @@ export default function How() {
       <section className="sec" id="real">
         <h2>What&apos;s real, and what&apos;s a fallback</h2>
         <div className="card" style={{ lineHeight: 1.6 }}>
-          <p><span className="pill ok">real</span> The contract, the robot accounts and keys, and every tx, budget, mint, listing, sale and split, all on NEAR testnet. The live trends. IPFS pinning. Wallet purchases.</p>
+          <p><span className="pill ok">real</span> The contract, the robot accounts and keys, and every tx, budget, mint, listing, sale and split, all on {NET_NAME}. The live trends. IPFS pinning. Wallet purchases.</p>
           <p style={{ marginTop: 8 }}><span className={`pill ${ai.nearAi ? "ok" : "listed"}`}>{ai.nearAi ? "real" : "fallback"}</span> AI brains: <b>{ai.provider}</b>. Curator: {ai.curator}. Painter: {ai.painter}. Critic: {ai.critic}. Seller (pricing + marketing): {ai.seller}.{ai.nearAi && " If a NEAR AI call fails, that one step uses the labeled local fallback and the on-chain model field says fallback-*."}{!ai.nearAi && " The code already calls NEAR AI Cloud (Qwen3.6 for briefs, FLUX.2 for images, Qwen3-VL for critique) as soon as NEAR_AI_API_KEY is set. Until then, deterministic low-poly painting and a measured critic stand in, and their fees on-chain are labeled \"fallback\"."}</p>
-          <p style={{ marginTop: 8 }}><span className="pill listed">testnet</span> All money is test NEAR. The demo collector ({COLLECTOR_ID}) is the owner&apos;s own test account and is shown separately in the P&amp;L.</p>
+          {NETWORK === "mainnet" ? <p style={{ marginTop: 8 }}><span className="pill ok">mainnet</span> Real NEAR. No demo collector. Buys by our own accounts (the owner {OWNER_ID} and its sub-accounts) are labeled test and never counted as outside revenue.</p> : <p style={{ marginTop: 8 }}><span className="pill listed">testnet</span> All money is test NEAR. The demo collector ({COLLECTOR_ID}) is the owner&apos;s own test account and is shown separately in the P&amp;L.</p>}
         </div>
       </section>
 
