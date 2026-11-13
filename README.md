@@ -24,9 +24,9 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
 
 ## Sister project
 
-Sina Jalilian's other NEAR HACKATHON entry is **[Atelier One](https://atelier-one-near.vercel.app)** ([repository](https://github.com/sinajalilian01-x1/atelier-one)).
+Sina Jalilian's other NEAR HACKATHON entry is **[Retr0 Academy on NEAR](https://retr0school-near.vercel.app)** ([repository](https://github.com/sinajalilian01-x1/retr0-academy-near)).
 
-Atelier One is a single AI painter who runs her own poster studio: you commission a poster in chat, pay an on-chain escrow, and she paints, mints and splits payment under one policy contract (NEAR testnet).
+Retr0 Academy is a retro-style coding academy where you learn NEAR and Web3, ship real code, and earn a soulbound on-chain certificate by passing a hard, server-graded exam.
 
 Muse Swarm is a different project. It is a multi-agent swarm of four AI robots, each with its own NEAR account, that coordinate through one contract to brief, paint, judge, mint, market and sell work on NEAR Mainnet.
 
