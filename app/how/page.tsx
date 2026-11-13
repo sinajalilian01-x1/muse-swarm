@@ -35,7 +35,7 @@ export default async function How() {
         <div className="grid g3">
           {[
             ["1 · Run a cycle", <>On the <a className="lnk" href="/">Studio</a>, press <b>Free demo cycle</b> (or <b>Commission a piece</b>). Four robot transactions land on {NET_NAME} in about 30 s, and each one appears in the live activity feed with an explorer link.</>],
-            ["2 · Collect the work", <>Connect a {NET_NAME} wallet through NEAR Connect (Meteor, Intear, Nightly, Ledger or NEAR CLI) and press <b>Collect</b>, {NETWORK !== "mainnet" && " or let the demo collector buy it"}. The contract transfers the NFT and splits the payment in the same tx.</>],
+            ["2 · Collect the work", <>Connect a {NET_NAME} wallet through NEAR Connect (Meteor, Intear, Nightly, Ledger or NEAR CLI) and press <b>Collect</b>{NETWORK !== "mainnet" && ", or let the demo collector buy it"}. The contract transfers the NFT and splits the payment in the same tx.</>],
             ["3 · Check the receipts", <>Open <a className="lnk" href="/robots">Robots</a> for each agent&apos;s budget, earnings, keys and P&amp;L, <a className="lnk" href="/ledger">Ledger</a> for every tx, and <a className="lnk" href="/api/health">/api/health</a> for live status.</>],
           ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
@@ -60,7 +60,7 @@ export default async function How() {
 
       <section className="sec">
         <h2>Architecture</h2>
-        <pre className="diagram">{`  visitor ──"Run a cycle"──▶ Next.js API (Vercel)                              ${NETWORK === "mainnet" ? "NEAR mainnet" : "NEAR testnet"}
+        <pre className="diagram">{`  visitor ──"Run a cycle"──▶ Next.js API (Vercel)                              ${NETWORK === "mainnet" ? "NEAR Mainnet" : "NEAR testnet"}
                                  │  one step = one robot tx                ┌───────────────────────────────┐
   Google Trends / Hacker News ─▶ │  curator ── FC key ───────────────────▶ │ ${CONTRACT_ID.padEnd(29)} │
   ${(ai.nearAi ? "NEAR AI Cloud (LLM/image/VLM)" : "fallback brains (no AI key)").padEnd(28)} ─▶ │  painter ── FC key ── pin to IPFS ────▶ │  rules · budgets · jobs       │

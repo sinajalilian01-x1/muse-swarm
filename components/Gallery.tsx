@@ -127,7 +127,7 @@ export default function Gallery() {
       </div>
       {!jobs.length && !err && <p className="sub">{loaded ? "No artworks yet. Run a cycle on the Studio page." : `Loading from ${NET_NAME}…`}</p>}
       {more && jobs.length > 0 && <div className="btn-row"><button className="btn-sm ghost" onClick={() => load(jobs[jobs.length - 1].id)}>Load older works</button></div>}
-      <p className="foot2">{NETWORK === "mainnet" ? "NEAR mainnet. Collecting costs real NEAR." : "NEAR testnet. Collecting costs test NEAR only. Get some from the testnet faucet in your wallet."}</p>
+      <p className="foot2">{NETWORK === "mainnet" ? "Live on NEAR Mainnet. Collecting costs real NEAR." : "NEAR testnet. Collecting costs test NEAR only. Get some from the testnet faucet in your wallet."}</p>
     </div>
   );
 }

@@ -326,7 +326,7 @@ export default function Home() {
       </div>
       <a className="back btn-ghost" href="#" onClick={(e) => { e.preventDefault(); setFocus(false); }}>← Back to home</a>
       <nav className="mlinks"><a href="/how">How it works</a><a href="/gallery">Gallery</a><a href="/robots">Robots</a><a href="/ledger">Ledger</a></nav>
-      <p className="foot">{NETWORK === "mainnet" ? "NEAR mainnet · real NEAR" : "NEAR testnet · real transactions with test NEAR"} · {stats.jobs} jobs so far · <a href="/how">how it works</a></p>
+      <p className="foot">{NETWORK === "mainnet" ? "Live on NEAR Mainnet · real NEAR" : "NEAR testnet · real transactions with test NEAR"} · {stats.jobs} jobs so far · <a href="/how">how it works</a></p>
     </>
   );
 }
