@@ -79,12 +79,17 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 
 - **Named sub-accounts per agent:** `curator/painter/critic/seller/guardian/treasury/collector.museswarm.testnet`.
 - **Function-call access keys:** each robot key can call only its own method plus `robot_refuel`. Full keys of robots and guardian were deleted. The [Robots](https://muse-swarm.vercel.app/robots) page reads them live from RPC.
-- **Smart contract (Rust, near-sdk 5):** rules, budgets, spend caps, job state machine, kill switch, guardian pause, on-chain revenue split. Tests: `cargo test` gives **48 passed**.
+- **Smart contract (Rust, near-sdk 5):** rules, budgets, spend caps, job state machine, kill switch, guardian pause, on-chain revenue split. Tests: `cargo test` gives **49 passed**.
 - **NEP-171 / 177 / 178 / 181 / 199 NFTs** minted by the contract itself, with the Critic's score as the gate. NEP-178 approvals and NEP-199 payouts let **Mintbase's market** sell them with the swarm's split.
 - **NEP-141 wNEAR** (`ft_on_transfer`) and **NEAR Intents 1Click** for "pay in any token" commissions.
 - **NEP-297 events** (`job_opened`, `painted`, `listed`, `agent_paid`, `repriced`, `sold`, `split_paid`, `refueled`, `funded`, `paused`, … plus standard `nft_mint`/`nft_transfer`), which drive the 3D studio's story.
 - **NEAR Connect** (`@hot-labs/near-connect`), the connector NEAR recommends in place of the deprecated Wallet Selector, for buying and funding.
-- **NEAR AI Cloud** (OpenAI-compatible): Qwen3.6-35B for briefs, FLUX.2-klein for images, Qwen3-VL-30B for critique. It is used when `NEAR_AI_API_KEY` is set. See "Real vs fallback".
+- **NEAR AI Cloud** (OpenAI-compatible), **live in production**:
+  - Qwen3.6-35B: the Curator's brief, plus the Seller's pricing and marketing plan;
+  - FLUX.2-klein: the Painter's image;
+  - Qwen3-VL-30B: the Critic's review of the actual image.
+  
+  Each on-chain step records the `model` it used.
 - **FastNear** RPC and tx API for the ledger and live feed.
 
 ## Real vs fallback
@@ -101,7 +106,7 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 | Marketing plans | **Real:** written per piece, pinned to IPFS, logged on-chain. Written by NEAR AI when the key is set, otherwise by a labeled `fallback-marketer`. X posts are **drafts only, never posted** |
 | Sales numbers | Our own and test buys are labeled **test** and never counted as outside sales |
 | Daily autonomous cycle | **Real:** Vercel Cron → `/api/cron/cycle` |
-| AI brains | **NEAR AI Cloud when `NEAR_AI_API_KEY` is set.** Without it, labeled fallbacks run: a keyword curator, a deterministic low-poly painter, and a critic that measures contrast, harmony, balance and detail. The on-chain `model` field says `fallback-*` and the How page shows which mode is live. |
+| AI brains | **Real: NEAR AI Cloud, live.** Curator brief (Qwen3.6), Painter image (FLUX.2-klein), Critic review of the image (Qwen3-VL), Seller price + marketing plan (Qwen3.6). The home scoreboard shows "NEAR AI Cloud brains", and `/api/health` shows the models. If a single NEAR AI call fails, that step uses a labeled local fallback, and the on-chain `model` field then says `fallback-*`. |
 
 ## Guardrails for a public demo
 
@@ -144,7 +149,7 @@ Safety:
 ### Tests
 
 ```bash
-npm run test:contract     # = cd contract && cargo test   → 48 passed
+npm run test:contract     # = cd contract && cargo test   → 49 passed
 ```
 
 The tests cover:
@@ -214,7 +219,7 @@ Other proofs:
 npm install
 cp .env.example .env.local      # robot FC keys, guardian + collector keys, JOB_SECRET, PINATA_JWT, CRON_SECRET (+ NEAR_AI_API_KEY)
 npm run dev                     # http://localhost:3000
-npm run test:contract           # 48 contract tests
+npm run test:contract           # 49 contract tests
 npm run smoke -- https://muse-swarm.vercel.app          # one full real cycle against the hosted API (+ demo buy)
 BUYER=you.testnet BUYER_KEY_FILE=~/.near-credentials/testnet/you.testnet.json node scripts/e2e/wallet-buy.mjs   # buy as yourself
 npm run cycle                   # one full cycle from the CLI with your own keys
@@ -231,7 +236,7 @@ This creates the accounts, deploys and initializes the contract, adds function-c
 
 ## Code map
 
-- `contract/`: the Rust contract and its 48 unit tests.
+- `contract/`: the Rust contract and its 49 unit tests.
 - `lib/swarm.ts`: the step engine (one HTTP step = one agent tx), driver tokens, auto-refuel and pricing.
 - `lib/ai.ts`: NEAR AI Cloud plus the labeled fallbacks. `lib/art.ts`: the low-poly painter and the measured critic.
 - `lib/trends.ts`, `lib/ipfs.ts`, `lib/ledger.ts` (chain-derived tx ledger), `lib/near.ts` (near-api-js v7).
@@ -249,7 +254,7 @@ The code is **mainnet-ready behind one flag** (`NEXT_PUBLIC_NETWORK=mainnet`):
 - the demo collector off;
 - network-aware copy.
 
-`scripts/setup-network.mjs` is dry-run by default and refuses mainnet without `--execute` **and** `CONFIRM_MAINNET=I_HAVE_SINAS_APPROVAL`. **Nothing has been deployed to mainnet.** Steps, accounts and the cost (~8 NEAR) are in `MAINNET_PLAN.md`.
+`scripts/setup-network.mjs` is dry-run by default and refuses mainnet without `--execute` **and** `CONFIRM_MAINNET=I_HAVE_SINAS_APPROVAL`. Sina approved mainnet with `hlpok1lad.tg` as root and payout. **Nothing is deployed yet:** the wallet holds 2.08 NEAR, and the lean launch needs ≥ 4.83 NEAR (the 394 KB contract alone locks ~3.94 NEAR). Steps, accounts and costs are in `MAINNET_PLAN.md`.
 
 ## License
 

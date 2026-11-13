@@ -1,6 +1,60 @@
-# Muse Swarm: mainnet plan (NOT executed)
+# Muse Swarm: mainnet plan
 
-Status, 13 Nov 2026: **the code is mainnet-ready behind one flag. Nothing has been deployed to mainnet and no real NEAR has been spent.** Going live needs Sina's explicit approval and his funding first.
+**Status (13 Nov 2026, ~05:45 CET):**
+- **Approved by Sina.** Root and payout account: `hlpok1lad.tg`.
+- **Blocked on funds.** The wallet holds **2.084 NEAR**, and the lean launch needs **≥ 4.83 NEAR**. The 394 KB contract alone locks ~3.94 NEAR of storage, and wasm-opt `-Oz` only shrinks it by 2 KB.
+- **Nothing has been sent and nothing has been spent.**
+- After a top-up of **≥ 2.75 NEAR** (3.5 recommended, for buffer and the test cycle), launch is the single command in "Exact steps" below.
+
+### Approved setup (hlpok1lad.tg)
+
+| Account | Funded with | Keys |
+|---|---|---|
+| `swarm.hlpok1lad.tg` (contract) | 4.1 NEAR (3.94 locked by code) | full key → `/workspace/secrets/muse-swarm/mainnet/keys.json` (chmod 600) |
+| `curator / painter / critic / seller.hlpok1lad.tg` | 0.05 NEAR each (gas). They refuel 0.03 at a time from their capped budgets | 3 FC keys each. Full keys deleted |
+| `guardian.hlpok1lad.tg` | 0.02 | 2 FC keys (`guardian_pause`). Full key deleted |
+| `treasury.hlpok1lad.tg` | 0.01 | full key in the secrets file |
+| Owner / payout | `hlpok1lad.tg` itself | Sina's key. Used only locally, never on Vercel or in the client |
+
+Lean launch total: 4.73 NEAR moved + ~0.05 gas, of which 0.4 NEAR funds the robot budgets.
+
+The test cycle at a 0.05 NEAR price is bought by `hlpok1lad.tg` itself. The app labels that buy **test** and does not count it as outside revenue. 30% of the price returns to the owner and 70% goes into the robot budgets.
+
+**Tight limits on mainnet:**
+- On-chain rules:
+  - price floor 0.05, max 0.5;
+  - daily spend cap 0.1 NEAR per robot;
+  - fee cap 0.01;
+  - budget cap 0.25 (anything above is swept to `hlpok1lad.tg`);
+  - 12 jobs per day.
+- Server limits:
+  - free demo cycles: 2 per visitor per hour, 3 per hour swarm-wide (read from chain);
+  - no demo collector;
+  - paid commissions bypass the free-cycle pace.
+- Worst case, the robots can spend 0.4 NEAR per day in total, and only out of the 0.4 NEAR budget pool.
+
+**Code fixed for a `.tg` root:** the contract picked wNEAR by a `.near` suffix, which would have meant `wrap.testnet` for `swarm.hlpok1lad.tg`. It now checks for `.testnet`, and a unit test covers it (49 tests pass).
+
+### Exact steps (once the balance is ≥ 4.83 NEAR)
+
+```bash
+cd /workspace/muse-swarm/app
+# 1. accounts, contract, wNEAR registration, FC keys, enable_approvals, fund 0.4 (owner = root signs locally)
+NETWORK=mainnet ROOT=hlpok1lad.tg OWNER_ID=hlpok1lad.tg ROOT_KEY_ENV=/workspace/secrets/muse-swarm/mainnet.env \
+  CONFIRM_MAINNET=I_HAVE_SINAS_APPROVAL node scripts/setup-network.mjs --execute
+# 2. Vercel env → mainnet (robot FC keys only; root key never leaves the box)
+node /workspace/muse-swarm/tools/switch-vercel-mainnet.mjs --execute
+vercel deploy --prod --yes --scope sinajalilian03-4015 --token "$VERCEL_TOKEN"
+# 3. one real cycle at 0.05 NEAR, then a labeled test buy from hlpok1lad.tg
+node /workspace/muse-swarm/tools/hosted-cycle.mjs https://muse-swarm.vercel.app --no-buy
+```
+
+Testnet stays restorable from `/workspace/secrets/muse-swarm/app.env`. A cheap `?net=testnet` switch is **not** built: the network is a build-time flag across the whole app. The cheapest way to keep a testnet demo is a second Vercel project with the testnet env.
+
+---
+
+## Generic plan (any root)
+
 
 ## What is already mainnet-ready in the code
 
