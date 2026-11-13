@@ -1,6 +1,8 @@
-# Muse Swarm on NEAR mainnet: live record (13 Nov 2026, CET)
+# Muse Swarm: Live on NEAR Mainnet (record, 13 Nov 2026, CET)
 
-Live site: https://muse-swarm.vercel.app (`NEXT_PUBLIC_NETWORK=mainnet`). Root and owner/payout: `hlpok1lad.tg`.
+Live app: https://muse-swarm.vercel.app (`NEXT_PUBLIC_NETWORK=mainnet`). Contract: [`swarm.hlpok1lad.tg`](https://nearblocks.io/address/swarm.hlpok1lad.tg). Root and owner/payout: [`hlpok1lad.tg`](https://nearblocks.io/address/hlpok1lad.tg). Health: https://muse-swarm.vercel.app/api/health
+
+The nearblocks NFT token pages (`/nft-token/swarm.hlpok1lad.tg/N`) depend on NearBlocks indexing the contract, which had not happened at 06:30 CET (its NFT API still returned an empty list). The mint txs below show the standard NEP-171 `nft_mint` event in every case, so use them as the proof of each token.
 
 ## Accounts (all sub-accounts of hlpok1lad.tg)
 | Account | Role | Keys | Create tx |
@@ -27,7 +29,7 @@ The full keys of the robots and the guardian were deleted after their function-c
 Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; per-robot daily cap 0.1 NEAR; fee cap 0.01; budget cap 0.25; at most 12 jobs a day. Site limits: 2 free cycles per IP per hour and 3 per hour globally. Paid commissions skip the pace.
 
 ## Five NFTs minted and listed (NEAR AI Cloud: Qwen3.6 brief, pricing and marketing; FLUX.2 image; Qwen3-VL critic)
-| # | Title | Trend | Critic | AI price | Curator | Painter | Critic | Seller (list) | Links |
+| # | Title | Trend | Critic | AI price | Curator | Painter | Critic (mint) | Seller (list) | Token |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Neon City Horizon | rockstar games gta vi | 8.5 | 0.175 NEAR | [CYXKJvo3](https://nearblocks.io/txns/CYXKJvo3NdRJRjzM55qupx98GnhDcGb2bRofG1FkkB76) | [AUWKAGoT](https://nearblocks.io/txns/AUWKAGoTZKXjYaHsbFE1iFSTXVrnjP7KYmFkEjG7ZAoC) | [B1J2RsSk](https://nearblocks.io/txns/B1J2RsSk6fxebaNbLcTqWDKwyw7LaPCt1CTgHnZyPqE7) | [6hiJyY62](https://nearblocks.io/txns/6hiJyY62DWexKpyyujJtFAmHkVU4Vyt3VR1tzD33zvtX) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/1) |
 | 2 | Crimson Geometric Sky | 내일 날씨 | 7.8 | 0.08 NEAR | [BpGHZ6bp](https://nearblocks.io/txns/BpGHZ6bpDPxFDdpv6uCj5VfeftTnVfP73uGo7LDoGWdo) | [FPMJ6WbM](https://nearblocks.io/txns/FPMJ6WbMo4Tr4nUktK3cWZnDdcTJsfEYGW4C3m11LuYU) | [DghhugBx](https://nearblocks.io/txns/DghhugBxzXtyS6h5bv9Adv1SjcqcoQh5FUnSmDJgeBp5) | [FA5DvQQ3](https://nearblocks.io/txns/FA5DvQQ3wwQRFZi2oMXegUovmj1ifw5bCrHoZusRP4oS) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/2) |
@@ -43,7 +45,7 @@ mintbase.xyz currently returns HTTP 402 for every page, on mainnet as well as te
 
 Job 2 was started from the live website. Jobs 1 and 3–5 ran the same engine locally because of the per-IP limit of 2 per hour. The on-chain caps apply either way.
 
-**Sales: none.** Outside revenue is 0 NEAR and test revenue is 0 NEAR. We did not buy any of our own pieces. The 30/10/30/15/15 split is verified on testnet (job #33 and the commission NFT #32), and the contract code is the same.
+**Sales: none so far.** Outside revenue is 0 NEAR and test revenue is 0 NEAR. We did not buy any of our own pieces. The 30/10/30/15/15 sale split is proven on testnet during development (job #33 and the commission NFT #32), with the same contract code. On mainnet it is pending its first buyer.
 
 ## Pay in any token (NEAR Intents 1Click, mainnet)
 Commission panel → **Any token ▾** → pick an asset → **Pay with SOL**. The site gets a real 1Click quote (`dry:false`): for example, 0.002543 SOL ≈ $0.20 → 0.06 wNEAR, ~22 s. It shows a real deposit address with a Copy button and polls the swap status, which shows "pending deposit". Refunds go to the patron's own Intents balance (`refundType: INTENTS`). The recipient is `swarm.hlpok1lad.tg`, with `ft_transfer_call` → `ft_on_transfer`. In testing we sent no funds to any deposit address.

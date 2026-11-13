@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 import { aiMode } from "@/lib/ai";
-import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, MARKET_ID, accountUrl, NETWORK, NET_NAME } from "@/lib/config";
+import { getSwarm } from "@/lib/swarm";
+import { CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID, ROBOT_IDS, MARKET_ID, accountUrl, NETWORK, NET_NAME, DEV_HISTORY, nftUrl } from "@/lib/config";
 
 export const metadata = { title: "How it works · Muse Swarm" };
 export const dynamic = "force-dynamic";
@@ -13,11 +14,21 @@ const STEPS = [
   ["#13243F", "Collector", "Buys, and the contract splits the money", `Anyone with a ${NET_NAME} wallet can call buy. The contract sends the token, pays the owner 30%, and adds 10/30/15/15% to the curator, painter, critic and seller budgets. Anything above a robot's budget cap is swept to the owner. Robots pay for their next AI calls and gas from these budgets, so the swarm funds itself.`],
 ];
 
-export default function How() {
+export default async function How() {
   const ai = aiMode();
+  const main = NETWORK === "mainnet";
+  const stats = await getSwarm().then((s) => s.stats).catch(() => null);
+  const sold = Number(stats?.sold ?? 0);
+  const minted = Number(stats?.minted ?? 0);
   return (
     <div className="page">
       <h1 className="t">How it works</h1>
+      {main && (
+        <div className="card" style={{ marginTop: 14, lineHeight: 1.6 }}>
+          <p><span className="pill ok">Live on NEAR Mainnet</span> Contract <a className="lnk mono" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>. Robots: {Object.values(ROBOT_IDS).map((id, i) => <span key={id}>{i ? ", " : ""}<a className="lnk mono" href={accountUrl(id)} target="_blank" rel="noreferrer">{id}</a></span>)}. Owner and payout: <a className="lnk mono" href={accountUrl(OWNER_ID)} target="_blank" rel="noreferrer">{OWNER_ID}</a>.</p>
+          <p className="k" style={{ marginTop: 6 }}>{minted} NFTs minted on mainnet so far (e.g. <a className="lnk" href={nftUrl(1)} target="_blank" rel="noreferrer">token #1 on NearBlocks</a>); every robot transaction is in the <a className="lnk" href="/ledger">Ledger</a> with an explorer link. {sold === 0 ? "No outside sales yet. The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer." : `${sold} sale(s) so far, each split on-chain.`}</p>
+        </div>
+      )}
       <p className="sub">Muse Swarm is a small art business run by four AI robots. Each robot is its own NEAR account with its own budget. The owner sets the rules once, and a smart contract enforces them on every move.</p>
       <section className="sec">
         <h2>Try it in 60 seconds</h2>
@@ -91,14 +102,14 @@ export default function How() {
         <div className="card" style={{ lineHeight: 1.6 }}>
           <p><span className="pill ok">real</span> The contract, the robot accounts and keys, and every tx, budget, mint, listing, sale and split, all on {NET_NAME}. The live trends. IPFS pinning. Wallet purchases.</p>
           <p style={{ marginTop: 8 }}><span className={`pill ${ai.nearAi ? "ok" : "listed"}`}>{ai.nearAi ? "real" : "fallback"}</span> AI brains: <b>{ai.provider}</b>. Curator: {ai.curator}. Painter: {ai.painter}. Critic: {ai.critic}. Seller (pricing + marketing): {ai.seller}.{ai.nearAi && " If a NEAR AI call fails, that one step uses the labeled local fallback and the on-chain model field says fallback-*."}{!ai.nearAi && " The code already calls NEAR AI Cloud (Qwen3.6 for briefs, FLUX.2 for images, Qwen3-VL for critique) as soon as NEAR_AI_API_KEY is set. Until then, deterministic low-poly painting and a measured critic stand in, and their fees on-chain are labeled \"fallback\"."}</p>
-          {NETWORK === "mainnet" ? <p style={{ marginTop: 8 }}><span className="pill ok">mainnet</span> Real NEAR. No demo collector. Buys by our own accounts (the owner {OWNER_ID} and its sub-accounts) are labeled test and never counted as outside revenue.</p> : <p style={{ marginTop: 8 }}><span className="pill listed">testnet</span> All money is test NEAR. The demo collector ({COLLECTOR_ID}) is the owner&apos;s own test account and is shown separately in the P&amp;L.</p>}
+          {NETWORK === "mainnet" ? <p style={{ marginTop: 8 }}><span className="pill ok">mainnet</span> Real NEAR. No demo collector. Buys by our own accounts (the owner {OWNER_ID} and its sub-accounts) are labeled test and never counted as outside revenue. Development history: the full test record, including the proven sale split, is on testnet at <a className="lnk mono" href={DEV_HISTORY.explorer} target="_blank" rel="noreferrer">{DEV_HISTORY.contract}</a>.</p> : <p style={{ marginTop: 8 }}><span className="pill listed">testnet</span> All money is test NEAR. The demo collector ({COLLECTOR_ID}) is the owner&apos;s own test account and is shown separately in the P&amp;L.</p>}
         </div>
       </section>
 
       <section className="sec">
         <h2>Accounts</h2>
         <div className="card kv" style={{ marginTop: 0 }}>
-          {[["Contract", CONTRACT_ID], ...Object.entries(ROBOT_IDS).map(([r, id]) => [r[0].toUpperCase() + r.slice(1), id]), ["Owner", OWNER_ID], ["Treasury", TREASURY_ID], ["Guardian", GUARDIAN_ID], ["Demo collector", COLLECTOR_ID]].map(([k, v]) => [<span key={k + "k"}>{k}</span>, <a key={k} className="lnk mono" href={accountUrl(v)} target="_blank" rel="noreferrer">{v}</a>])}
+          {[["Contract", CONTRACT_ID], ...Object.entries(ROBOT_IDS).map(([r, id]) => [r[0].toUpperCase() + r.slice(1), id]), ["Owner", OWNER_ID], ["Treasury", TREASURY_ID], ["Guardian", GUARDIAN_ID], ...(main ? [] : [["Demo collector", COLLECTOR_ID]])].map(([k, v]) => [<span key={k + "k"}>{k}</span>, <a key={k} className="lnk mono" href={accountUrl(v)} target="_blank" rel="noreferrer">{v}</a>])}
         </div>
       </section>
       <p className="foot2">Muse Swarm is a NEAR hackathon project by Sina Jalilian. Sina&apos;s other entry is Atelier One, a single-agent studio and a separate project.</p>

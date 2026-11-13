@@ -19,7 +19,7 @@ export default function Nav() {
         {LINKS.map(([href, label]) => <a key={href} href={href} className={path === href ? "on" : ""}>{label}</a>)}
       </nav>
       <div className="nav-r">
-        <span className="live" title={NETWORK === "mainnet" ? "Runs on NEAR mainnet with real NEAR" : "Everything runs on NEAR testnet with test NEAR"}><svg viewBox="0 0 24 24"><path d="M6 18V6l12 12V6" /></svg>Live on NEAR{NETWORK !== "mainnet" && <span className="tn">testnet</span>}</span>
+        <span className="live" title={NETWORK === "mainnet" ? "Runs on NEAR mainnet with real NEAR" : "Everything runs on NEAR testnet with test NEAR"}><svg viewBox="0 0 24 24"><path d="M6 18V6l12 12V6" /></svg>Live on NEAR{NETWORK === "mainnet" ? <span className="tn main">Mainnet</span> : <span className="tn">testnet</span>}</span>
         <button className="wallet" onClick={() => (acct ? (confirm(`Disconnect ${acct}?`) && disconnect()) : connect())}>{acct ? acct : "Connect wallet"}</button>
       </div>
     </header>

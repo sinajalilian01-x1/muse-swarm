@@ -1,7 +1,7 @@
 import { getSwarm, aiMode } from "@/lib/swarm";
 import { accountBalance, hasRobotKeys, view } from "@/lib/near";
 import { json } from "@/lib/ratelimit";
-import { COLLECTOR_ID, CONTRACT_ID, MARKET_ID, NETWORK, ROBOT_IDS, ROLES, nearNum } from "@/lib/config";
+import { COLLECTOR_ID, CONTRACT_ID, DEV_HISTORY, EXPLORER, MARKET_ID, NETWORK, NET_LABEL, OWNER_ID, ROBOT_IDS, ROLES, accountUrl, nearNum, nftUrl } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +20,16 @@ export async function GET() {
     });
     const jobsToday = sw.stats.day === today ? sw.stats.jobs_today : 0;
     const canRun = sw.live && hasRobotKeys() && jobsToday < sw.rules.max_jobs_per_day && robots.every((r) => r.budget > 0.02 && r.dailyCapLeft > 0.02);
-    return json({ ok: true, canRunCycle: canRun, network: NETWORK, contract: CONTRACT_ID, live: sw.live, killSwitch: sw.kill_switch,
+    const main = NETWORK === "mainnet";
+    const tokenIds = (listings as { token_id?: string }[]).map((l) => Number(l.token_id)).filter((n) => Number.isFinite(n));
+    const latestToken = tokenIds.length ? Math.max(...tokenIds) : null;
+    return json({ ok: true, canRunCycle: canRun, liveOn: NET_LABEL, network: NETWORK, contract: CONTRACT_ID, owner: OWNER_ID, live: sw.live, killSwitch: sw.kill_switch,
+      explorer: { base: EXPLORER, contract: accountUrl(CONTRACT_ID), owner: accountUrl(OWNER_ID), robots: Object.fromEntries(ROLES.map((r) => [r, accountUrl(ROBOT_IDS[r])])), latestListedToken: latestToken != null ? nftUrl(latestToken) : null },
       jobsToday, maxJobsPerDay: sw.rules.max_jobs_per_day, listings: listings.length, activeJob: sw.active_job?.id ?? null,
-      demoCollectorBalance: nearNum(collector), robots, ai: aiMode(),
+      sales: { sold: Number(sw.stats.sold || 0), note: main
+        ? (Number(sw.stats.sold || 0) === 0 ? "No outside sales on mainnet yet. The 30/10/30/15/15 sale split is proven on testnet (development history); the mainnet split is pending its first buyer." : "Sales are split on-chain 30/10/30/15/15; buys by our own accounts are labeled test.")
+        : "Testnet: all money is test NEAR; demo-collector buys are labeled test." },
+      ...(main ? { developmentHistory: DEV_HISTORY } : { demoCollectorBalance: nearNum(collector) }), robots, ai: aiMode(),
       selling: { venues: ["muse-swarm (direct buy)", `${MARKET_ID} (Mintbase market, NEP-178/199)`], marketplaceApprovals: approvalsOn, marketingPlans: "Seller writes one per piece; X posts are drafts only, never posted" },
       stats: sw.stats });
   } catch (e) {

@@ -22,6 +22,11 @@ export const TX_API = NETWORK === "mainnet" ? "https://tx.main.fastnear.com" : "
 export const EXPLORER = NETWORK === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io";
 export const txUrl = (h: string) => `${EXPLORER}/txns/${h}`;
 export const accountUrl = (a: string) => `${EXPLORER}/address/${a}`;
+export const nftUrl = (tokenId: string | number) => `${EXPLORER}/nft-token/${CONTRACT_ID}/${tokenId}`;
+/** Professional network label for headings: "NEAR Mainnet" or "NEAR testnet". */
+export const NET_LABEL = NETWORK === "mainnet" ? "NEAR Mainnet" : "NEAR testnet";
+/** Earlier development deployment (testnet), kept as history when the site runs on mainnet. */
+export const DEV_HISTORY = { network: "testnet", contract: "swarm.museswarm.testnet", explorer: "https://testnet.nearblocks.io/address/swarm.museswarm.testnet" };
 export const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
 /** Same-origin image proxy so WebGL can paint IPFS images onto the 3D easel. */
 export const mediaUrl = (cid?: string | null) => (!cid ? "" : /^(https?:|data:)/.test(cid) ? cid : `/api/media/${cid.replace(/^ipfs:\/\//, "")}`);

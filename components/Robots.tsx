@@ -99,7 +99,7 @@ export default function Robots() {
           <h2>Swarm P&amp;L <span className="pill">honest numbers</span></h2>
           <div className="pnl">
             <div><b>{n(st.revenue_total, 3)}</b><span>NEAR sales revenue ({st.sold} sold)</span></div>
-            <div><b>{n(d.revenue.external, 3)}</b><span>from outside wallets (excludes our demo collector and test accounts)</span></div>
+            <div><b>{n(d.revenue.external, 3)}</b><span>from outside wallets (excludes {NETWORK === "mainnet" ? "our own test accounts" : "our demo collector and test accounts"})</span></div>
             <div><b>{n(st.owner_paid_total, 3)}</b><span>paid to the owner ({rules.split.owner / 100}% + sweeps)</span></div>
             <div><b>{n(robotsEarned, 3)}</b><span>robots earned (shares)</span></div>
             <div><b>{n(st.fees_total, 4)}</b><span>AI fees → treasury</span></div>

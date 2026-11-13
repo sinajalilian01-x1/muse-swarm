@@ -1,4 +1,6 @@
-# Muse Swarm: mainnet plan
+# Muse Swarm: mainnet plan (executed)
+
+> **Live on NEAR Mainnet since 13 Nov 2026, 05:47 CET.** This plan has been carried out. The live record (accounts, txs, NFTs, spend) is `MAINNET_LIVE.md`. Sections written before the launch are kept for reference. Where they say "testnet today", read it as development history.
 
 **Status (13 Nov 2026, ~05:45 CET):**
 - **Approved by Sina.** Root and payout account: `hlpok1lad.tg`.
@@ -35,7 +37,7 @@ The test cycle at a 0.05 NEAR price is bought by `hlpok1lad.tg` itself. The app 
 
 **Code fixed for a `.tg` root:** the contract picked wNEAR by a `.near` suffix, which would have meant `wrap.testnet` for `swarm.hlpok1lad.tg`. It now checks for `.testnet`, and a unit test covers it (49 tests pass).
 
-### Exact steps (once the balance is ≥ 4.83 NEAR)
+### Exact steps (executed 13 Nov, 05:47 CET)
 
 ```bash
 cd /workspace/muse-swarm/app
@@ -56,9 +58,9 @@ Testnet stays restorable from `/workspace/secrets/muse-swarm/app.env`. A cheap `
 ## Generic plan (any root)
 
 
-## What is already mainnet-ready in the code
+## Network differences in the code
 
-| Part | Testnet today | Mainnet behaviour (`NEXT_PUBLIC_NETWORK=mainnet`) |
+| Part | Testnet (development history) | Mainnet (live) (`NEXT_PUBLIC_NETWORK=mainnet`) |
 |---|---|---|
 | RPC, tx API, explorer | fastnear testnet, testnet.nearblocks.io | `rpc.mainnet.fastnear.com`, `tx.main.fastnear.com`, nearblocks.io (`lib/config.ts`) |
 | Wallets | NEAR Connect on testnet | NEAR Connect on mainnet (same code; network from the flag) |
@@ -99,7 +101,7 @@ I verified this locally: a mainnet build (`NEXT_PUBLIC_NETWORK=mainnet NEXT_PUBL
 
 The storage (~5 NEAR) stays locked in the contract account, not spent. Most of it comes back if the contract state is ever cleaned up.
 
-## Exact steps (after Sina says yes and funds)
+## Original generic steps (pre-launch reference; superseded by the hlpok1lad.tg steps above)
 
 1. **Sina** creates `museswarm.near` from his wallet and funds it with ~8.5 NEAR. He decides the owner/payout account (e.g. `sina.near`).
 2. On the box, keeping keys outside the repo:
