@@ -2,7 +2,7 @@ import { accountBalance, accessKeys } from "@/lib/near";
 import { getSwarm, getJobs } from "@/lib/swarm";
 import { ledger } from "@/lib/ledger";
 import { json } from "@/lib/ratelimit";
-import { COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, OWNER_ID, ROBOT_IDS, ROLES, TREASURY_ID } from "@/lib/config";
+import { COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, OWNER_ID, ROBOT_IDS, ROLES, TREASURY_ID, isTestBuyer } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +15,7 @@ export async function GET() {
     const gas: Record<string, string> = {};
     for (const t of led.txs) gas[t.signer] = (BigInt(gas[t.signer] || "0") + BigInt(t.burnt)).toString();
     // Our own test accounts (demo collector, test buyers under the swarm root) never count as outside demand.
-    const ownRoot = CONTRACT_ID.split(".").slice(1).join(".");
-    const ours = (b: string | null) => !!b && (b === COLLECTOR_ID || b.endsWith(`.${ownRoot}`) || b === ownRoot);
+    const ours = (b: string | null) => isTestBuyer(b);
     const demoRevenue = jobs.filter((j) => j.status === "sold" && ours(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
     const extRevenue = jobs.filter((j) => j.status === "sold" && j.buyer && !ours(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
     // Agent-to-agent payments (contract v2 `agent_paid` events) and each agent's track record.

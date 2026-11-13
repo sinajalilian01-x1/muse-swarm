@@ -44,6 +44,14 @@ export function nearToYocto(n: number | string): string {
 export const MARKET_ID = process.env.NEXT_PUBLIC_MARKET_ID || (NETWORK === "mainnet" ? "simple.market.mintbase1.near" : "market-v2-beta.mintspace2.testnet");
 export const MARKET_NAME = "Mintbase";
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://muse-swarm.vercel.app";
+/** Our own test wallets (demo collector, test buyers under the swarm root, the funding bank). Their buys are always
+ * labeled "test" and never counted as outside sales. */
+export const TEST_BUYERS = (process.env.NEXT_PUBLIC_TEST_BUYERS || "museswarm-bank1.testnet").split(",").map((s) => s.trim()).filter(Boolean);
+export function isTestBuyer(id?: string | null) {
+  if (!id) return false;
+  const root = CONTRACT_ID.split(".").slice(1).join(".");
+  return id === COLLECTOR_ID || id === root || id.endsWith(`.${root}`) || TEST_BUYERS.includes(id);
+}
 export const ROBOT_META: Record<Role, { name: string; color: string; job: string; methods: string[] }> = {
   curator: { name: "Curator", color: "#16A39C", job: "Reads live trends and writes the art brief", methods: ["curator_open_job", "robot_refuel"] },
   painter: { name: "Painter", color: "#F47A38", job: "Paints the brief and pins it to IPFS", methods: ["painter_submit", "robot_refuel"] },

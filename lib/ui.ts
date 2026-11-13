@@ -1,12 +1,13 @@
 "use client";
-import { ROBOT_IDS, ROBOT_META, COLLECTOR_ID, GUARDIAN_ID, OWNER_ID, txUrl } from "./config";
+import { ROBOT_IDS, ROBOT_META, COLLECTOR_ID, GUARDIAN_ID, OWNER_ID, txUrl, isTestBuyer } from "./config";
 export function toast(msg: string, ms = 3200) {
   const t = document.getElementById("toast"); if (!t) return;
   t.textContent = msg; t.classList.add("show"); clearTimeout((t as any)._h); (t as any)._h = setTimeout(() => t.classList.remove("show"), ms);
 }
 export function who(id: string) {
   for (const [r, a] of Object.entries(ROBOT_IDS)) if (a === id) return { name: ROBOT_META[r as keyof typeof ROBOT_META].name, color: ROBOT_META[r as keyof typeof ROBOT_META].color };
-  if (id === COLLECTOR_ID) return { name: "Demo collector", color: "#5D6778" };
+  if (id === COLLECTOR_ID) return { name: "Demo collector (test)", color: "#5D6778" };
+  if (isTestBuyer(id)) return { name: `Test wallet (${id.split(".")[0]})`, color: "#8A94A3" };
   if (id === GUARDIAN_ID) return { name: "Guardian", color: "#13243F" };
   if (id === OWNER_ID) return { name: "Owner", color: "#0F4A4A" };
   return { name: id.length > 22 ? id.slice(0, 10) + "…" + id.slice(-8) : id, color: "#8A94A3" };

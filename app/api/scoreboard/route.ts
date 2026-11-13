@@ -2,7 +2,7 @@ import { getSwarm, getJobs, getCommissions } from "@/lib/swarm";
 import { accountBalance, view } from "@/lib/near";
 import { ledger } from "@/lib/ledger";
 import { json } from "@/lib/ratelimit";
-import { COLLECTOR_ID, CONTRACT_ID, TREASURY_ID, EXPLORER, nearNum } from "@/lib/config";
+import { CONTRACT_ID, TREASURY_ID, EXPLORER, nearNum, isTestBuyer } from "@/lib/config";
 import type { Job } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +22,16 @@ export async function GET() {
       if (e.event === "agent_paid") { a2a++; a2aAmt += BigInt(e.data.amount); }
       if (e.event === "sold" && e.data.venue && !["muse-swarm", "commission"].includes(e.data.venue)) marketSales++;
     }
-    const ownRoot = CONTRACT_ID.split(".").slice(1).join(".");
-    const ours = (b: string | null) => !!b && (b === COLLECTOR_ID || b.endsWith(`.${ownRoot}`) || b === ownRoot);
-    const outside = jobs.filter((j) => j.status === "sold" && j.buyer && !ours(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
+    const sold = jobs.filter((j) => j.status === "sold" && j.buyer);
+    const outside = sold.filter((j) => !isTestBuyer(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
+    const testRev = sold.filter((j) => isTestBuyer(j.buyer)).reduce((a, j) => a + BigInt(j.price), 0n);
+    const realBuyers = new Set(sold.filter((j) => !isTestBuyer(j.buyer)).map((j) => j.buyer)).size;
     const since = Number(first?.opened_at_ms || Date.now());
     const hours = Math.max(1, Math.round((Date.now() - since) / 3_600_000));
     const v = {
       since, hours, days: +(hours / 24).toFixed(1),
-      revenue: nearNum(sw.stats.revenue_total), outsideRevenue: nearNum(outside.toString()), ownerPaid: nearNum(sw.stats.owner_paid_total),
+      revenue: nearNum(sw.stats.revenue_total), outsideRevenue: nearNum(outside.toString()), testRevenue: nearNum(testRev.toString()), realBuyers,
+      realCommissions: cms.filter((c) => c.status === "delivered" && !isTestBuyer(c.patron)).length, ownerPaid: nearNum(sw.stats.owner_paid_total),
       robotsEarned: nearNum(sw.stats.robots_earned_total), jobs: sw.stats.jobs, minted: sw.stats.minted, sold: sw.stats.sold, rejected: sw.stats.rejected,
       agentPayments: a2a, agentPaid: nearNum(a2aAmt.toString()), treasury: nearNum(treasury), commissions: cms.length,
       delivered: cms.filter((c) => c.status === "delivered").length, marketSales, txs: led.total, live: sw.live,

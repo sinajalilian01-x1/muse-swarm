@@ -7,7 +7,7 @@ import { toNear, txUrl as txLink, NETWORK } from "@/lib/config";
 import { PAY_ASSETS } from "@/lib/intents";
 
 interface Latest { img: string; title: string; price: string | number; status: "listed" | "sold"; buyer?: string; tokenId?: string | null; jobId?: string; priceY?: string }
-interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; links: Record<string, string> }
+interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; testRevenue: number; realBuyers: number; realCommissions: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; links: Record<string, string> }
 interface FeedTx { hash: string; signer: string; method?: string; ok: boolean; error?: string; fresh?: boolean }
 
 let mounted = false;
@@ -227,10 +227,10 @@ export default function Home() {
       </div>
       <main className="hero-copy">
         <div className="board" aria-live="polite">
-          <p className="eyebrow">{board ? <>No humans · ran itself for {board.days >= 1 ? `${board.days} days` : `${board.hours} h`} and earned {board.revenue} NEAR</> : "AI swarm art studio on NEAR"} <i></i></p>
+          <p className="eyebrow">{board ? <>No humans · ran itself for {board.days >= 1 ? `${board.days} days` : `${board.hours} h`} · {board.jobs} jobs · {board.agentPayments} agent payments</> : "AI swarm art studio on NEAR"} <i></i></p>
           <div className="chips">
-            <a href={board?.links.contract || "/ledger"} target="_blank" rel="noreferrer" title="Total sales, split on-chain"><b>{board ? board.revenue : "…"}</b> NEAR sales ↗</a>
-            <a href="/ledger" title="Jobs the robots ran"><b>{board ? board.jobs : "…"}</b> jobs</a>
+            <a href="/robots" title="Sales to real outside wallets. Our own test buys are excluded."><b>{board ? board.outsideRevenue : "…"}</b> NEAR from real buyers ({board ? board.realBuyers : "…"})</a>
+            <a href={board?.links.contract || "/ledger"} target="_blank" rel="noreferrer" title="Buys by our own test wallets, shown separately"><b>{board ? board.testRevenue.toFixed(2) : "…"}</b> NEAR test buys ↗</a>
             <a href="/robots" title="Robots paying robots for briefs and appraisals"><b>{board ? board.agentPayments : "…"}</b> agent→agent payments</a>
             <a href={board?.links.treasury || "/robots"} target="_blank" rel="noreferrer" title="AI fees the robots paid into the treasury"><b>{board ? board.treasury.toFixed(2) : "…"}</b> NEAR treasury ↗</a>
             <a href="/gallery" title="Sold on Mintbase's market or commissioned by visitors"><b>{board ? board.delivered + board.marketSales : "…"}</b> commissions + market sales</a>
