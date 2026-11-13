@@ -118,7 +118,7 @@ export async function accountBalance(id: string): Promise<string> {
 export async function accessKeys(id: string): Promise<{ public_key: string; permission: any }[]> {
   for (const url of RPC_URLS) {
     try {
-      const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store",
+      const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", signal: AbortSignal.timeout(5000),
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_access_key_list", finality: "final", account_id: id } }) });
       const j = await r.json();
       if (j.result) return j.result.keys.map((k: any) => ({ public_key: k.public_key, permission: k.access_key.permission }));

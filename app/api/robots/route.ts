@@ -6,12 +6,24 @@ import { COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, OWNER_ID, ROBOT_IDS, ROLES, TRE
 
 export const dynamic = "force-dynamic";
 
+const acctCache = new Map<string, { t: number; v: { id: string; balance: string; keys: Awaited<ReturnType<typeof accessKeys>> } }>();
+
 /** Robot accounts, their on-chain access keys and balances, and the swarm's P&L (including gas the robots burned). */
 export async function GET() {
   try {
     const [swarm, led, jobs] = await Promise.all([getSwarm(), ledger(100, 0), getJobs(undefined, 50)]);
     const accounts = [...ROLES.map((r) => ROBOT_IDS[r]), GUARDIAN_ID, TREASURY_ID, OWNER_ID, COLLECTOR_ID, CONTRACT_ID];
-    const info = await Promise.all(accounts.map(async (id) => ({ id, balance: await accountBalance(id), keys: await accessKeys(id) })));
+    // Read accounts in small batches (public RPCs rate-limit bursts) and reuse a warm instance's reads for a few seconds.
+    const info: { id: string; balance: string; keys: Awaited<ReturnType<typeof accessKeys>> }[] = [];
+    for (let i = 0; i < accounts.length; i += 3) {
+      info.push(...(await Promise.all(accounts.slice(i, i + 3).map(async (id) => {
+        const c = acctCache.get(id);
+        if (c && Date.now() - c.t < 8000) return c.v;
+        const v = { id, balance: await accountBalance(id), keys: await accessKeys(id) };
+        if (v.keys.length) acctCache.set(id, { t: Date.now(), v });
+        return v;
+      }))));
+    }
     const gas: Record<string, string> = {};
     for (const t of led.txs) gas[t.signer] = (BigInt(gas[t.signer] || "0") + BigInt(t.burnt)).toString();
     // Our own test accounts (demo collector, test buyers under the swarm root) never count as outside demand.
@@ -36,7 +48,9 @@ export async function GET() {
       critic: { reviews: reviewed.length, approvalRate: reviewed.length ? approved.length / reviewed.length : 0, rejected: reviewed.length - approved.length },
       seller: { listed: listedEver.length, sellThrough: listedEver.length ? sold.length / listedEver.length : 0, avgPrice: avg(sold.map((j) => Number(BigInt(j.price) / 10n ** 18n) / 1e6)) },
     };
-    return json({ gigs, reputation, swarm, accounts: info, gasBurntBySigner: gas, ledgerTxs: led.total, revenue: { demo: demoRevenue.toString(), external: extRevenue.toString(), sampleJobs: jobs.length } });
+    // Short edge cache: the page loads instantly for every visitor, and data is never more than a few seconds old.
+    return Response.json({ gigs, reputation, swarm, accounts: info, gasBurntBySigner: gas, ledgerTxs: led.total, revenue: { demo: demoRevenue.toString(), external: extRevenue.toString(), sampleJobs: jobs.length } },
+      { headers: { "cache-control": "public, s-maxage=5, stale-while-revalidate=55" } });
   } catch (e) {
     return json({ error: String((e as Error).message || e) }, 502);
   }
