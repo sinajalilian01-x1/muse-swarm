@@ -13,9 +13,9 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
   - mint tx (`nft_mint` event, Critic score 8.7): [5jKUomjq…](https://nearblocks.io/txns/5jKUomjqw3X2PXZ81cKqwa2oxsnncsmxFYVnZHGqeQLW);
   - listing tx (0.05 NEAR, also on Mintbase): [5DfxRDP7…](https://nearblocks.io/txns/5DfxRDP7pQ7YsuqgmNfpm6L3SAchXGZKcSKdWqP4dFci);
   - token page: [nearblocks.io/nft-token/swarm.hlpok1lad.tg/5](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/5).
-- **Contract deploy:** [4DWzVfi3…](https://nearblocks.io/txns/4DWzVfi3DR4aGLeYp6UZs3gKMqxUGSCMQ4pvx6Lc3tW3). All 30 mainnet txs are in `MAINNET_LIVE.md` and on the [Ledger](https://muse-swarm.vercel.app/ledger).
+- **Contract deploy:** [4DWzVfi3…](https://nearblocks.io/txns/4DWzVfi3DR4aGLeYp6UZs3gKMqxUGSCMQ4pvx6Lc3tW3). Every mainnet tx is in `MAINNET_LIVE.md` and on the [Ledger](https://muse-swarm.vercel.app/ledger).
 
-**Status (13 Nov 2026, 06:30 CET):** 6 NFTs have been minted and listed on mainnet by the robots, priced by NEAR AI Cloud at 0.05–0.145 NEAR. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
+**Status (13 Nov 2026, 06:50 CET):** 7 NFTs have been minted and listed on mainnet by the robots, priced by NEAR AI Cloud at 0.05–0.175 NEAR, with Seller markdowns since. The robots now run on their own, up to 12 jobs a day through 17 Nov 2026, so the live count on the site and the Ledger will be higher. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
 
 **Development history (testnet):** [`swarm.museswarm.testnet`](https://testnet.nearblocks.io/address/swarm.museswarm.testnet) holds 33 earlier jobs and every tested money path (see "Development history" below).
 
@@ -46,7 +46,7 @@ Some works score below 7.0, roughly one in five. The contract refuses to mint th
 - **Agents with accounts, not shared API keys.** Each agent has a NEAR account, a budget, a key scoped to one method, and a public track record. You can audit what each agent spent, earned and decided, on-chain.
 - **Agents hire agents.** On every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal. The money moves budget to budget inside the contract (`agent_paid` events). Each agent's earnings, payments and track record (hit rate, average score, approval rate, sell-through) are on the Robots page.
 - **A business that pays for itself, within limits.** Sales refill the agents' budgets, and they spend that on AI, storage and gas (`robot_refuel`). The owner's caps are enforced by the contract: price floor and max, mint threshold, daily spend cap, per-call fee cap, jobs per day, budget cap with sweeps, and a kill switch.
-- **Autonomous.** A daily Vercel Cron (`/api/cron/cycle`) runs a whole cycle with no human, and the listing then waits for a collector. Visitors can also start cycles.
+- **Autonomous.** Vercel Cron calls `/api/cron/cycle` 12 times a day, one slot every 2 hours, and each call runs a whole cycle with no human. On mainnet this runs through 17 Nov 2026; an end-date guard stops it from 18 Nov 00:00 CET until the owner renews it. Each listing then waits for a collector. Visitors can also start cycles.
 - **It sells beyond its own website.** The Seller cross-lists every piece on Mintbase's market (NEP-178 approval + NEP-199 payout). It writes and pins a marketing plan, which is the NFT's NEP-177 `reference`, and logs it on-chain (`marketing_plan`). Proper NEP-177 metadata (description, absolute media, reference) means wallets and marketplaces show real cards.
 - **Customers, not just demos.** Commissions are paid up front in NEAR or wNEAR, or in any token through NEAR Intents on mainnet. The contract escrows the payment until the Seller delivers.
 - **Honest numbers.** Buys by our own accounts (`hlpok1lad.tg` and its sub-accounts on mainnet; the demo collector and `museswarm.testnet` accounts during development) are labeled "test" everywhere and never counted as outside sales. Outside revenue on mainnet so far: 0.
@@ -56,7 +56,7 @@ Some works score below 7.0, roughly one in five. The contract refuses to mint th
 
 ```mermaid
 flowchart LR
-  V[Visitor or daily cron] -->|Run a cycle| API[Next.js API on Vercel<br/>one HTTP step = one agent tx]
+  V[Visitor or scheduled cron] -->|Run a cycle| API[Next.js API on Vercel<br/>one HTTP step = one agent tx]
   T[Google Trends + Hacker News] --> API
   AI[NEAR AI Cloud<br/>or labeled fallback] --> API
   API -->|pin| IPFS[(Pinata IPFS)]
@@ -116,11 +116,11 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 | Images | **Real:** pinned on IPFS (Pinata) |
 | Wallet purchases and patron funding | **Real:** NEAR Connect on mainnet. Browser purchases were tested on testnet |
 | Commissions (NEAR and wNEAR) | **Open on mainnet**, with no mainnet commission yet. Delivered end to end on testnet |
-| Mintbase marketplace listing and sales | **Real:** all 6 mainnet NFTs are listed on Mintbase's market contract `simple.market.mintbase1.near`. The mintbase.xyz website currently returns HTTP 402, so the Gallery's **Buy via Mintbase** calls the market contract directly. A Mintbase sale was tested on testnet (`market-v2-beta.mintspace2.testnet`) |
+| Mintbase marketplace listing and sales | **Real:** every mainnet NFT is listed on Mintbase's market contract `simple.market.mintbase1.near`. The mintbase.xyz website currently returns HTTP 402, so the Gallery's **Buy via Mintbase** calls the market contract directly. A Mintbase sale was tested on testnet (`market-v2-beta.mintspace2.testnet`) |
 | Pay in any token (NEAR Intents 1Click) | **Live on mainnet:** a real deposit address with status polling. No outside deposit has arrived yet |
 | Marketing plans | **Real:** written per piece, pinned to IPFS, logged on-chain. Written by NEAR AI when the key is set, otherwise by a labeled `fallback-marketer`. X posts are **drafts only, never posted** |
 | Sales numbers | 0 outside sales on mainnet so far. Our own and test buys are labeled **test** and never counted as outside sales |
-| Daily autonomous cycle | **Real:** Vercel Cron → `/api/cron/cycle` |
+| Autonomous cycles | **Real:** Vercel Cron → `/api/cron/cycle`, 12 slots a day, mainnet through 17 Nov 2026 (end-date guard) |
 | AI brains | **Real: NEAR AI Cloud, live.** Curator brief (Qwen3.6), Painter image (FLUX.2-klein), Critic review of the image (Qwen3-VL), Seller price + marketing plan (Qwen3.6). The home scoreboard shows "NEAR AI Cloud brains", and `/api/health` shows the models. If a single NEAR AI call fails, that step uses a labeled local fallback, and the on-chain `model` field then says `fallback-*`. |
 
 ## Guardrails for a public demo
@@ -148,8 +148,8 @@ Init: `new(owner_id, treasury_id, guardian_id, curator_id, painter_id, critic_id
 Rules on mainnet:
 - Price floor 0.05 NEAR and max price 0.5 NEAR.
 - Mint threshold 7.0.
-- Daily spend cap 0.1 NEAR per robot, and a fee cap of 0.01 NEAR per call.
-- Budget cap 0.25 NEAR, with anything above it swept to the owner.
+- Daily spend cap 0.2 NEAR per robot (raised from 0.1 on 13 Nov with the owner's `update_rules`), and a fee cap of 0.01 NEAR per call.
+- Budget cap 0.5 NEAR, with anything above it swept to the owner.
 - 12 jobs per day.
 - Sale split: owner 30, curator 10, painter 30, critic 15, seller 15 (%).
 
@@ -294,7 +294,7 @@ The site runs on mainnet behind `NEXT_PUBLIC_NETWORK=mainnet`, with these parts:
 
 On mainnet the robots prepay 30 Tgas (the Seller 70 Tgas), so a robot account holding 0.05 NEAR can pay its own gas.
 
-The robots have minted and listed 6 NFTs at NEAR AI Cloud prices (0.05–0.145 NEAR; #1 was marked down by the Seller from 0.175), both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** Launching cost ≈ 4.85 NEAR from the root. ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
+The robots minted and listed 7 NFTs by 06:50 CET at NEAR AI Cloud prices (0.05–0.175 NEAR, with Seller markdowns since). They now run autonomously, up to 12 jobs a day through 17 Nov 2026, both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** Launching cost ≈ 4.85 NEAR from the root. ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
 
 ## License
 

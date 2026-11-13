@@ -26,7 +26,7 @@ The full keys of the robots and the guardian were deleted after their function-c
 | `fund` robot budgets 0.4 NEAR | [FekCGnWj…](https://nearblocks.io/txns/FekCGnWjPcD1sShp1UbtoKAbQiphePvZKGrKYV1fnKGQ) |
 | Gas top-up 0.07 NEAR → seller | [9ZxrDwty…](https://nearblocks.io/txns/9ZxrDwtyEJARocJapSQtRXTH1BCkPfoxMfXWJfTxvF4z) |
 
-Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; per-robot daily cap 0.1 NEAR; fee cap 0.01; budget cap 0.25; at most 12 jobs a day. Site limits: 2 free cycles per IP per hour and 3 per hour globally. Paid commissions skip the pace.
+Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; **per-robot daily cap 0.2 NEAR** (raised from 0.1 on 13 Nov, 06:40 CET, owner `update_rules`: [2m8Jaj18…](https://nearblocks.io/txns/2m8Jaj18LCNHyVKJxzZDtbTYwCs1oSyDPLdg3N4kEfb4)); fee cap 0.01; **budget cap 0.5** (was 0.25, so funded budgets aren't swept back to the owner on a sale); at most 12 jobs a day. Site limits: 2 free cycles per IP per hour and 3 per hour globally. Paid commissions skip the pace.
 
 ## Six NFTs minted and listed (NEAR AI Cloud: Qwen3.6 brief, pricing and marketing; FLUX.2 image; Qwen3-VL critic)
 | # | Title | Trend | Critic | AI price | Curator | Painter | Critic (mint) | Seller (list) | Token |
@@ -40,6 +40,10 @@ Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; per-robot daily cap 0.1 NEAR
 
 Job 6 ran at 06:25 CET, after the launch batch. In the same run the Seller marked down token #1 from 0.175 to 0.145 NEAR, its own markdown of a listing unsold for 15 min, on both venues: [CRfDY935…](https://nearblocks.io/txns/CRfDY935D9ui4wXek7bvgid1bqGa51UhrFsRuuAFyPx3). After that the Seller reached its 0.1 NEAR daily cap, which resets at 01:00 CET (00:00 UTC). Each listing costs the Seller about 0.0144 NEAR of cap, including the 0.01 NEAR Mintbase storage deposit, so about 6 fully listed pieces fit per day.
 
+Job 7 (first run through the production cron handler, 06:50 CET): "Geometric Halo Fire", trend "xbox 25th anniversary", Critic 8.7, AI price 0.05 NEAR.
+- Txs: curator [BsE6nH45…](https://nearblocks.io/txns/BsE6nH45hEBscMNs4HrCoDEC9EUqDcRpBrY2S9Sghocf), painter [JAqcUtgm…](https://nearblocks.io/txns/JAqcUtgmg8sZnk49F3s9UmGaXm4imCWfFQaEdW5VkoLC), critic and mint [7sGbsvFA…](https://nearblocks.io/txns/7sGbsvFANxQ9yaBYiD8x75yTWCTdDeoyB9Z49CrF3F2b), listing [89LiEb5F…](https://nearblocks.io/txns/89LiEb5F7vzfDLUCENwM7T2vdBbyKxZQtPrHuQAmXKwE).
+- The Seller also marked down #2 from 0.08 to 0.065 ([ECNRr7Lq…](https://nearblocks.io/txns/ECNRr7LqijxAEKypUMZYK6wnXySxke6xngqQ6J7MsTci)) and #1 from 0.145 to 0.12 ([5kMnR5zv…](https://nearblocks.io/txns/5kMnR5zvJBioUmApCtqfJCVje8iAs6mYK3gp3hsFJcpL)).
+
 Every token is for sale in two places:
 - directly from `swarm.hlpok1lad.tg`, at https://muse-swarm.vercel.app/gallery;
 - on Mintbase's mainnet market, [`simple.market.mintbase1.near`](https://nearblocks.io/address/simple.market.mintbase1.near) (NEP-178 approval). `get_listing` returns prices of 0.145, 0.08, 0.05, 0.05, 0.05 and 0.05 NEAR for tokens 1–6.
@@ -52,6 +56,27 @@ Job 2 was started from the live website. Jobs 1 and 3–5 ran the same engine lo
 
 ## Pay in any token (NEAR Intents 1Click, mainnet)
 Commission panel → **Any token ▾** → pick an asset → **Pay with SOL**. The site gets a real 1Click quote (`dry:false`): for example, 0.002543 SOL ≈ $0.20 → 0.06 wNEAR, ~22 s. It shows a real deposit address with a Copy button and polls the swap status, which shows "pending deposit". Refunds go to the patron's own Intents balance (`refundType: INTENTS`). The recipient is `swarm.hlpok1lad.tg`, with `ft_transfer_call` → `ft_on_transfer`. In testing we sent no funds to any deposit address.
+
+## Autonomy through 17 Nov 2026
+
+**Autonomous schedule (approved by Sina, 13 Nov):** 12 Vercel Cron slots a day, one every 2 hours at :17 past even UTC hours (01:17, 03:17 … 23:17 CET, ±59 min on the Hobby plan). Each slot runs one full job (`/api/cron/cycle?slot=N`). The robots choose the trend, art, critique, price, markdowns and marketing themselves.
+- **End-date guard:** the handler refuses to run from **18 Nov 2026 00:00 CET**. Nothing runs after 17 Nov without a new go-ahead.
+- **Affordability check:** a job opens only if every robot can still finish it today, counting both its budget and its daily cap, so no piece is left minted but unlisted.
+- **Markdown reserve:** the Seller marks a listing down only if enough of its day is left for the next listing.
+
+Robot budgets topped up from the root with `fund(role)` on 13 Nov, 06:42 CET (0.90 NEAR total):
+
+| Robot | Amount (NEAR) | Tx |
+|---|---|---|
+| Curator | 0.05 | [6Vg9qW42…](https://nearblocks.io/txns/6Vg9qW42MLadevgN7zTMmkSgeqWVj1c4ZHq77qtXbGYP) |
+| Painter | 0.15 | [FQgUH136…](https://nearblocks.io/txns/FQgUH136hCb9iK8WXCSq4W9tEHeBUQ5d4aAzstDzTDbT) |
+| Critic | 0.23 | [DH8dkh7Y…](https://nearblocks.io/txns/DH8dkh7YUiThr7iMkXjjrgcucpU6ZVVzUsroHYE4d6cp) |
+| Seller | 0.47 | [2MDGduLY…](https://nearblocks.io/txns/2MDGduLYSo3P4YMPMfWrLxWqUnBhRWeDnWbZNpNrkEJb) |
+
+Expected output and spend:
+- **Up to 12 jobs a day.** At the measured cost the Seller uses ~0.173 NEAR of its 0.2 daily cap on 12 listings, so cap and jobs/day match. Pieces the Critic rejects stay rejected.
+- **Each job costs ~0.036 NEAR** out of robot budgets: NFT and listing storage, the 0.01 NEAR Mintbase deposit, AI fees and gas. Markdowns cost ~0.011 each.
+- **Through 17 Nov:** about 50 more jobs, ≈ 1.9–2.0 NEAR. The 0.9 NEAR funded today lasts about 25 jobs, to around midday on 15 Nov. After that the affordability check pauses the robots cleanly unless the owner tops up again (≈ 0.85 NEAR covers 15–17 Nov).
 
 ## NEAR spent (root hlpok1lad.tg)
 - Before the launch (05:47 CET): **6.6506 NEAR**. After: **5.1356 NEAR**. That includes **+3.3353 NEAR** that arrived from `intents.near` at 05:56 CET, which Sina sent, not us.

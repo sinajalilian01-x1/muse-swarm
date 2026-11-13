@@ -5,7 +5,7 @@
 **Status (13 Nov 2026, ~05:45 CET):**
 - **Approved by Sina.** Root and payout account: `hlpok1lad.tg`.
 - **LIVE since 05:47 CET.** Sina funded the wallet (6.65 NEAR). The lean launch below ran as planned and spent ≈ 4.85 NEAR from the root; ≈ 4.73 NEAR of that is still in our accounts.
-- 6 NFTs are minted and listed. The full record is in `MAINNET_LIVE.md`.
+- 7 NFTs were minted and listed by 06:50 CET. The robots now run autonomously through 17 Nov. The full record is in `MAINNET_LIVE.md`.
 - Changed from the plan: the robots prepay 30 Tgas (the Seller 70) and refuel 0.03 NEAR at a time, because 100 Tgas prepaid reserves 0.1 NEAR, more than a robot's balance.
 
 ### Approved setup (hlpok1lad.tg)
@@ -25,9 +25,9 @@ The test cycle at a 0.05 NEAR price is bought by `hlpok1lad.tg` itself. The app 
 **Tight limits on mainnet:**
 - On-chain rules:
   - price floor 0.05, max 0.5;
-  - daily spend cap 0.1 NEAR per robot;
+  - daily spend cap 0.1 NEAR per robot (raised to 0.2 on 13 Nov, 06:40 CET, with Sina's approval);
   - fee cap 0.01;
-  - budget cap 0.25 (anything above is swept to `hlpok1lad.tg`);
+  - budget cap 0.25, raised to 0.5 on 13 Nov (anything above is swept to `hlpok1lad.tg`);
   - 12 jobs per day.
 - Server limits:
   - free demo cycles: 2 per visitor per hour, 3 per hour swarm-wide (read from chain);

@@ -91,7 +91,7 @@ export default async function How() {
         <div className="grid g3">
           {[
             ["Agents with accounts, not API keys", "Each AI agent is a NEAR account with a budget, a scoped key and a public track record. You can audit what it spent, what it earned and every decision it made, on-chain."],
-            ["A business that pays for itself", "Sales refill the robots' budgets, and they spend that on AI, storage and gas within caps the owner set. A daily cron runs a cycle with no human in the loop. Anyone can back a robot with fund(role)."],
+            ["A business that pays for itself", "Sales refill the robots' budgets, and they spend that on AI, storage and gas within caps the owner set. A scheduled cron runs one cycle every two hours (up to 12 a day) with no human in the loop; on mainnet it runs through 17 Nov 2026, then stops until the owner renews it. Anyone can back a robot with fund(role)."],
             ["A template for agent teams", "Swap the art for any pipeline (research, design, moderation). The pattern is the same: one contract that holds the rules and the money, many agents with their own accounts, and a split paid on every sale."],
           ].map(([t, p]) => <div className="card" key={t}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
