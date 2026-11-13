@@ -167,14 +167,16 @@ export default function Home() {
       pushTx({ hash: r.hash, signer: acct, method: how === "near" ? "commission" : "commission_wnear", ok: true });
       setCOpen(false);
       setStatus(`Paid on-chain (commission #${r.commissionId}). The Curator is briefing the Painter…`);
-      let res: any = null;
-      for (let i = 0; i < 3; i++) {
+      // Commissions are served first-in, first-out: keep cycling until *this* one is delivered (rejections retry).
+      let res: any = null, c: any = null;
+      const status = async () => (r.commissionId ? (await (await fetch(`/api/commission?id=${r.commissionId}`, { cache: "no-store" })).json().catch(() => ({}))).commission : null);
+      for (let i = 0; i < 5; i++) {
         res = await dir.current.run({ autoSell: false, commission: true });
-        if (!res?.rejected) break;
-        setStatus("The Critic rejected that one. The Painter is trying again for you…");
+        c = await status();
+        if (!c || c.status !== "open") break;
+        if (res?.failed) await new Promise((ok) => setTimeout(ok, 8000));
+        setStatus(res?.rejected ? "The Critic rejected that one. The Painter is trying again for you…" : res?.delivered ? "Delivered the commission queued before yours. Now yours…" : "Still working on your piece…");
       }
-      const st = r.commissionId ? await (await fetch(`/api/commission?id=${r.commissionId}`, { cache: "no-store" })).json().catch(() => ({})) : {};
-      const c = st.commission;
       if (c?.status === "delivered") setCDone({ ok: true, hash: res?.sale?.hash, text: `Delivered! NFT #${c.token_id} is in your wallet. The robots hired each other on-chain and the contract split your ${toNear(c.amount, 3)} NEAR.` });
       else setCDone({ ok: false, text: c?.status === "open" ? "Still working on it. Your commission stays open; the robots retry, and you can cancel for a full refund after 30 minutes." : "Something went wrong. Check the ledger." });
     } catch (e: any) { toast(walletError(e), 4500); } finally { setCBusy(false); }
