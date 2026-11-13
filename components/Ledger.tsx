@@ -7,7 +7,7 @@ const n = (y: string, d = 4) => toNear(y, d).replace(/\.?0+$/, "") || "0";
 function evText(e: any) {
   const d = e.data || {};
   switch (e.event) {
-    case "job_opened": return `job #${d.job_id} · trend “${short(d.trend || "", 28)}” (${d.source || ""})`;
+    case "job_opened": return `job #${d.job_id} · trend “${short(d.trend || "", 28)}” (${(() => { try { return new URL(d.source).hostname.replace(/^www\./, ""); } catch { return d.source || ""; } })()})`;
     case "painted": return `job #${d.job_id} · ${short(d.title || "", 26)}`;
     case "approved": case "rejected": return `job #${d.job_id} · score ${(d.score / 10).toFixed(1)}`;
     case "listed": return `${d.token_id} · ${n(d.price, 3)} NEAR`;
