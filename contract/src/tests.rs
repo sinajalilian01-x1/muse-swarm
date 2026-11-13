@@ -54,7 +54,7 @@ fn setup() -> Contract { setup_with(rules()) }
 
 fn open(c: &mut Contract) -> u64 {
     ctx(curator(), 0);
-    c.curator_open_job("Northern lights".into(), "wikipedia".into(), "aurora over a quiet town".into(), U128(MILLI), "m".into()).id.0
+    c.curator_open_job("Northern lights".into(), "wikipedia".into(), "aurora over a quiet town".into(), U128(MILLI), "m".into(), None).id.0
 }
 fn paint(c: &mut Contract, id: u64) {
     ctx(painter(), 0);
@@ -237,7 +237,7 @@ fn daily_job_cap_is_enforced() {
     }
     assert!(panics(|| { open(&mut c); }));
     ctx_at(curator(), 0, T0 + NS_PER_DAY);
-    c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into());
+    c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None);
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn only_one_job_at_a_time_and_stale_jobs_expire() {
     open(&mut c);
     assert!(panics(|| { open(&mut c); }), "second job while one is active");
     ctx_at(curator(), 0, T0 + (JOB_TIMEOUT_MS + 1) * 1_000_000);
-    let j = c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into());
+    let j = c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None);
     assert_eq!(j.id.0, 2);
     assert_eq!(c.get_job(U64(1)).unwrap().status, "expired");
 }
@@ -294,7 +294,7 @@ fn kill_switch_blocks_every_robot_method() {
     assert!(panics(|| { c.painter_submit(U64(id), "x".into(), "cid".into(), U128(0), "m".into()); }));
     assert!(panics(|| { c.robot_refuel(U128(MILLI)); }));
     ctx(curator(), 0);
-    assert!(panics(|| { c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into()); }));
+    assert!(panics(|| { c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None); }));
     ctx(owner(), 0);
     c.set_kill_switch(false);
     paint(&mut c, id); // works again
@@ -324,10 +324,10 @@ fn guardian_pause_releases_itself() {
     c.guardian_pause(60);
     assert!(!c.get_swarm().live);
     ctx_at(curator(), 0, T0 + 30 * 1_000_000_000);
-    assert!(panics(|| { c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into()); }));
+    assert!(panics(|| { c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None); }));
     ctx_at(curator(), 0, T0 + 61 * 1_000_000_000);
     assert!(c.get_swarm().live, "auto-released after 60 s with no transaction");
-    c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into());
+    c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None);
 }
 
 #[test]
@@ -362,7 +362,7 @@ fn buying_still_works_while_paused() {
 fn only_curator_opens_jobs() {
     let mut c = setup();
     ctx(painter(), 0);
-    c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into());
+    c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None);
 }
 
 #[test]
@@ -615,4 +615,88 @@ fn nft_payout_view_sums_to_balance() {
     let c = setup();
     let p = c.nft_payout("1".into(), U128(123_456_789), Some(10));
     assert_eq!(p.payout.values().map(|v| v.0).sum::<u128>(), 123_456_789);
+}
+
+// ---------------------------------------------------------------- v4: commissions (+ wNEAR / NEAR Intents)
+fn commission_job(c: &mut Contract, cid: u64) -> u64 {
+    ctx(curator(), 0);
+    c.curator_open_job("a red kite".into(), "commission".into(), "kite over hills".into(), U128(MILLI), "m".into(), Some(U64(cid))).id.0
+}
+
+#[test]
+fn commission_is_painted_and_delivered_with_split() {
+    let mut c = setup();
+    ctx(buyer(), 100 * MILLI);
+    let cm = c.commission("a red kite over green hills".into());
+    assert_eq!(cm.status, "open");
+    assert!(cm.amount.0 < 100 * MILLI && cm.amount.0 > 90 * MILLI, "storage is taken from the deposit");
+    let id = commission_job(&mut c, cm.id.0);
+    paint(&mut c, id);
+    review(&mut c, id, 85);
+    let painter_before = c.get_swarm().robots[PAINTER].budget.0;
+    ctx(seller(), 0);
+    let j = c.seller_list(U64(id), U128(100 * MILLI), Some(plan()), None);
+    assert_eq!(j.status, "sold");
+    assert_eq!(j.buyer, Some(buyer()));
+    assert_eq!(c.nft_token(j.token_id.clone().unwrap()).unwrap().owner_id, buyer());
+    let done = c.get_commission(cm.id).unwrap();
+    assert_eq!(done.status, "delivered");
+    assert_eq!(done.token_id, j.token_id);
+    assert_eq!(c.get_swarm().robots[PAINTER].budget.0 - painter_before, cm.amount.0 * 3_500 / 10_000);
+    assert!(get_logs().iter().any(|l| l.contains("commission_delivered")));
+    assert!(c.get_swarm().active_job.is_none());
+}
+
+#[test]
+fn rejected_commission_is_retried_then_refundable() {
+    let mut c = setup();
+    ctx(buyer(), 100 * MILLI);
+    let cm = c.commission("kite".into());
+    let id = commission_job(&mut c, cm.id.0);
+    paint(&mut c, id);
+    review(&mut c, id, 40); // rejected
+    // Retry for the same commission is allowed after a rejection.
+    let id2 = commission_job(&mut c, cm.id.0);
+    assert_eq!(c.get_commission(cm.id).unwrap().job_id, Some(U64(id2)));
+    // Can't open a third attempt while one is in progress.
+    ctx_at(curator(), 0, T0 + 1);
+    // Patron can't cancel early, owner can.
+    paint(&mut c, id2);
+    review(&mut c, id2, 40);
+    ctx(buyer(), 0);
+    assert!(panics(|| { c.cancel_commission(cm.id); }));
+    ctx_at(buyer(), 0, T0 + COMMISSION_TIMEOUT_MS * 1_000_000 + 1);
+    let r = c.cancel_commission(cm.id);
+    assert_eq!(r.status, "refunded");
+    ctx(buyer(), 0);
+    assert!(panics(|| { c.cancel_commission(cm.id); }));
+}
+
+#[test]
+fn commission_respects_owner_price_rules() {
+    let mut c = setup();
+    ctx(buyer(), 10 * MILLI);
+    assert!(panics(|| { c.commission("too cheap".into()); }));
+    ctx(buyer(), 600 * MILLI);
+    assert!(panics(|| { c.commission("too much".into()); }));
+    ctx(buyer(), 100 * MILLI);
+    assert!(panics(|| { c.commission("   ".into()); }));
+    ctx(owner(), 0);
+    c.set_kill_switch(true);
+    ctx(buyer(), 100 * MILLI);
+    assert!(panics(|| { c.commission("paused".into()); }));
+}
+
+#[test]
+fn commission_in_wnear_via_ft_transfer_call() {
+    let mut c = setup();
+    // Only wNEAR is accepted.
+    ctx(a("usdc.testnet"), 0);
+    assert!(panics(|| { c.ft_on_transfer(a("intents.near"), U128(100 * MILLI), r#"{"brief":"x","patron":"buyer.testnet"}"#.into()); }));
+    ctx(a("wrap.testnet"), 0);
+    let left = c.ft_on_transfer(a("intents.near"), U128(100 * MILLI), r#"{"brief":"a kite","patron":"buyer.testnet"}"#.into());
+    assert_eq!(left.0, 0);
+    let cm = c.get_commissions(None, Some(5));
+    assert_eq!(cm[0].patron, buyer());
+    assert_eq!(cm[0].paid_with, "wnear");
 }

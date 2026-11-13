@@ -89,7 +89,13 @@ export function createDirector(h = {}) {
         if (d.stage === 'briefed') { cyc.jobId = d.job.id; emit(); const e = d.extra || {}; cyc.set('trend', { name: d.job.trend, line: d.say, palette: PALETTES[e.palette] || paletteOf(d.job.brief), scene: e.scene, source: d.job.source, from: e.trend?.source }); h.onInfo?.({ kind: 'trend', ...e, job: d.job }); }
         else if (d.stage === 'painted') { h.onStatus?.('Painted and pinned to IPFS. Critic is reviewing\u2026'); const a = await loadArt(d.job); cyc.set('art', a); h.onInfo?.({ kind: 'art', ...d.extra, job: d.job }); }
         else if (d.stage === 'minted' || d.stage === 'rejected') { cyc.set('review', { score: d.job.score, note: d.job.note, line: d.say, approved: d.stage === 'minted' }); h.onInfo?.({ kind: 'review', ...d.extra, job: d.job }); if (d.stage === 'rejected') break; }
-        else if (d.stage === 'listed') { cyc.set('listing', { price: toNear(d.job.price, 3), priceY: d.job.price, tokenId: d.job.token_id }); h.onInfo?.({ kind: 'listing', ...d.extra, job: d.job }); break; }
+        else if (d.stage === 'listed') {
+          cyc.set('listing', { price: toNear(d.job.price, 3), priceY: d.job.price, tokenId: d.job.token_id });
+          if (d.job.status === 'sold') { // a commission: the Seller delivered it straight to the patron
+            const ev = (d.txs || []).flatMap((t) => t.events || []).find((e) => e.event === 'split_paid');
+            cyc.set('sale', { buyer: d.job.buyer, shares: ev ? sharesFromEvent(ev) : shares(d.job.price, state.swarm.rules.split), hash: d.txs?.[d.txs.length - 1]?.hash, delivered: true });
+          }
+          h.onInfo?.({ kind: 'listing', ...d.extra, job: d.job }); break; }
         else if (d.stage === 'busy') { h.onStatus?.(d.say || 'Another cycle is running'); cyc.mode = 'watch'; cyc.jobId = d.job?.id; emit(); if (cyc.jobId) { fill(cyc, d.job, true); await watch(cyc); } else cyc.failed = { line: 'Busy, try again' }; return; }
         else if (d.stage === 'paused') { cyc.failed = { line: d.extra?.kill ? 'The owner stopped us' : 'Paused. Back in a moment!' }; h.onStatus?.(d.extra?.kill ? 'Kill switch engaged by the owner: the contract refuses every robot action.' : `Swarm paused on-chain until ${new Date(d.extra?.until).toLocaleTimeString()}. It releases itself.`); break; }
         else { cyc.failed = { line: 'Hit a snag, retrying soon' }; h.onStatus?.(d.error || `Step failed (${r.status})`); break; }
@@ -114,10 +120,11 @@ export function createDirector(h = {}) {
           else { await refresh(); const j = state?.jobs?.find((x) => x.id === cyc.jobId); if (j?.status === 'sold') cyc.set('sale', { buyer: j.buyer, shares: shares(j.price, state.swarm.rules.split) }); }
         }
         cyc.set('sale', { none: true });
-        h.onStatus?.(cyc.get('sale').none ? 'Unsold for now: it waits in the Gallery.' : 'Sold! The contract split the money on-chain.');
+        h.onStatus?.(cyc.get('sale').delivered ? 'Delivered! The NFT is in the patron\u2019s wallet and the contract split the payment on-chain.' : cyc.get('sale').none ? 'Unsold for now: it waits in the Gallery.' : 'Sold! The contract split the money on-chain.');
       }
     } catch (e) { cyc.failed = { line: 'Hit a snag' }; h.onStatus?.(String(e?.message || e)); }
     finally { cyc.done = true; emit(); refresh(); }
+    return { jobId: cyc.jobId, rejected: cyc.get('review')?.approved === false, delivered: !!cyc.get('sale')?.delivered, failed: !!cyc.failed, sale: cyc.get('sale') };
   }
 
   /** Called by the studio at the start of every cycle. */

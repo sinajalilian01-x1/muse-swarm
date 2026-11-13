@@ -15,6 +15,10 @@ function evText(e: any) {
     case "split_paid": return `owner ${n(d.owner_amount)} · robots ${(d.robot_shares || []).map((x: string) => n(x)).join(" / ")}${(() => { const sw = (d.swept || []).reduce((a: bigint, x: string) => a + BigInt(x), 0n); return sw > 0n ? ` · swept to owner ${n(sw.toString())}` : ""; })()}`;
     case "charged": return `${d.role}: fee ${n(d.fee, 5)} → treasury · storage ${n(d.storage, 5)}`;
     case "agent_paid": return `${d.from} paid ${d.to} ${n(d.amount, 4)} NEAR for the ${d.for} (job #${d.job_id})`;
+    case "commissioned": return `#${d.commission_id} by ${short(d.patron || "", 22)} · ${n(d.amount, 3)} NEAR${d.paid_with === "wnear" ? " (wNEAR)" : ""} · “${short(d.brief || "", 30)}”`;
+    case "commission_started": return `#${d.commission_id} → job #${d.job_id} (attempt ${d.attempt})`;
+    case "commission_delivered": return `#${d.commission_id} · NFT ${d.token_id} → ${short(d.patron || "", 22)} · ${n(d.amount, 3)} NEAR split`;
+    case "commission_refunded": return `#${d.commission_id} · ${n(d.amount, 3)} NEAR → ${short(d.patron || "", 22)}`;
     case "marketing_plan": return `${d.token_id} · “${short(d.plan?.pitch || "", 48)}” · ${(d.plan?.hashtags || []).slice(0, 3).join(" ")}`;
     case "cross_listed": return `${d.token_id} → ${short(d.market || "", 30)} · ${n(d.price, 3)} NEAR`;
     case "cross_list_failed": return `${d.token_id} on ${short(d.market || "", 26)} (deposit refunded)`;

@@ -5,10 +5,20 @@ import { fetchTrends } from "./trends";
 import { curatorPick, painterPaint, criticReview, aiMode } from "./ai";
 import { pin, fetchIpfs } from "./ipfs";
 import { marketingPlan, pinPlan, MARKET_ID, type Plan } from "./marketing";
-import { ROBOT_IDS, nearNum, nearToYocto, type Role } from "./config";
+import { ROBOT_IDS, APP_URL, nearNum, nearToYocto, type Role } from "./config";
 import type { Job, Swarm, TxInfo } from "./types";
 
 export const getSwarm = () => view<Swarm>("get_swarm");
+export interface Commission { id: string; patron: string; amount: string; brief: string; paid_with: string; status: "open" | "delivered" | "refunded"; job_id: string | null; token_id: string | null; attempts: number; opened_at_ms: string }
+export const getCommissions = (limit = 20) => view<Commission[]>("get_commissions", { before: null, limit });
+/** Oldest open commission that is ready for a (new) job: never started, or its last attempt was rejected/expired. */
+export async function nextCommission(): Promise<Commission | null> {
+  const cs = (await getCommissions(20).catch(() => [])).filter((c) => c.status === "open" && c.attempts < 3);
+  if (!cs.length) return null;
+  const jobs = await getJobs(undefined, 30);
+  const ready = cs.filter((c) => !c.job_id || ["rejected", "expired"].includes(jobs.find((j) => j.id === c.job_id)?.status || ""));
+  return ready.sort((a, b) => Number(a.id) - Number(b.id))[0] || null;
+}
 export const getJobs = (before?: string, limit = 12) => view<Job[]>("get_jobs", { before: before ?? null, limit });
 
 const secret = () => process.env.JOB_SECRET || "dev-only-secret";
@@ -117,15 +127,19 @@ export async function advance(token?: string): Promise<StepResult> {
   try {
     const txs: TxInfo[] = [];
     if (!job) {
-      const [trends, recent] = await Promise.all([fetchTrends(), getJobs(undefined, 12)]);
+      const cm = await nextCommission();
+      const [trends, recent] = cm
+        ? [[{ name: cm.brief.slice(0, 80), source: "Commission", url: `${APP_URL}/?commission=${cm.id}`, context: `commissioned by ${cm.patron}` }], []]
+        : await Promise.all([fetchTrends(), getJobs(undefined, 12)]);
       const pick = await curatorPick(trends, recent.map((j) => j.trend));
+      if (cm) pick.line = `${cm.patron.length > 20 ? "A patron" : cm.patron} commissioned “${cm.brief.slice(0, 30)}”. On it!`;
       const r = await maybeRefuel("curator"); if (r) txs.push(r);
-      const tx = await robotCall("curator", "curator_open_job", { trend: pick.trend.name, source: pick.trend.url, brief: `${pick.title} — ${pick.brief}`.slice(0, 240), fee: pick.feeYocto, model: pick.model });
+      const tx = await robotCall("curator", "curator_open_job", { trend: pick.trend.name, source: pick.trend.url, brief: `${pick.title} — ${pick.brief}`.slice(0, 240), fee: pick.feeYocto, model: pick.model, commission_id: cm ? cm.id : null });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error };
       const opened = tx.returnValue as Job;
       return { stage: "briefed", job: opened, txs, driver: driverToken(opened.id), say: pick.line,
-        extra: { trend: pick.trend, title: pick.title, palette: pick.palette, scene: pick.scene, others: trends.slice(0, 6).map((t) => t.name), ai: pick.ai, model: pick.model, aiError: pick.error } };
+        extra: { commission: cm, trend: pick.trend, title: pick.title, palette: pick.palette, scene: pick.scene, others: trends.slice(0, 6).map((t) => t.name), ai: pick.ai, model: pick.model, aiError: pick.error } };
     }
     if (job.status === "briefed") {
       const title = job.brief.includes(" — ") ? job.brief.split(" — ")[0].slice(0, 40) : await titleFromBrief(job);
@@ -149,6 +163,16 @@ export async function advance(token?: string): Promise<StepResult> {
       return take({ stage: j.status === "minted" ? "minted" : "rejected", job: j, txs, say: rv.line, extra: { score: rv.score, note: rv.note, threshold: sw.rules.score_threshold, ai: rv.ai, model: rv.model, aiError: rv.error } });
     }
     if (job.status === "minted") {
+      const cm = (await getCommissions(20).catch(() => [])).find((c) => c.job_id === job.id && c.status === "open");
+      if (cm) {
+        const sa = await sellerArgs(job, nearNum(cm.amount));
+        const r = await maybeRefuel("seller"); if (r) txs.push(r);
+        const tx = await robotCall("seller", "seller_list", { ...sa.args, price: sw.rules.floor, market: null }, SELLER_GAS);
+        txs.push(tx);
+        if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
+        return take({ stage: "listed", job: tx.returnValue as Job, txs, say: `Delivered to ${cm.patron.length > 22 ? "the patron" : cm.patron}!`,
+          extra: { delivered: cm.patron, commission: cm, price: nearNum(cm.amount), plan: sa.plan, planCid: sa.planCid } });
+      }
       const recent = await getJobs(undefined, 12);
       const p = priceFor(job.score, sw, recent);
       const r = await maybeRefuel("seller"); if (r) txs.push(r);

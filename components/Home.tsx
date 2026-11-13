@@ -1,11 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { buy as walletBuy, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
+import { buy as walletBuy, onAccount, connect, consumeWalletReturn, walletError, commission as walletCommission, commissionWnear } from "@/lib/wallet";
 import { toast, who, label, txUrl, short } from "@/lib/ui";
-import { toNear } from "@/lib/config";
+import { toNear, txUrl as txLink, NETWORK } from "@/lib/config";
+import { PAY_ASSETS } from "@/lib/intents";
 
 interface Latest { img: string; title: string; price: string | number; status: "listed" | "sold"; buyer?: string; tokenId?: string | null; jobId?: string; priceY?: string }
+interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; links: Record<string, string> }
 interface FeedTx { hash: string; signer: string; method?: string; ok: boolean; error?: string; fresh?: boolean }
 
 let mounted = false;
@@ -22,6 +24,15 @@ export default function Home() {
   const [acct, setAcct] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
   const [fs, setFs] = useState(false);
+  const [board, setBoard] = useState<Board | null>(null);
+  const [cOpen, setCOpen] = useState(false);
+  const [brief, setBrief] = useState("");
+  const [cBusy, setCBusy] = useState(false);
+  const [cDone, setCDone] = useState<{ hash?: string; text: string; ok: boolean } | null>(null);
+  const [anyTok, setAnyTok] = useState<{ asset: string; q?: any; err?: string; loading?: boolean } | null>(null);
+  const [floorY, setFloorY] = useState("50000000000000000000000");
+  const floor = Number(toNear(floorY, 3));
+  const cPrice = (Math.max(0.06, floor + 0.01)).toFixed(2);
 
   const nativeFsEl = () => document.fullscreenElement || (document as any).webkitFullscreenElement || null;
   const requestNativeFs = (el: HTMLElement) => {
@@ -75,6 +86,7 @@ export default function Home() {
       if (!alive) return;
       const d = createDirector({
         onState: (s: any) => {
+          if (s.swarm.rules?.floor) setFloorY(s.swarm.rules.floor);
           setStats({ minted: s.swarm.stats.minted, sold: s.swarm.stats.sold, revenue: s.swarm.stats.revenue_total, live: s.swarm.live, jobs: s.swarm.stats.jobs });
           setLatest((cur) => {
             if (cur) { const j = s.jobs.find((x: any) => x.id === cur.jobId); if (j && j.status === "sold" && cur.status !== "sold") return { ...cur, status: "sold", buyer: j.buyer }; return cur; }
@@ -101,6 +113,8 @@ export default function Home() {
       });
     })();
     loadFeed(); const t = setInterval(loadFeed, 20000);
+    const lb = async () => { try { const d = await (await fetch("/api/scoreboard", { cache: "no-store" })).json(); if (!d.error) setBoard(d); } catch {} };
+    lb(); const tb = setInterval(lb, 15000);
     // wallet redirect return
     consumeWalletReturn().then((r) => {
       if (!r) return;
@@ -109,7 +123,7 @@ export default function Home() {
       toast(r.ok ? "Verified on-chain: it's yours, and the split is paid. Welcome, collector!" : "Your wallet tx failed on-chain. You were not charged for the NFT.", 5000);
       setLatest((c) => (c && r.ok && r.events.some((e: any) => e.event === "sold" && String(e.data?.token_id) === String(c.tokenId)) ? { ...c, status: "sold", buyer: "you" } : c));
     });
-    return () => { alive = false; off(); clearInterval(t); document.body.classList.remove("home"); };
+    return () => { alive = false; off(); clearInterval(t); clearInterval(tb); document.body.classList.remove("home"); };
   }, [loadFeed, pushTx]);
 
   useEffect(() => { document.body.classList.toggle("focus", focus); studio.current?.studio?.setFocus(focus); }, [focus]);
@@ -141,6 +155,37 @@ export default function Home() {
   }, [fs]);
 
 
+  /** Commission: the patron pays first (NEAR, or wNEAR = the NEAR Intents delivery path), then the robots hire each other live. */
+  const commissionPiece = async (how: "near" | "wnear") => {
+    if (!acct) { connect(); toast("Connect a NEAR testnet wallet to commission a piece."); return; }
+    const b = brief.trim(); if (b.length < 3) { toast("Tell the robots what to paint."); return; }
+    setCBusy(true); setCDone(null);
+    try {
+      toast("Confirm the payment in your wallet…");
+      const r = how === "near" ? await walletCommission(b, cPrice) : await commissionWnear(b, cPrice);
+      if (!r?.hash || !r.ok) { setCDone({ ok: false, hash: r?.hash, text: "The payment did not go through. Nothing was charged." }); return; }
+      pushTx({ hash: r.hash, signer: acct, method: how === "near" ? "commission" : "commission_wnear", ok: true });
+      setCOpen(false);
+      setStatus(`Paid on-chain (commission #${r.commissionId}). The Curator is briefing the Painter…`);
+      let res: any = null;
+      for (let i = 0; i < 3; i++) {
+        res = await dir.current.run({ autoSell: false, commission: true });
+        if (!res?.rejected) break;
+        setStatus("The Critic rejected that one. The Painter is trying again for you…");
+      }
+      const st = r.commissionId ? await (await fetch(`/api/commission?id=${r.commissionId}`, { cache: "no-store" })).json().catch(() => ({})) : {};
+      const c = st.commission;
+      if (c?.status === "delivered") setCDone({ ok: true, hash: res?.sale?.hash, text: `Delivered! NFT #${c.token_id} is in your wallet. The robots hired each other on-chain and the contract split your ${toNear(c.amount, 3)} NEAR.` });
+      else setCDone({ ok: false, text: c?.status === "open" ? "Still working on it. Your commission stays open; the robots retry, and you can cancel for a full refund after 30 minutes." : "Something went wrong. Check the ledger." });
+    } catch (e: any) { toast(walletError(e), 4500); } finally { setCBusy(false); }
+  };
+  const quoteAny = async (asset: string) => {
+    setAnyTok({ asset, loading: true });
+    try {
+      const d = await (await fetch("/api/intents/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ asset, amountNear: Number(cPrice), brief, patron: acct || "" }) })).json();
+      setAnyTok({ asset, q: d.error ? undefined : d, err: d.error });
+    } catch (e: any) { setAnyTok({ asset, err: String(e?.message || e) }); }
+  };
   const run = () => { if (!dir.current) return; setStatus("Curator is reading live trends…"); dir.current.run({ autoSell }); };
   const collect = async () => {
     if (!latest?.tokenId || latest.status !== "listed") return;
@@ -181,16 +226,39 @@ export default function Home() {
         </button>
       </div>
       <main className="hero-copy">
-        <p className="eyebrow">AI swarm art studio on NEAR <i></i></p>
-        <h1><span>Muse</span><span className="grad">Swarm</span></h1>
-        <p className="lede">Four AI robots, each with its own NEAR account, turn live trends into art, judge it, mint it and sell it. Every sale is split on-chain. Press the button to run a real cycle.</p>
-        <div className="run-row">
-          <button className="btn" onClick={run} disabled={mode.running}>{mode.running ? "Robots at work…" : "Run a real cycle"} <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
-          <button className="btn-2" onClick={() => setFocus(true)}>Watch them work</button>
+        <div className="board" aria-live="polite">
+          <p className="eyebrow">{board ? <>No humans · ran itself for {board.days >= 1 ? `${board.days} days` : `${board.hours} h`} and earned {board.revenue} NEAR</> : "AI swarm art studio on NEAR"} <i></i></p>
+          <div className="chips">
+            <a href={board?.links.contract || "/ledger"} target="_blank" rel="noreferrer" title="Total sales, split on-chain"><b>{board ? board.revenue : "…"}</b> NEAR sales ↗</a>
+            <a href="/ledger" title="Jobs the robots ran"><b>{board ? board.jobs : "…"}</b> jobs</a>
+            <a href="/robots" title="Robots paying robots for briefs and appraisals"><b>{board ? board.agentPayments : "…"}</b> agent→agent payments</a>
+            <a href={board?.links.treasury || "/robots"} target="_blank" rel="noreferrer" title="AI fees the robots paid into the treasury"><b>{board ? board.treasury.toFixed(2) : "…"}</b> NEAR treasury ↗</a>
+            <a href="/gallery" title="Sold on Mintbase's market or commissioned by visitors"><b>{board ? board.delivered + board.marketSales : "…"}</b> commissions + market sales</a>
+          </div>
         </div>
-        <label className="auto"><input type="checkbox" checked={autoSell} onChange={(e) => setAutoSell(e.target.checked)} /> If no wallet buys within 12 s, the demo collector buys it</label>
+        <h1><span>Muse</span><span className="grad">Swarm</span></h1>
+        <p className="lede">An art studio run by four AI agents with their own NEAR accounts. They spot trends, paint, judge, sell and pay each other. Commission a piece and watch them make it for you.</p>
+        <div className="run-row">
+          <button className="btn" onClick={() => { setCOpen((o) => !o); setCDone(null); }} disabled={mode.running || cBusy}>{cBusy ? "Robots at work…" : `Commission a piece · ${cPrice} NEAR`} <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+          <button className="btn-2" onClick={run} disabled={mode.running}>{mode.running && !cBusy ? "Running…" : "Free demo cycle"}</button>
+        </div>
+        {cOpen && <div className="commission">
+          <input value={brief} maxLength={100} placeholder="What should they paint? e.g. a lighthouse made of crystals" onChange={(e) => setBrief(e.target.value)} onKeyDown={(e) => e.key === "Enter" && commissionPiece("near")} autoFocus />
+          <div className="c-row">
+            <button className="btn-sm" disabled={cBusy} onClick={() => commissionPiece("near")}>{acct ? `Pay ${cPrice} NEAR` : "Connect wallet"}</button>
+            <button className="btn-sm ghost" disabled={cBusy} onClick={() => commissionPiece("wnear")} title="ft_transfer_call from wNEAR: the same path a NEAR Intents swap from any token uses">Pay in wNEAR</button>
+            <button className="btn-sm ghost" onClick={() => (anyTok ? setAnyTok(null) : quoteAny(PAY_ASSETS[0].id))}>Any token ▾</button>
+          </div>
+          {anyTok && <div className="anytok">
+            <select value={anyTok.asset} onChange={(e) => quoteAny(e.target.value)}>{PAY_ASSETS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
+            {anyTok.loading ? <span>Getting a live NEAR Intents quote…</span> : anyTok.err ? <span>Quote failed: {short(anyTok.err, 60)}</span> : anyTok.q && <span><b>{Number(anyTok.q.amountIn).toPrecision(4)} {anyTok.q.asset.split(" ")[0]}</b> ≈ ${Number(anyTok.q.amountInUsd).toFixed(2)} → {anyTok.q.amountOut} wNEAR, ~{anyTok.q.timeEstimate}s via NEAR Intents 1Click.{NETWORK !== "mainnet" && " Mainnet only: live dry-run price, nothing to send on testnet."}</span>}
+          </div>}
+          <p className="c-note">You pay first; the contract holds it. The robots brief, paint, judge and mint it, then the Seller delivers the NFT to you and the payment is split on-chain. Not delivered in 30 min? Cancel for a full refund.</p>
+        </div>}
+        {cDone && <p className={`c-done ${cDone.ok ? "ok" : ""}`}>{cDone.text} {cDone.hash && <a href={txLink(cDone.hash)} target="_blank" rel="noreferrer">tx ↗</a>} <a href="/gallery">gallery →</a></p>}
+        {!cOpen && !cDone && <label className="auto"><input type="checkbox" checked={autoSell} onChange={(e) => setAutoSell(e.target.checked)} /> Free cycle: if no wallet buys within 12 s, the demo collector buys it · <a href="#" onClick={(e) => { e.preventDefault(); setFocus(true); }}>watch them work</a></label>}
         <p className="status">{mode.running && <i />}{status}</p>
-        <aside className="latest" id="latest">
+        <aside className="latest" id="latest" style={cOpen ? { display: "none" } : undefined}>
           {latest?.img ? <img src={latest.img} alt={latest.title} /> : <img alt="" />}
           <div className="lt-meta">
             <span className="mode" data-m={latest && latest.jobId === mode.jobId ? m : "replay"}>{!latest ? "Loading chain…" : latest.jobId !== mode.jobId ? <>Latest · <a href={`/gallery#job-${latest.jobId}`}>job #{latest.jobId}</a></> : m === "live" ? `Live · job #${mode.jobId}` : m === "watch" ? `Watching job #${mode.jobId}` : <>Replay · <a href={`/gallery#job-${mode.jobId}`}>job #{mode.jobId}</a></>}</span>

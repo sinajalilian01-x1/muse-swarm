@@ -127,3 +127,28 @@ export async function buyOnMarket(tokenId: string, priceYocto: string) {
   const res = await w.signAndSendTransaction({ signerId: account, receiverId: MARKET_ID, actions: [fnCall("buy", { nft_contract_id: CONTRACT_ID, token_id: tokenId }, 200_000_000_000_000n, priceYocto)] });
   return { ...parseResult(res), account };
 }
+
+/** Commission a piece with NEAR: the deposit is held by the contract until the Seller delivers the NFT. */
+export async function commission(brief: string, amountNear: string) {
+  const w = await signedInWallet();
+  const res = await w.signAndSendTransaction({ signerId: account, receiverId: CONTRACT_ID, actions: [fnCall("commission", { brief }, 30_000_000_000_000n, nearToYocto(amountNear))] });
+  const r = parseResult(res);
+  const ev = r.events.find((e: any) => e.event === "commissioned");
+  return { ...r, commissionId: ev?.data?.commission_id as string | undefined, account };
+}
+
+/** Same commission, paid in wNEAR through ft_transfer_call: the exact on-chain path a NEAR Intents 1Click swap
+ * (any token, any chain) uses to deliver to the swarm. One wallet tx: register on wNEAR, wrap NEAR, transfer-call. */
+export async function commissionWnear(brief: string, amountNear: string) {
+  const w = await signedInWallet();
+  const wnear = NETWORK === "mainnet" ? "wrap.near" : "wrap.testnet";
+  const amt = nearToYocto(amountNear);
+  const res = await w.signAndSendTransaction({ signerId: account, receiverId: wnear, actions: [
+    fnCall("storage_deposit", { account_id: account, registration_only: true }, 20_000_000_000_000n, nearToYocto("0.00125")),
+    fnCall("near_deposit", {}, 20_000_000_000_000n, amt),
+    fnCall("ft_transfer_call", { receiver_id: CONTRACT_ID, amount: amt, msg: JSON.stringify({ brief, patron: account }) }, 100_000_000_000_000n, "1"),
+  ] });
+  const r = parseResult(res);
+  const ev = r.events.find((e: any) => e.event === "commissioned");
+  return { ...r, commissionId: ev?.data?.commission_id as string | undefined, account };
+}

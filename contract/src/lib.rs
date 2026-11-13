@@ -56,6 +56,20 @@ pub const MARKET_STORAGE: u128 = 10_000_000_000_000_000_000_000; // 0.01 NEAR
 const GAS_MARKET_DEPOSIT: Gas = Gas::from_tgas(10);
 const GAS_MARKET_APPROVE: Gas = Gas::from_tgas(20);
 const GAS_MARKET_CB: Gas = Gas::from_tgas(10);
+/// A commission not delivered within this time can be cancelled by its patron for a full refund.
+pub const COMMISSION_TIMEOUT_MS: u64 = 30 * 60 * 1000;
+pub const MAX_COMMISSION_ATTEMPTS: u8 = 3;
+const NEXT_COMMISSION_KEY: &[u8] = b"next_commission";
+const GAS_UNWRAP: Gas = Gas::from_tgas(10);
+/// wNEAR contract for this network (decided by the contract's own account suffix).
+fn wnear_id() -> AccountId {
+    if env::current_account_id().as_str().ends_with(".near") { "wrap.near".parse().unwrap() } else { "wrap.testnet".parse().unwrap() }
+}
+fn commissions() -> near_sdk::collections::LookupMap<u64, Commission> { near_sdk::collections::LookupMap::new(StorageKey::Commissions) }
+fn job_commission() -> near_sdk::collections::LookupMap<u64, u64> { near_sdk::collections::LookupMap::new(StorageKey::JobCommission) }
+fn next_commission() -> u64 {
+    env::storage_read(NEXT_COMMISSION_KEY).map(|b| u64::from_le_bytes(b.try_into().unwrap_or([1, 0, 0, 0, 0, 0, 0, 0]))).unwrap_or(1)
+}
 
 pub const CURATOR: usize = 0;
 pub const PAINTER: usize = 1;
@@ -75,6 +89,28 @@ enum StorageKey {
     TokenJob,
     Approvals,
     ApprovalIds,
+    Commissions,
+    JobCommission,
+}
+
+/// A visitor commissions a piece: they pay up front, the robots hire each other to make it, and the
+/// Seller delivers the NFT to them, splitting the payment on-chain. Paid in NEAR (`commission`) or in
+/// wNEAR via `ft_transfer_call` (which is how a NEAR Intents 1Click swap from any token lands here).
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug)]
+pub struct Commission {
+    pub id: U64,
+    pub patron: AccountId,
+    pub amount: U128,
+    pub brief: String,
+    /// "near" or "wnear" (e.g. from a NEAR Intents swap)
+    pub paid_with: String,
+    /// open -> delivered, or refunded
+    pub status: String,
+    pub job_id: Option<U64>,
+    pub token_id: Option<TokenId>,
+    pub attempts: u8,
+    pub opened_at_ms: U64,
 }
 
 /// The Seller's marketing plan for one piece (written with the Curator). Logged on-chain as a
@@ -450,7 +486,7 @@ impl Contract {
 
     /// Curator: open a job for a real trend. Only one job may be active; a job that has not
     /// moved for 10 minutes expires so the swarm can never get stuck.
-    pub fn curator_open_job(&mut self, trend: String, source: String, brief: String, fee: U128, model: String) -> Job {
+    pub fn curator_open_job(&mut self, trend: String, source: String, brief: String, fee: U128, model: String, commission_id: Option<U64>) -> Job {
         self.assert_robot(CURATOR);
         self.assert_live();
         self.roll_day();
@@ -485,6 +521,21 @@ impl Contract {
         let before = env::storage_usage();
         self.jobs.insert(id, job);
         self.jobs.flush();
+        if let Some(cid) = commission_id {
+            let mut cm = commissions();
+            let mut c = cm.get(&cid.0).unwrap_or_else(|| env::panic_str("Unknown commission"));
+            require!(c.status == "open", "Commission is not open");
+            require!(c.attempts < MAX_COMMISSION_ATTEMPTS, "Commission has used all its attempts");
+            if let Some(prev) = c.job_id {
+                let st = self.jobs.get(&prev.0).map(|j| j.status.clone()).unwrap_or_default();
+                require!(st == "rejected" || st == "expired", "Commission already has a job in progress");
+            }
+            c.job_id = Some(U64(id));
+            c.attempts += 1;
+            cm.insert(&cid.0, &c);
+            job_commission().insert(&id, &cid.0);
+            emit("commission_started", json!({"commission_id": cid, "job_id": U64(id), "attempt": c.attempts}));
+        }
         let storage = self.storage_cost_since(before);
         self.active_job = Some(id);
         self.stats.jobs += 1;
@@ -585,6 +636,9 @@ impl Contract {
             self.market_it(&j, plan, market);
             return self.jobs.get(&job_id.0).cloned().unwrap();
         }
+        if let Some(cid) = job_commission().get(&job_id.0) {
+            return self.deliver(job_id.0, cid, plan);
+        }
         let mut j = self.active_job_with(job_id.0, "minted");
         let token_id = j.token_id.clone().unwrap();
         j.price = price;
@@ -604,6 +658,59 @@ impl Contract {
         let j = self.jobs.get(&job_id.0).cloned().unwrap();
         self.market_it(&j, plan, market);
         self.jobs.get(&job_id.0).cloned().unwrap()
+    }
+
+    /// Commission a piece with NEAR. The deposit (between the owner's floor and max price) is held by
+    /// the contract until the Seller delivers the NFT, then split like a sale. Refundable after 30 min.
+    #[payable]
+    pub fn commission(&mut self, brief: String) -> Commission {
+        let amount = env::attached_deposit().as_yoctonear();
+        self.open_commission(env::predecessor_account_id(), amount, brief, "near")
+    }
+
+    /// NEP-141 receiver: commission paid in wNEAR, e.g. the output of a NEAR Intents 1Click swap from
+    /// any token (1Click calls ft_transfer_call with `customRecipientMsg`). msg = {"brief": "...", "patron": "alice.near"}.
+    /// The wNEAR is unwrapped to NEAR right away so the split works exactly like a NEAR payment.
+    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> U128 {
+        require!(env::predecessor_account_id() == wnear_id(), "Only wNEAR is accepted");
+        let m: serde_json::Value = serde_json::from_str(&msg).unwrap_or_else(|_| env::panic_str("msg must be JSON"));
+        let patron: AccountId = m.get("patron").and_then(|p| p.as_str()).and_then(|p| p.parse().ok()).unwrap_or(sender_id);
+        let brief = m.get("brief").and_then(|b| b.as_str()).unwrap_or("").to_string();
+        self.open_commission(patron, amount.0, brief, "wnear");
+        let _ = Promise::new(wnear_id()).function_call("near_withdraw".to_string(), json!({"amount": amount}).to_string().into_bytes(),
+            NearToken::from_yoctonear(1), GAS_UNWRAP);
+        U128(0)
+    }
+
+    /// Patron gets a full refund if the commission was not delivered within 30 minutes (owner: any time).
+    pub fn cancel_commission(&mut self, commission_id: U64) -> Commission {
+        let mut cm = commissions();
+        let mut c = cm.get(&commission_id.0).unwrap_or_else(|| env::panic_str("Unknown commission"));
+        let caller = env::predecessor_account_id();
+        require!(c.status == "open", "Commission is not open");
+        require!(caller == self.owner_id || (caller == c.patron && now_ms() >= c.opened_at_ms.0 + COMMISSION_TIMEOUT_MS), "Only the patron, after 30 minutes");
+        if let Some(j) = c.job_id {
+            require!(self.active_job != Some(j.0), "The robots are working on it right now");
+        }
+        c.status = "refunded".into();
+        cm.insert(&commission_id.0, &c);
+        pay(&c.patron, c.amount.0);
+        emit("commission_refunded", json!({"commission_id": commission_id, "patron": c.patron, "amount": c.amount}));
+        c
+    }
+
+    pub fn get_commission(&self, commission_id: U64) -> Option<Commission> { commissions().get(&commission_id.0) }
+
+    /// Newest first.
+    pub fn get_commissions(&self, before: Option<U64>, limit: Option<u32>) -> Vec<Commission> {
+        let cm = commissions();
+        let mut id = before.map(|b| b.0).unwrap_or(next_commission()).min(next_commission());
+        let mut out = Vec::new();
+        while id > 1 && out.len() < limit.unwrap_or(20).min(50) as usize {
+            id -= 1;
+            if let Some(c) = cm.get(&id) { out.push(c); }
+        }
+        out
     }
 
     /// Callback for a cross-listing: on failure the Seller gets its market storage deposit back.
@@ -856,6 +963,48 @@ impl Contract {
     fn assert_live(&self) {
         require!(!self.kill_switch, "Kill switch engaged: the owner has stopped the swarm");
         require!(env::block_timestamp() >= self.paused_until_ns, "Swarm paused: it resumes by itself shortly");
+    }
+
+    fn open_commission(&mut self, patron: AccountId, amount: u128, brief: String, paid_with: &str) -> Commission {
+        self.assert_live();
+        require!(amount >= self.rules.floor.0, "Commission must pay at least the owner's floor price");
+        require!(amount <= self.rules.max_price.0, "Commission is above the owner's max price");
+        let brief = clip(brief.trim().to_string(), 120);
+        require!(!brief.is_empty(), "Say what you want painted");
+        let before = env::storage_usage();
+        let id = next_commission();
+        env::storage_write(NEXT_COMMISSION_KEY, &(id + 1).to_le_bytes());
+        let storage = self.storage_cost_since(before) + env::storage_byte_cost().as_yoctonear() * 420;
+        let c = Commission { id: U64(id), patron: patron.clone(), amount: U128(amount - storage), brief, paid_with: paid_with.into(),
+            status: "open".into(), job_id: None, token_id: None, attempts: 0, opened_at_ms: U64(now_ms()) };
+        commissions().insert(&id, &c);
+        emit("commissioned", json!({"commission_id": U64(id), "patron": patron, "amount": c.amount, "brief": c.brief, "paid_with": paid_with}));
+        c
+    }
+
+    /// Seller delivers a commissioned piece: NFT to the patron, payment split like a sale.
+    fn deliver(&mut self, job_id: u64, cid: u64, plan: Option<MarketingPlan>) -> Job {
+        let mut cm = commissions();
+        let mut c = cm.get(&cid).unwrap_or_else(|| env::panic_str("Unknown commission"));
+        require!(c.status == "open", "Commission is not open");
+        let mut j = self.active_job_with(job_id, "minted");
+        let token_id = j.token_id.clone().unwrap();
+        j.price = c.amount;
+        j.updated_at_ms = U64(now_ms());
+        self.jobs.insert(job_id, j.clone());
+        self.active_job = None;
+        self.robots[SELLER].actions += 1;
+        self.pay_agent(SELLER, CRITIC, APPRAISAL_FEE, job_id, "appraisal");
+        self.market_it(&j, plan, None);
+        self.tokens.internal_transfer(&env::current_account_id(), &c.patron, &token_id, None, Some("muse-swarm commission".into()));
+        let (to_owner, shares) = self.settle(&token_id, &c.patron, c.amount.0, "commission");
+        pay(&self.owner_id.clone(), to_owner);
+        c.status = "delivered".into();
+        c.token_id = Some(token_id.clone());
+        cm.insert(&cid, &c);
+        emit("commission_delivered", json!({"commission_id": U64(cid), "job_id": U64(job_id), "token_id": token_id, "patron": c.patron,
+            "amount": c.amount, "owner_amount": U128(to_owner), "robot_shares": shares}));
+        self.jobs.get(&job_id).cloned().unwrap()
     }
 
     fn describe(j: &Job, score: u8) -> String {

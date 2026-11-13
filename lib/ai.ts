@@ -78,7 +78,7 @@ export async function curatorPick(trends: Trend[], recent: string[]): Promise<Pi
   const scene = sceneFor(`${t.name} ${t.context}`, seed);
   const palette = PALETTES[seed % PALETTES.length];
   const mood: Record<Scene, string> = { sea: "a faceted seascape", peaks: "a crystalline mountain range", hills: "rolling low-poly hills", city: "a geometric skyline", cosmos: "a low-poly night sky with a ringed planet", bloom: "a giant geometric flower" };
-  return { trend: t, brief: `${mood[scene]} inspired by "${t.name}" trending on ${t.source}. Palette: ${palette.name}.`, title: titleFor(t.name, scene, palette, seed), line: `"${t.name}" is trending. Let's paint it!`,
+  return { trend: t, brief: `${mood[scene]} ${t.source === "Commission" ? `for a patron who asked for “${t.name}”` : `inspired by "${t.name}" trending on ${t.source}`}. Palette: ${palette.name}.`, title: titleFor(t.name, scene, palette, seed), line: `"${t.name}" is trending. Let's paint it!`,
     palette: palette.name, scene, model: "fallback-curator", feeYocto: FALLBACK_FEE.curator, ai: false, error };
 }
 

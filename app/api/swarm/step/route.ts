@@ -1,4 +1,4 @@
-import { advance } from "@/lib/swarm";
+import { advance, nextCommission } from "@/lib/swarm";
 import { json, rateLimit, chainPace } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
 
@@ -21,7 +21,8 @@ export async function POST(req: Request) {
     if (!rl.ok) return json({ stage: "error", txs: [], error: `The robots need a breather: start another cycle in ${rl.retryAfter}s (4 cycles per 10 min per visitor).` }, 429);
     // Swarm-wide pace, read from the contract so it holds across all serverless instances.
     const pace = await chainPace(12, 10 * 60_000).catch(() => ({ ok: true, retryAfter: 0 }));
-    if (!pace.ok) return json({ stage: "error", txs: [], error: `The swarm has made 12 works in the last 10 minutes and is resting. Next cycle in ${pace.retryAfter}s. Meanwhile, collect a listed work in the Gallery.` }, 429);
+    // Paid commissions skip the free-demo pacing: the patron already paid for the work.
+    if (!pace.ok && !(await nextCommission().catch(() => null))) return json({ stage: "error", txs: [], error: `The swarm has made 12 works in the last 10 minutes and is resting. Next cycle in ${pace.retryAfter}s. Meanwhile, collect a listed work in the Gallery.` }, 429);
   } else {
     const rl = rateLimit(req, "step", 40, 10 * 60_000);
     if (!rl.ok) return json({ stage: "error", txs: [], error: "Too many steps, slow down." }, 429);
