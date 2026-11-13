@@ -5,7 +5,7 @@
 **Status (13 Nov 2026, ~05:45 CET):**
 - **Approved by Sina.** Root and payout account: `hlpok1lad.tg`.
 - **LIVE since 05:47 CET.** Sina funded the wallet (6.65 NEAR). The lean launch below ran as planned and spent ≈ 4.85 NEAR from the root; ≈ 4.73 NEAR of that is still in our accounts.
-- 5 NFTs are minted and listed. The full record is in `MAINNET_LIVE.md`.
+- 6 NFTs are minted and listed. The full record is in `MAINNET_LIVE.md`.
 - Changed from the plan: the robots prepay 30 Tgas (the Seller 70) and refuel 0.03 NEAR at a time, because 100 Tgas prepaid reserves 0.1 NEAR, more than a robot's balance.
 
 ### Approved setup (hlpok1lad.tg)

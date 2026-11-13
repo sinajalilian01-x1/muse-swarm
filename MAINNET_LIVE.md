@@ -28,7 +28,7 @@ The full keys of the robots and the guardian were deleted after their function-c
 
 Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; per-robot daily cap 0.1 NEAR; fee cap 0.01; budget cap 0.25; at most 12 jobs a day. Site limits: 2 free cycles per IP per hour and 3 per hour globally. Paid commissions skip the pace.
 
-## Five NFTs minted and listed (NEAR AI Cloud: Qwen3.6 brief, pricing and marketing; FLUX.2 image; Qwen3-VL critic)
+## Six NFTs minted and listed (NEAR AI Cloud: Qwen3.6 brief, pricing and marketing; FLUX.2 image; Qwen3-VL critic)
 | # | Title | Trend | Critic | AI price | Curator | Painter | Critic (mint) | Seller (list) | Token |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Neon City Horizon | rockstar games gta vi | 8.5 | 0.175 NEAR | [CYXKJvo3](https://nearblocks.io/txns/CYXKJvo3NdRJRjzM55qupx98GnhDcGb2bRofG1FkkB76) | [AUWKAGoT](https://nearblocks.io/txns/AUWKAGoTZKXjYaHsbFE1iFSTXVrnjP7KYmFkEjG7ZAoC) | [B1J2RsSk](https://nearblocks.io/txns/B1J2RsSk6fxebaNbLcTqWDKwyw7LaPCt1CTgHnZyPqE7) | [6hiJyY62](https://nearblocks.io/txns/6hiJyY62DWexKpyyujJtFAmHkVU4Vyt3VR1tzD33zvtX) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/1) |
@@ -36,10 +36,13 @@ Mainnet rules: price floor 0.05 NEAR, max 0.5 NEAR; per-robot daily cap 0.1 NEAR
 | 3 | Shattered Storm Glass | weather tomorrow | 7.2 | 0.05 NEAR | [7koXmDrQ](https://nearblocks.io/txns/7koXmDrQHsGSs7ckY556842qH5TXgjtup1XU5pZDPWtv) | [EUoZH52C](https://nearblocks.io/txns/EUoZH52C8MC2ay3ia35vb8qP7BNcFvvM3SWSJMJDaTbn) | [2e7tSZiH](https://nearblocks.io/txns/2e7tSZiHEvwxzf8Wt7E1uJ91VFiTq4Fasf5tS5s26Ti2) | [GGkKGaXd](https://nearblocks.io/txns/GGkKGaXddiDNkAP6CMLLXTde2eWsMRsmmMroURUQS9vN) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/3) |
 | 4 | Digital Bloom Rising | stock market news | 8.2 | 0.05 NEAR | [5BKVzW1E](https://nearblocks.io/txns/5BKVzW1Ep3qVW8894K8sg8t21PxXcuWuF2JzW8Zx4R4M) | [FXEDUKxG](https://nearblocks.io/txns/FXEDUKxGKcZEkekRwMfkksC9gXm2GrZkDwhuSbgJR5gA) | [J1ykVzuV](https://nearblocks.io/txns/J1ykVzuVf9rVDMsPG8BhYdNBwz2PaiXMJ8UTTt6PZaz1) | [BrYLR4V7](https://nearblocks.io/txns/BrYLR4V7YsMo5Wmoe6QUjQ2AkSkkTUEHRpFLn3WLM9vF) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/4) |
 | 5 | Neon Arcade Echoes | microsoft playback | 8.7 | 0.05 NEAR | [5F7F56Te](https://nearblocks.io/txns/5F7F56TehM59Mv9A6g2yxXC8WAgKCBpKBkKvm6m2mGaC) | [8kUQtKKq](https://nearblocks.io/txns/8kUQtKKq5gop7ex8B1wcQV3UZx3sTj6HTeoZaNXPr36) | [5jKUomjq](https://nearblocks.io/txns/5jKUomjqw3X2PXZ81cKqwa2oxsnncsmxFYVnZHGqeQLW) | [5DfxRDP7](https://nearblocks.io/txns/5DfxRDP7pQ7YsuqgmNfpm6L3SAchXGZKcSKdWqP4dFci) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/5) |
+| 6 | Golden Joystick Bloom | who won gamer of the year 2026 | 8.2 | 0.05 NEAR | [3E3ey2q1](https://nearblocks.io/txns/3E3ey2q1DndNbkCXGPm5tvEfH3cECcaVkAeCLdHUMzNc) | [67bwBAnx](https://nearblocks.io/txns/67bwBAnxWym2ZaXyUJBkmBg35CMixWTCLFdAWTCxrgvY) | [5ZHAqWiZ](https://nearblocks.io/txns/5ZHAqWiZPJAE4kmXgqnpnBBpNf6s1p394JmrPVhve6om) | [B6QwzxX2](https://nearblocks.io/txns/B6QwzxX2EPU6dvyE3pZdpxRvfDfmvNPT4bniKbdRCmAx) | [token](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/6) |
+
+Job 6 ran at 06:25 CET, after the launch batch. In the same run the Seller marked down token #1 from 0.175 to 0.145 NEAR, its own markdown of a listing unsold for 15 min, on both venues: [CRfDY935…](https://nearblocks.io/txns/CRfDY935D9ui4wXek7bvgid1bqGa51UhrFsRuuAFyPx3). After that the Seller reached its 0.1 NEAR daily cap, which resets at 01:00 CET (00:00 UTC). Each listing costs the Seller about 0.0144 NEAR of cap, including the 0.01 NEAR Mintbase storage deposit, so about 6 fully listed pieces fit per day.
 
 Every token is for sale in two places:
 - directly from `swarm.hlpok1lad.tg`, at https://muse-swarm.vercel.app/gallery;
-- on Mintbase's mainnet market, [`simple.market.mintbase1.near`](https://nearblocks.io/address/simple.market.mintbase1.near) (NEP-178 approval). `get_listing` returns prices of 0.175, 0.08, 0.05, 0.05 and 0.05 NEAR for tokens 1–5.
+- on Mintbase's mainnet market, [`simple.market.mintbase1.near`](https://nearblocks.io/address/simple.market.mintbase1.near) (NEP-178 approval). `get_listing` returns prices of 0.145, 0.08, 0.05, 0.05, 0.05 and 0.05 NEAR for tokens 1–6.
 
 mintbase.xyz currently returns HTTP 402 for every page, on mainnet as well as testnet. The listing lives in the market contract, so wallets and other UIs that read that market can still buy it.
 

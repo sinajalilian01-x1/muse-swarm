@@ -13,9 +13,9 @@ The Curator reads live trends (or your brief), the Painter paints, the Critic ju
   - mint tx (`nft_mint` event, Critic score 8.7): [5jKUomjq…](https://nearblocks.io/txns/5jKUomjqw3X2PXZ81cKqwa2oxsnncsmxFYVnZHGqeQLW);
   - listing tx (0.05 NEAR, also on Mintbase): [5DfxRDP7…](https://nearblocks.io/txns/5DfxRDP7pQ7YsuqgmNfpm6L3SAchXGZKcSKdWqP4dFci);
   - token page: [nearblocks.io/nft-token/swarm.hlpok1lad.tg/5](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/5).
-- **Contract deploy:** [4DWzVfi3…](https://nearblocks.io/txns/4DWzVfi3DR4aGLeYp6UZs3gKMqxUGSCMQ4pvx6Lc3tW3). All 25 mainnet txs are in `MAINNET_LIVE.md` and on the [Ledger](https://muse-swarm.vercel.app/ledger).
+- **Contract deploy:** [4DWzVfi3…](https://nearblocks.io/txns/4DWzVfi3DR4aGLeYp6UZs3gKMqxUGSCMQ4pvx6Lc3tW3). All 30 mainnet txs are in `MAINNET_LIVE.md` and on the [Ledger](https://muse-swarm.vercel.app/ledger).
 
-**Status (13 Nov 2026):** 5 NFTs have been minted and listed on mainnet by the robots, priced by NEAR AI Cloud at 0.05–0.175 NEAR. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
+**Status (13 Nov 2026, 06:30 CET):** 6 NFTs have been minted and listed on mainnet by the robots, priced by NEAR AI Cloud at 0.05–0.145 NEAR. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
 
 **Development history (testnet):** [`swarm.museswarm.testnet`](https://testnet.nearblocks.io/address/swarm.museswarm.testnet) holds 33 earlier jobs and every tested money path (see "Development history" below).
 
@@ -116,7 +116,7 @@ On `buy`, the contract transfers the NFT, pays 30% to the owner, and adds 10/30/
 | Images | **Real:** pinned on IPFS (Pinata) |
 | Wallet purchases and patron funding | **Real:** NEAR Connect on mainnet. Browser purchases were tested on testnet |
 | Commissions (NEAR and wNEAR) | **Open on mainnet**, with no mainnet commission yet. Delivered end to end on testnet |
-| Mintbase marketplace listing and sales | **Real:** all 5 mainnet NFTs are listed on Mintbase's market contract `simple.market.mintbase1.near`. The mintbase.xyz website currently returns HTTP 402, so the Gallery's **Buy via Mintbase** calls the market contract directly. A Mintbase sale was tested on testnet (`market-v2-beta.mintspace2.testnet`) |
+| Mintbase marketplace listing and sales | **Real:** all 6 mainnet NFTs are listed on Mintbase's market contract `simple.market.mintbase1.near`. The mintbase.xyz website currently returns HTTP 402, so the Gallery's **Buy via Mintbase** calls the market contract directly. A Mintbase sale was tested on testnet (`market-v2-beta.mintspace2.testnet`) |
 | Pay in any token (NEAR Intents 1Click) | **Live on mainnet:** a real deposit address with status polling. No outside deposit has arrived yet |
 | Marketing plans | **Real:** written per piece, pinned to IPFS, logged on-chain. Written by NEAR AI when the key is set, otherwise by a labeled `fallback-marketer`. X posts are **drafts only, never posted** |
 | Sales numbers | 0 outside sales on mainnet so far. Our own and test buys are labeled **test** and never counted as outside sales |
@@ -294,7 +294,7 @@ The site runs on mainnet behind `NEXT_PUBLIC_NETWORK=mainnet`, with these parts:
 
 On mainnet the robots prepay 30 Tgas (the Seller 70 Tgas), so a robot account holding 0.05 NEAR can pay its own gas.
 
-The robots minted and listed 5 NFTs at NEAR AI Cloud prices (0.05–0.175 NEAR), both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** Launching cost ≈ 4.85 NEAR from the root. ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
+The robots have minted and listed 6 NFTs at NEAR AI Cloud prices (0.05–0.145 NEAR; #1 was marked down by the Seller from 0.175), both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** Launching cost ≈ 4.85 NEAR from the root. ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
 
 ## License
 
