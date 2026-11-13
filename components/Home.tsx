@@ -29,7 +29,7 @@ export default function Home() {
   const [brief, setBrief] = useState("");
   const [cBusy, setCBusy] = useState(false);
   const [cDone, setCDone] = useState<{ hash?: string; text: string; ok: boolean } | null>(null);
-  const [anyTok, setAnyTok] = useState<{ asset: string; q?: any; err?: string; loading?: boolean } | null>(null);
+  const [anyTok, setAnyTok] = useState<{ asset: string; q?: any; err?: string; loading?: boolean; swap?: string } | null>(null);
   const [floorY, setFloorY] = useState("50000000000000000000000");
   const floor = Number(toNear(floorY, 3));
   const cPrice = (Math.max(0.06, floor + 0.01)).toFixed(2);
@@ -165,11 +165,16 @@ export default function Home() {
       const r = how === "near" ? await walletCommission(b, cPrice) : await commissionWnear(b, cPrice);
       if (!r?.hash || !r.ok) { setCDone({ ok: false, hash: r?.hash, text: "The payment did not go through. Nothing was charged." }); return; }
       pushTx({ hash: r.hash, signer: acct, method: how === "near" ? "commission" : "commission_wnear", ok: true });
+      await afterPaid(r.commissionId);
+    } catch (e: any) { toast(walletError(e), 4500); } finally { setCBusy(false); }
+  };
+  /** Once a commission is paid (wallet, wNEAR or NEAR Intents), drive the robots until it is delivered. */
+  const afterPaid = async (commissionId?: string | null) => {
       setCOpen(false);
-      setStatus(`Paid on-chain (commission #${r.commissionId}). The Curator is briefing the Painter…`);
+      setStatus(`Paid on-chain (commission #${commissionId}). The Curator is briefing the Painter…`);
       // Commissions are served first-in, first-out: keep cycling until *this* one is delivered (rejections retry).
       let res: any = null, c: any = null;
-      const status = async () => (r.commissionId ? (await (await fetch(`/api/commission?id=${r.commissionId}`, { cache: "no-store" })).json().catch(() => ({}))).commission : null);
+      const status = async () => (commissionId ? (await (await fetch(`/api/commission?id=${commissionId}`, { cache: "no-store" })).json().catch(() => ({}))).commission : null);
       for (let i = 0; i < 5; i++) {
         res = await dir.current.run({ autoSell: false, commission: true });
         c = await status();
@@ -179,7 +184,32 @@ export default function Home() {
       }
       if (c?.status === "delivered") setCDone({ ok: true, hash: res?.sale?.hash, text: `Delivered! NFT #${c.token_id} is in your wallet. The robots hired each other on-chain and the contract split your ${toNear(c.amount, 3)} NEAR.` });
       else setCDone({ ok: false, text: c?.status === "open" ? "Still working on it. Your commission stays open; the robots retry, and you can cancel for a full refund after 30 minutes." : "Something went wrong. Check the ledger." });
-    } catch (e: any) { toast(walletError(e), 4500); } finally { setCBusy(false); }
+  };
+  /** NEAR Intents (mainnet): get a real 1Click deposit address, then watch the swap; when it lands, the contract opened the commission. */
+  const payAnyToken = async () => {
+    if (!acct) { connect(); toast(`Connect a ${NET_NAME} wallet: the NFT is delivered to it.`); return; }
+    const b = brief.trim(); if (b.length < 3) { toast("Tell the robots what to paint."); return; }
+    if (!anyTok) return;
+    setAnyTok({ ...anyTok, loading: true });
+    try {
+      const d = await (await fetch("/api/intents/quote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ asset: anyTok.asset, amountNear: Number(cPrice), brief: b, patron: acct, deposit: true }) })).json();
+      if (d.error || !d.depositAddress) { setAnyTok({ ...anyTok, loading: false, err: d.error || "No deposit address" }); return; }
+      const since = Date.now() - 60_000;
+      setAnyTok({ asset: anyTok.asset, q: d, swap: "Waiting for your deposit…" });
+      for (let i = 0; i < 240; i++) { // up to ~20 min
+        await new Promise((ok) => setTimeout(ok, 5000));
+        const st = await (await fetch(`/api/intents/quote?depositAddress=${encodeURIComponent(d.depositAddress)}`, { cache: "no-store" })).json().catch(() => ({}));
+        const s = String(st.status || "");
+        setAnyTok((t) => (t ? { ...t, swap: s ? `Swap status: ${s.replace(/_/g, " ").toLowerCase()}` : t.swap } : t));
+        if (/REFUNDED|FAILED/.test(s)) { setAnyTok((t) => (t ? { ...t, swap: "The swap failed and was refunded to your NEAR Intents balance." } : t)); return; }
+        if (s === "SUCCESS") {
+          const c = (await (await fetch(`/api/commission?patron=${encodeURIComponent(acct)}&after=${since}`, { cache: "no-store" })).json().catch(() => ({}))).commission;
+          setCBusy(true);
+          try { await afterPaid(c?.id); } finally { setCBusy(false); }
+          return;
+        }
+      }
+    } catch (e: any) { setAnyTok((t) => (t ? { ...t, loading: false, err: String(e?.message || e) } : t)); }
   };
   const quoteAny = async (asset: string) => {
     setAnyTok({ asset, loading: true });
@@ -255,6 +285,8 @@ export default function Home() {
           {anyTok && <div className="anytok">
             <select value={anyTok.asset} onChange={(e) => quoteAny(e.target.value)}>{PAY_ASSETS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
             {anyTok.loading ? <span>Getting a live NEAR Intents quote…</span> : anyTok.err ? <span>Quote failed: {short(anyTok.err, 60)}</span> : anyTok.q && <span><b>{Number(anyTok.q.amountIn).toPrecision(4)} {anyTok.q.asset.split(" ")[0]}</b> ≈ ${Number(anyTok.q.amountInUsd).toFixed(2)} → {anyTok.q.amountOut} wNEAR, ~{anyTok.q.timeEstimate}s via NEAR Intents 1Click.{NETWORK !== "mainnet" && " Mainnet only: live dry-run price, nothing to send on testnet."}</span>}
+            {NETWORK === "mainnet" && anyTok.q && !anyTok.q.depositAddress && !anyTok.loading && <button className="btn-sm" onClick={payAnyToken}>{acct ? `Pay with ${anyTok.q.asset}` : "Connect wallet to pay"}</button>}
+            {anyTok.q?.depositAddress && <span className="dep">Send exactly <b>{anyTok.q.amountIn} {anyTok.q.asset.split(" ")[0]}</b> ({anyTok.q.asset}) to <code style={{ wordBreak: "break-all" }}>{anyTok.q.depositAddress}</code> <button className="btn-sm ghost" onClick={() => navigator.clipboard?.writeText(anyTok.q.depositAddress).then(() => toast("Deposit address copied"))}>Copy</button><br />Your NFT goes to {short(acct || "", 24)}. Refunds go to your NEAR Intents balance. {anyTok.swap}</span>}
           </div>}
           <p className="c-note">You pay first; the contract holds it. The robots brief, paint, judge and mint it, then the Seller delivers the NFT to you and the payment is split on-chain. Not delivered in 30 min? Cancel for a full refund.</p>
         </div>}

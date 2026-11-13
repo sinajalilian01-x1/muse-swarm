@@ -19,14 +19,17 @@ export async function POST(req: Request) {
   const brief = String(b?.brief || "").slice(0, 120);
   const patron = String(b?.patron || "").slice(0, 64);
   const live = NETWORK === "mainnet";
-  if (live && (!brief.trim() || !patron || !b?.refundTo)) return json({ error: "brief, patron and refundTo are required" }, 400);
+  // mainnet: a price preview by default; a real deposit address only when the patron asks for one (deposit: true).
+  const wantDeposit = live && b?.deposit === true;
+  if (wantDeposit && (brief.trim().length < 3 || !/^([a-z0-9_-]+\.)*[a-z0-9_-]+(\.near|\.tg)?$|^[0-9a-f]{64}$/.test(patron))) return json({ error: "Connect your NEAR wallet and write a brief first" }, 400);
   const body = {
-    dry: !live, swapType: "EXACT_OUTPUT", slippageTolerance: 100, originAsset: asset.id, depositType: "ORIGIN_CHAIN",
+    dry: !wantDeposit, swapType: "EXACT_OUTPUT", slippageTolerance: 100, originAsset: asset.id, depositType: "ORIGIN_CHAIN",
     destinationAsset: WNEAR_ASSET, amount: nearToYocto(amountNear),
-    refundTo: live ? String(b.refundTo) : "0x1111111111111111111111111111111111111111", refundType: "ORIGIN_CHAIN",
+    // Refunds (e.g. an expired quote) go to the patron's NEAR Intents balance, so nobody needs an origin-chain address.
+    refundTo: live ? (patron || CONTRACT_ID) : "intents.near", refundType: "INTENTS",
     // testnet preview can't name the testnet contract (1Click is mainnet only), so it prices the swap to a known mainnet account.
     recipient: live ? CONTRACT_ID : "intents.near", recipientType: "DESTINATION_CHAIN",
-    ...(live ? { customRecipientMsg: JSON.stringify({ brief, patron }) } : {}),
+    ...(live ? { customRecipientMsg: JSON.stringify({ brief: brief || "commission", patron: patron || CONTRACT_ID }) } : {}),
     deadline: new Date(Date.now() + 60 * 60_000).toISOString(), referral: "muse-swarm",
   };
   const headers: Record<string, string> = { "content-type": "application/json" };
@@ -35,10 +38,10 @@ export async function POST(req: Request) {
     const r = await fetch(`${ONECLICK}/v0/quote`, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(12_000) });
     const d = await r.json();
     if (!r.ok || !d.quote) return json({ error: d.message || `1Click ${r.status}` }, 502);
-    return json({ live, network: NETWORK, asset: asset.label, amountIn: d.quote.amountInFormatted, amountInUsd: d.quote.amountInUsd, amountOut: d.quote.amountOutFormatted,
-      timeEstimate: d.quote.timeEstimate, depositAddress: live ? d.quote.depositAddress : null, deadline: d.quote.deadline ?? body.deadline,
+    return json({ live, deposit: wantDeposit, network: NETWORK, asset: asset.label, amountIn: d.quote.amountInFormatted, amountInUsd: d.quote.amountInUsd, amountOut: d.quote.amountOutFormatted,
+      timeEstimate: d.quote.timeEstimate, depositAddress: wantDeposit ? d.quote.depositAddress : null, patron: wantDeposit ? patron : null, deadline: d.quote.deadline ?? body.deadline,
       route: `${asset.label} → wNEAR → ${live ? CONTRACT_ID : "(mainnet swarm contract)"}.ft_on_transfer → commission`,
-      note: live ? "Send exactly this amount to the deposit address. 1Click swaps it and the contract opens your commission." : "Testnet preview: a live 1Click mainnet price (dry run). Nothing can be sent. On testnet, pay in NEAR or wNEAR instead." });
+      note: wantDeposit ? "Send exactly this amount to the deposit address. 1Click swaps it to wNEAR and the contract opens your commission. If anything fails, it is refunded to your NEAR Intents balance." : live ? "Live NEAR Intents price. Get a deposit address to pay with it." : "Testnet preview: a live 1Click mainnet price (dry run). Nothing can be sent. On testnet, pay in NEAR or wNEAR instead." });
   } catch (e) {
     return json({ error: String((e as Error).message || e) }, 502);
   }
