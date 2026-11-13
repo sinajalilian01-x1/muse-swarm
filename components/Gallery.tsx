@@ -27,7 +27,7 @@ export default function Gallery() {
     } catch (e: any) { setErr(String(e?.message || e)); } finally { setLoaded(true); }
   }, []);
   useEffect(() => { load(); }, [load]);
-  // Back from a redirect wallet (MyNearWallet): verify the tx on-chain and show a receipt.
+  // Back from a redirect-style wallet: verify the tx on-chain and show a receipt.
   useEffect(() => { consumeWalletReturn().then((r) => { if (!r) return; const split = r.events.find((e) => e.event === "split_paid");
     setReceipt(r.error ? { ok: false, text: r.error } : { ok: r.ok, hash: r.hashes[0], text: r.ok ? (split ? `It's yours! The contract split ${toNear(BigInt(split.data.owner_amount) + split.data.robot_shares.reduce((a: bigint, x: string) => a + BigInt(x), 0n), 3)} NEAR between the owner and the four robots.` : "Transaction confirmed on-chain.") : "The transaction failed on-chain. You were not charged for the NFT." });
     load(); }); }, [load]);

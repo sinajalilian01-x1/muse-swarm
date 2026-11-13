@@ -87,7 +87,7 @@ export async function txStatus(hash: string, signer: string): Promise<{ ok: bool
 }
 
 /**
- * Redirect wallets (MyNearWallet) send the visitor back with ?transactionHashes=… or ?errorCode=….
+ * Redirect-style wallets send the visitor back with ?transactionHashes=… or ?errorCode=….
  * Call once on page load: it cleans the URL and returns what happened, verified on-chain.
  */
 export async function consumeWalletReturn(): Promise<{ hashes: string[]; ok: boolean; events: any[]; error?: string } | null> {

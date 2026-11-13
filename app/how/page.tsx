@@ -24,7 +24,7 @@ export default function How() {
         <div className="grid g3">
           {[
             ["1 · Run a real cycle", <>On the <a className="lnk" href="/">Studio</a>, press <b>Run a real cycle</b>. Four robot transactions land on NEAR testnet in about 20 s, and each one appears in the live activity feed with an explorer link.</>],
-            ["2 · Collect the work", <>Connect a testnet wallet (MyNearWallet, Meteor or HERE) and press <b>Collect</b>, or let the demo collector buy it. The contract transfers the NFT and splits the payment in the same tx.</>],
+            ["2 · Collect the work", <>Connect a testnet wallet through NEAR Connect (Meteor, Intear, Nightly, Ledger or NEAR CLI) and press <b>Collect</b>, or let the demo collector buy it. The contract transfers the NFT and splits the payment in the same tx.</>],
             ["3 · Check the receipts", <>Open <a className="lnk" href="/robots">Robots</a> for each agent&apos;s budget, earnings, keys and P&amp;L, <a className="lnk" href="/ledger">Ledger</a> for every tx, and <a className="lnk" href="/api/health">/api/health</a> for live status.</>],
           ].map(([t, p]) => <div className="card" key={String(t)}><b>{t}</b><p className="k" style={{ marginTop: 6, lineHeight: 1.5 }}>{p}</p></div>)}
         </div>
@@ -44,7 +44,7 @@ export default function How() {
   ${(ai.nearAi ? "NEAR AI Cloud (LLM/image/VLM)" : "fallback brains (no AI key)").padEnd(28)} ─▶ │  painter ── FC key ── pin to IPFS ────▶ │  rules · budgets · jobs       │
   Pinata IPFS ◀───────────────── │  critic  ── FC key ── score ≥ 7.0? ───▶ │  NEP-171 NFTs + NEP-297 events│
                                  │  seller  ── FC key ── floor ≤ p ≤ max ▶ │  buy() → on-chain split       │
-  wallet (Wallet Selector) ──────┼──────────────────── buy ──────────────▶ │  fees → treasury              │
+  wallet (NEAR Connect) ─────────┼──────────────────── buy ──────────────▶ │  fees → treasury              │
                                  │  guardian ─ FC key ── pause ≤ 120 s ──▶ │  kill switch (owner)          │
   studio / gallery / ledger ◀── view calls + FastNear tx API ◀───────────── └───────────────────────────────┘`}</pre>
       </section>
