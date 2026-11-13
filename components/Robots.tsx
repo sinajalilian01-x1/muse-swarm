@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { toast, short } from "@/lib/ui";
-import { toNear, accountUrl, ROBOT_META, ROLES, CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID } from "@/lib/config";
+import { fund, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
+import { toNear, txUrl, accountUrl, ROBOT_META, ROLES, CONTRACT_ID, OWNER_ID, TREASURY_ID, GUARDIAN_ID, COLLECTOR_ID } from "@/lib/config";
 
 const n = (y: string | bigint, d = 4) => toNear(String(y), d).replace(/\.?0+$/, "") || "0";
 const pct = (a: string, b: string) => Math.min(100, Number((BigInt(a) * 10000n) / (BigInt(b) || 1n)) / 100);
@@ -18,6 +19,16 @@ function KeyList({ keys }: { keys: any[] }) {
 
 export default function Robots() {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState(""); const [pausing, setPausing] = useState(false);
+  const [acct, setAcct] = useState<string | null>(null); const [backing, setBacking] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<{ ok: boolean; hash?: string; text: string } | null>(null);
+  useEffect(() => onAccount(setAcct), []);
+  useEffect(() => { consumeWalletReturn().then((r) => { if (r) setReceipt(r.error ? { ok: false, text: r.error } : { ok: r.ok, hash: r.hashes[0], text: r.ok ? "Thanks, patron! The NEAR is now in that robot's on-chain budget." : "The transaction failed on-chain." }); }); }, []);
+  const back = async (role: string) => {
+    if (!acct) { connect(); toast("Connect a NEAR testnet wallet to back a robot."); return; }
+    setBacking(role);
+    try { const r = await fund(role, "0.1"); if (r?.hash) { setReceipt({ ok: r.ok, hash: r.hash, text: r.ok ? "Thanks, patron! 0.1 NEAR is now in that robot's on-chain budget." : "The transaction failed on-chain." }); load(); } }
+    catch (e) { toast(walletError(e), 4500); } finally { setBacking(null); }
+  };
   const load = useCallback(async () => { try { const r = await (await fetch("/api/robots", { cache: "no-store" })).json(); if (r.error) throw new Error(r.error); setD(r); setErr(""); } catch (e: any) { setErr(String(e.message || e)); } }, []);
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
   const pause = async () => {
@@ -39,6 +50,7 @@ export default function Robots() {
     <div className="page">
       <h1 className="t">The robots</h1>
       <p className="sub">Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
+      {receipt && <p className="notice" role="status" style={{ marginTop: 14 }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>}</p>}
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load chain data: {err}</p>}
       {!d && !err && <p className="sub">Reading accounts and keys from NEAR testnet…</p>}
       {d && <>
@@ -59,8 +71,10 @@ export default function Robots() {
                 <span>Actions</span><span>{rb.actions}</span>
               </div>
               <KeyList keys={a?.keys || []} />
+              <div className="btn-row"><button className="btn-sm ghost" disabled={backing === r} onClick={() => back(r)} title="Calls the contract's payable fund(role) from your wallet">{backing === r ? "Confirm in your wallet…" : `Back the ${m.name} with 0.1 NEAR`}</button></div>
             </div>); })}
         </div>
+        <p className="foot2">Anyone can be a patron: <span className="mono">fund(role)</span> is payable and public, so your NEAR goes straight into that robot&apos;s on-chain budget, which it spends on AI fees, storage and gas within the owner&apos;s caps.</p>
 
         <section className="sec">
           <h2>Swarm P&amp;L <span className="pill">honest numbers</span></h2>

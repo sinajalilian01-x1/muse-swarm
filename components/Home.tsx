@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { buy as walletBuy, onAccount, connect } from "@/lib/wallet";
+import { buy as walletBuy, onAccount, connect, consumeWalletReturn, walletError } from "@/lib/wallet";
 import { toast, who, label, txUrl, short } from "@/lib/ui";
 import { toNear } from "@/lib/config";
 
@@ -63,8 +63,13 @@ export default function Home() {
     })();
     loadFeed(); const t = setInterval(loadFeed, 20000);
     // wallet redirect return
-    const u = new URL(location.href); const hashes = u.searchParams.get("transactionHashes");
-    if (hashes) { u.searchParams.delete("transactionHashes"); history.replaceState({}, "", u.toString()); hashes.split(",").forEach((h) => pushTx({ hash: h, signer: "you", method: "buy", ok: true })); toast("Your wallet transaction is on-chain. Welcome, collector!"); }
+    consumeWalletReturn().then((r) => {
+      if (!r) return;
+      if (r.error) { toast(r.error, 5000); return; }
+      r.hashes.forEach((h) => pushTx({ hash: h, signer: "you", method: "buy", ok: r.ok }));
+      toast(r.ok ? "Verified on-chain: it's yours, and the split is paid. Welcome, collector!" : "Your wallet tx failed on-chain. You were not charged for the NFT.", 5000);
+      setLatest((c) => (c && r.ok && r.events.some((e: any) => e.event === "sold" && String(e.data?.token_id) === String(c.tokenId)) ? { ...c, status: "sold", buyer: "you" } : c));
+    });
     return () => { alive = false; off(); clearInterval(t); document.body.classList.remove("home"); };
   }, [loadFeed, pushTx]);
 
@@ -86,7 +91,7 @@ export default function Home() {
         setLatest((c) => (c ? { ...c, status: "sold", buyer: acct } : c));
         toast(r.ok ? "It's yours! The contract split your payment between the robots and the owner." : "The wallet reported a failure. Check the tx.");
       }
-    } catch (e: any) { toast(String(e?.message || e)); }
+    } catch (e: any) { toast(walletError(e), 4500); }
   };
   const demoBuy = async () => {
     if (!latest?.tokenId) return;

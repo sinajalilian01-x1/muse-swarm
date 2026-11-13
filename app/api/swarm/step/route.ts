@@ -1,5 +1,5 @@
 import { advance } from "@/lib/swarm";
-import { json, rateLimit } from "@/lib/ratelimit";
+import { json, rateLimit, chainPace } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +12,16 @@ export const maxDuration = 60;
  */
 export async function POST(req: Request) {
   if (!hasRobotKeys()) return json({ stage: "error", txs: [], error: "Robot keys are not configured on this server" }, 503);
-  const body = await req.json().catch(() => ({}));
+  const raw = await req.json().catch(() => ({}));
+  const body = { driver: typeof raw?.driver === "string" && raw.driver.length <= 64 ? raw.driver : undefined };
   // Opening a job is the expensive part; the other stages just continue it.
   const opening = !body.driver;
   if (opening) {
     const rl = rateLimit(req, "open", 4, 10 * 60_000);
     if (!rl.ok) return json({ stage: "error", txs: [], error: `The robots need a breather: start another cycle in ${rl.retryAfter}s (4 cycles per 10 min per visitor).` }, 429);
+    // Swarm-wide pace, read from the contract so it holds across all serverless instances.
+    const pace = await chainPace(12, 10 * 60_000).catch(() => ({ ok: true, retryAfter: 0 }));
+    if (!pace.ok) return json({ stage: "error", txs: [], error: `The swarm has made 12 works in the last 10 minutes and is resting. Next cycle in ${pace.retryAfter}s. Meanwhile, collect a listed work in the Gallery.` }, 429);
   } else {
     const rl = rateLimit(req, "step", 40, 10 * 60_000);
     if (!rl.ok) return json({ stage: "error", txs: [], error: "Too many steps, slow down." }, 429);
