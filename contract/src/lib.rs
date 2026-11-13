@@ -63,7 +63,8 @@ const NEXT_COMMISSION_KEY: &[u8] = b"next_commission";
 const GAS_UNWRAP: Gas = Gas::from_tgas(10);
 /// wNEAR contract for this network (decided by the contract's own account suffix).
 fn wnear_id() -> AccountId {
-    if env::current_account_id().as_str().ends_with(".near") { "wrap.near".parse().unwrap() } else { "wrap.testnet".parse().unwrap() }
+    // Testnet accounts all end in .testnet; anything else (.near, .tg, implicit…) is mainnet.
+    if env::current_account_id().as_str().ends_with(".testnet") { "wrap.testnet".parse().unwrap() } else { "wrap.near".parse().unwrap() }
 }
 fn commissions() -> near_sdk::collections::LookupMap<u64, Commission> { near_sdk::collections::LookupMap::new(StorageKey::Commissions) }
 fn job_commission() -> near_sdk::collections::LookupMap<u64, u64> { near_sdk::collections::LookupMap::new(StorageKey::JobCommission) }

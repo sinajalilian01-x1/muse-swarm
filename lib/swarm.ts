@@ -5,7 +5,7 @@ import { fetchTrends } from "./trends";
 import { curatorPick, painterPaint, criticReview, aiMode, sellerPrice } from "./ai";
 import { pin, fetchIpfs } from "./ipfs";
 import { marketingPlan, pinPlan, MARKET_ID, type Plan } from "./marketing";
-import { ROBOT_IDS, APP_URL, nearNum, nearToYocto, type Role } from "./config";
+import { ROBOT_IDS, APP_URL, NETWORK, nearNum, nearToYocto, type Role } from "./config";
 import type { Job, Swarm, TxInfo } from "./types";
 
 export const getSwarm = () => view<Swarm>("get_swarm");
@@ -31,7 +31,8 @@ export function isDriver(jobId: string, token?: string) {
 /** Someone else's job that moved in the last 90 s belongs to its driver; after that anyone may continue it. */
 export const DRIVER_GRACE_MS = 90_000;
 
-const REFUEL_BELOW = 0.2, REFUEL_AMOUNT = "0.25";
+// Mainnet robots run lean gas wallets: top up small amounts, from their own capped budgets.
+const REFUEL_BELOW = NETWORK === "mainnet" ? 0.02 : 0.2, REFUEL_AMOUNT = NETWORK === "mainnet" ? "0.03" : "0.25";
 const balanceCache = new Map<string, { v: number; t: number }>();
 async function maybeRefuel(role: Role): Promise<TxInfo | null> {
   const id = ROBOT_IDS[role];

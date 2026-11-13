@@ -1,3 +1,4 @@
+import { NETWORK } from "@/lib/config";
 import { advance, nextCommission } from "@/lib/swarm";
 import { json, rateLimit, chainPace } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
@@ -17,12 +18,15 @@ export async function POST(req: Request) {
   // Opening a job is the expensive part; the other stages just continue it.
   const opening = !body.driver;
   if (opening) {
-    const rl = rateLimit(req, "open", 4, 10 * 60_000);
-    if (!rl.ok) return json({ stage: "error", txs: [], error: `The robots need a breather: start another cycle in ${rl.retryAfter}s (4 cycles per 10 min per visitor).` }, 429);
+    // Mainnet spends real NEAR on gas and AI: much tighter free-demo limits (the contract's daily caps hold regardless).
+    const MAIN = NETWORK === "mainnet";
+    const perIp = MAIN ? 2 : 4, perIpWin = MAIN ? 60 * 60_000 : 10 * 60_000, paceMax = MAIN ? Number(process.env.MAINNET_FREE_CYCLES_PER_HOUR || 3) : 12, paceWin = MAIN ? 60 * 60_000 : 10 * 60_000;
+    const rl = rateLimit(req, "open", perIp, perIpWin);
+    if (!rl.ok) return json({ stage: "error", txs: [], error: `The robots need a breather: start another cycle in ${rl.retryAfter}s (${perIp} cycles per ${MAIN ? "hour" : "10 min"} per visitor).` }, 429);
     // Swarm-wide pace, read from the contract so it holds across all serverless instances.
-    const pace = await chainPace(12, 10 * 60_000).catch(() => ({ ok: true, retryAfter: 0 }));
+    const pace = await chainPace(paceMax, paceWin).catch(() => ({ ok: !MAIN, retryAfter: 60 }));
     // Paid commissions skip the free-demo pacing: the patron already paid for the work.
-    if (!pace.ok && !(await nextCommission().catch(() => null))) return json({ stage: "error", txs: [], error: `The swarm has made 12 works in the last 10 minutes and is resting. Next cycle in ${pace.retryAfter}s. Meanwhile, collect a listed work in the Gallery.` }, 429);
+    if (!pace.ok && !(await nextCommission().catch(() => null))) return json({ stage: "error", txs: [], error: `The swarm has made ${paceMax} works in the last ${MAIN ? "hour" : "10 minutes"} and is resting. Next cycle in ${pace.retryAfter}s. Meanwhile, collect a listed work in the Gallery.` }, 429);
   } else {
     const rl = rateLimit(req, "step", 40, 10 * 60_000);
     if (!rl.ok) return json({ stage: "error", txs: [], error: "Too many steps, slow down." }, 429);

@@ -700,3 +700,20 @@ fn commission_in_wnear_via_ft_transfer_call() {
     assert_eq!(cm[0].patron, buyer());
     assert_eq!(cm[0].paid_with, "wnear");
 }
+
+#[test]
+fn wnear_is_wrap_near_for_any_mainnet_suffix() {
+    // e.g. a mainnet contract under a .tg account must accept wrap.near, not wrap.testnet
+    let mut c = setup();
+    let at = |who: AccountId| {
+        let mut b = VMContextBuilder::new();
+        b.current_account_id(a("swarm.hlpok1lad.tg")).predecessor_account_id(who.clone()).signer_account_id(who)
+            .account_balance(NearToken::from_near(100)).block_timestamp(T0);
+        testing_env!(b.build());
+    };
+    at(a("wrap.testnet"));
+    assert!(panics(|| { c.ft_on_transfer(a("intents.near"), U128(100 * MILLI), r#"{"brief":"x","patron":"buyer.near"}"#.into()); }));
+    at(a("wrap.near"));
+    let left = c.ft_on_transfer(a("intents.near"), U128(100 * MILLI), r#"{"brief":"a kite","patron":"buyer.near"}"#.into());
+    assert_eq!(left.0, 0);
+}
