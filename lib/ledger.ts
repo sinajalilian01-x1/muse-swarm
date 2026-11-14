@@ -11,7 +11,7 @@ export interface LedgerTx {
 const detailCache = new Map<string, LedgerTx>();
 let listCache: { t: number; v: { hash: string; block: number; at: number }[]; count: number } | null = null;
 
-async function post(path: string, body: unknown) {
+export async function post(path: string, body: unknown) {
   const r = await fetch(`${TX_API}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000), cache: "no-store" });
   if (!r.ok) throw new Error(`tx api ${r.status}`);
   return r.json();

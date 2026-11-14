@@ -12,7 +12,8 @@
     "cycle": "NODE_OPTIONS=--conditions=react-server tsx scripts/cycle.mts",
     "market-backlog": "NODE_OPTIONS=--conditions=react-server tsx scripts/market-backlog.mts",
     "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "proof:snapshot": "NODE_OPTIONS=--conditions=react-server tsx scripts/proof-snapshot.mts"
   },
   "dependencies": {
     "@hot-labs/near-connect": "^0.12.0",

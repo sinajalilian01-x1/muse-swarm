@@ -1,0 +1,1372 @@
+{
+ "generatedAt": 1794673762510,
+ "source": "snapshot",
+ "network": "mainnet",
+ "explorer": "https://nearblocks.io",
+ "contract": "swarm.hlpok1lad.tg",
+ "owner": "hlpok1lad.tg",
+ "counts": {
+  "contractTxs": 107,
+  "okTxs": 107,
+  "failedTxs": 0,
+  "jobs": 22,
+  "minted": 19,
+  "rejected": 3,
+  "listings": 19,
+  "nftSupply": 19,
+  "agentPayments": 41,
+  "agentPaid": "63000000000000000000000",
+  "funded": "1300000000000000000000000",
+  "fees": "83088808000000000000000",
+  "storage": "382330000000000000000000",
+  "sales": 0,
+  "outsideSales": 0,
+  "revenue": "0",
+  "ownerTransfers": 9,
+  "ownerTransferred": "4423500000000000000000000",
+  "activeDays": 2,
+  "firstTxAt": 1794545248308.4856,
+  "lastTxAt": 1794673749514.6401
+ },
+ "accounts": [
+  {
+   "id": "swarm.hlpok1lad.tg",
+   "role": "Swarm contract (NEP-171 NFTs, budgets, rules)",
+   "balance": "4998746882375738100000000"
+  },
+  {
+   "id": "hlpok1lad.tg",
+   "role": "Owner: funds the robots, receives the owner share",
+   "balance": "3834946020607976689512138"
+  },
+  {
+   "id": "curator.hlpok1lad.tg",
+   "role": "Curator robot",
+   "balance": "42426139965678000000000"
+  },
+  {
+   "id": "painter.hlpok1lad.tg",
+   "role": "Painter robot",
+   "balance": "42143771130599700000000"
+  },
+  {
+   "id": "critic.hlpok1lad.tg",
+   "role": "Critic robot",
+   "balance": "36243551647342400000000"
+  },
+  {
+   "id": "seller.hlpok1lad.tg",
+   "role": "Seller robot",
+   "balance": "86331536355574900000000"
+  },
+  {
+   "id": "treasury.hlpok1lad.tg",
+   "role": "Treasury: receives every AI fee",
+   "balance": "93088808000000000000000"
+  },
+  {
+   "id": "guardian.hlpok1lad.tg",
+   "role": "Guardian: pause only",
+   "balance": "19896888273014000000000"
+  },
+  {
+   "id": "bounty.hlpok1lad.tg",
+   "role": "Critic's bounty purse",
+   "balance": "23500000000000000000000"
+  }
+ ],
+ "days": [
+  {
+   "day": "2026-11-14",
+   "txs": 51,
+   "jobs": 12,
+   "mints": 9,
+   "agentPayments": 21
+  },
+  {
+   "day": "2026-11-13",
+   "txs": 56,
+   "jobs": 10,
+   "mints": 10,
+   "agentPayments": 20
+  }
+ ],
+ "groups": {
+  "funding": [
+   {
+    "hash": "2MDGduLYSo3P4YMPMfWrLxWqUnBhRWeDnWbZNpNrkEJb",
+    "at": 1794548268994.8296,
+    "signer": "hlpok1lad.tg",
+    "method": "fund",
+    "amount": "470000000000000000000000",
+    "summary": "hlpok1lad.tg funded the seller's on-chain budget with 0.47 NEAR"
+   },
+   {
+    "hash": "DH8dkh7YUiThr7iMkXjjrgcucpU6ZVVzUsroHYE4d6cp",
+    "at": 1794548264706.5088,
+    "signer": "hlpok1lad.tg",
+    "method": "fund",
+    "amount": "230000000000000000000000",
+    "summary": "hlpok1lad.tg funded the critic's on-chain budget with 0.23 NEAR"
+   },
+   {
+    "hash": "FQgUH136hCb9iK8WXCSq4W9tEHeBUQ5d4aAzstDzTDbT",
+    "at": 1794548260556.4104,
+    "signer": "hlpok1lad.tg",
+    "method": "fund",
+    "amount": "150000000000000000000000",
+    "summary": "hlpok1lad.tg funded the painter's on-chain budget with 0.15 NEAR"
+   },
+   {
+    "hash": "6Vg9qW42MLadevgN7zTMmkSgeqWVj1c4ZHq77qtXbGYP",
+    "at": 1794548256669.366,
+    "signer": "hlpok1lad.tg",
+    "method": "fund",
+    "amount": "50000000000000000000000",
+    "summary": "hlpok1lad.tg funded the curator's on-chain budget with 0.05 NEAR"
+   },
+   {
+    "hash": "FekCGnWjPcD1sShp1UbtoKAbQiphePvZKGrKYV1fnKGQ",
+    "at": 1794545315675.03,
+    "signer": "hlpok1lad.tg",
+    "method": "fund",
+    "amount": "400000000000000000000000",
+    "summary": "hlpok1lad.tg funded all four robots' on-chain budget with 0.4 NEAR"
+   }
+  ],
+  "agentPayments": [
+   {
+    "hash": "Dum5XDtAQ1AeLSKBvB7o9KJNAq2MGJ7wndgGZy1ykgPf",
+    "at": 1794666984859.9824,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #22)"
+   },
+   {
+    "hash": "F5f2XF5M43HAQoWmwS4QqpTM625bzKPwbi16HkdfnGnc",
+    "at": 1794666974059.5754,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #22)"
+   },
+   {
+    "hash": "J2WXFTXVvUEGmiW8UHHfQ3a56hNMxWemea8qBYue7AHg",
+    "at": 1794666739919.722,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #21)"
+   },
+   {
+    "hash": "6WJg58YUcQK5qXXT6nr2RQFT5Cas3f2toLba8ix6DTyo",
+    "at": 1794666719336.1685,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #21)"
+   },
+   {
+    "hash": "52N8ptnBFK3cPPJZPRkStG3ye4JwitKUqVhhuMqPdWLw",
+    "at": 1794666154503.1636,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #20)"
+   },
+   {
+    "hash": "EjMy9dpemTf614oxeTRXqCwx8jBL3Ykuhdg6U2NSEG5B",
+    "at": 1794666132717.059,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #20)"
+   },
+   {
+    "hash": "4rKFkRiM8sHTfnRDMbhoRqLaeVpbG7M1fZwJ7APZCNju",
+    "at": 1794665872469.5867,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #19)"
+   },
+   {
+    "hash": "2Fk6FU2BmtoLKgip79Pqxi9SMRSAUN3Z3qTB9jGkJEZ4",
+    "at": 1794665851418.8218,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #19)"
+   },
+   {
+    "hash": "CUJhYVuDkzaKAtmYasSt4fNPoAQGSmgZc8W2DtmoMYAb",
+    "at": 1794660378024.5906,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #18)"
+   },
+   {
+    "hash": "EdWUw8wdNahbncTg6JCKoLUXeSyAM6Led33NcSXNNTr2",
+    "at": 1794659326019.7769,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #17)"
+   },
+   {
+    "hash": "5c3CGhCHB3C6ZKB3XPdr8rAEK9LqqYmQBMWgpKsJtSgv",
+    "at": 1794659281791.8662,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #17)"
+   },
+   {
+    "hash": "AWSmvuiMcK3uMyJHp86wXqwWy76WMr7juJYxo5fvg1Qy",
+    "at": 1794654208459.5872,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #16)"
+   },
+   {
+    "hash": "4sRoXrrRvQfUD7zTunjTLktzrfr2FjoHkYEDRJMtD41S",
+    "at": 1794654194176.9478,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #16)"
+   },
+   {
+    "hash": "8gdZgLdEZkz7LEjTY6G4DYj82DUuZcpoJgCDibzeKk2f",
+    "at": 1794646393348.5076,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #15)"
+   },
+   {
+    "hash": "FGL8PcSETc65rWZEcgii2LjoTKGWhny8Vjtsh3ZYPVRX",
+    "at": 1794646379872.0112,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #15)"
+   },
+   {
+    "hash": "4qRv1h764Kxdu6AUDzsUSJymXxNMyaB3i6TxD8ALiDnG",
+    "at": 1794638436705.85,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #14)"
+   },
+   {
+    "hash": "CgE4xnFzrj9iJekV7iqvi5ixeP9mpDzV9EGUVVLjrhHy",
+    "at": 1794638422757.731,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #14)"
+   },
+   {
+    "hash": "3KkugWQ1i1X7Rzp11aTNRQ81zwamWt2wiMyUXH6aCk6q",
+    "at": 1794630841760.2476,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #13)"
+   },
+   {
+    "hash": "Dita1E8QFEoyE1tfTyZ1mnHCA8nscQ6L8oNEmwLpTM8z",
+    "at": 1794630828261.807,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #13)"
+   },
+   {
+    "hash": "CFKrrEfpFZH6851DnE7kidQd3gSzMTuz6bXWqfCGVivY",
+    "at": 1794623500302.3208,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #12)"
+   },
+   {
+    "hash": "BJrrBZ2QrFC2ZPAZ3yNfEraounEseLhKDRGx8Gqste7K",
+    "at": 1794616646169.6038,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #11)"
+   },
+   {
+    "hash": "63bWbAafWSgGzJXk2qA4v77kvrLgx8XHtXpFDHoY51w9",
+    "at": 1794554520256.7,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #10)"
+   },
+   {
+    "hash": "64UnSWiZiV2jurJCLnnrCqQy91BcmLXgnB5WJEuZj4My",
+    "at": 1794554502405.192,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #10)"
+   },
+   {
+    "hash": "GJWLeet9akFdY68sA4nweLv1TcZP8QpMrU5XaNGYpDrc",
+    "at": 1794552695825.9507,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #9)"
+   },
+   {
+    "hash": "G8gt5Hv4iKVqTHKEchWqP2aksbWMgagCVqvU6AkvhNBC",
+    "at": 1794552172741.9343,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #9)"
+   },
+   {
+    "hash": "CwaBtQTjSAGpijUwZaDPRhmnq3fxejDqfU5Zf7JpnD7D",
+    "at": 1794552028022.4404,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #8)"
+   },
+   {
+    "hash": "2442hxEJ1o1nNRd2PbexMwiq2stkEmWGRLju9tfKAeFZ",
+    "at": 1794552014665.9978,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #8)"
+   },
+   {
+    "hash": "89LiEb5F7vzfDLUCENwM7T2vdBbyKxZQtPrHuQAmXKwE",
+    "at": 1794548488373.259,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #7)"
+   },
+   {
+    "hash": "JAqcUtgmg8sZnk49F3s9UmGaXm4imCWfFQaEdW5VkoLC",
+    "at": 1794548474928.844,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #7)"
+   },
+   {
+    "hash": "B6QwzxX2EPU6dvyE3pZdpxRvfDfmvNPT4bniKbdRCmAx",
+    "at": 1794547508567.7139,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #6)"
+   },
+   {
+    "hash": "67bwBAnxWym2ZaXyUJBkmBg35CMixWTCLFdAWTCxrgvY",
+    "at": 1794547491842.0503,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #6)"
+   },
+   {
+    "hash": "5DfxRDP7pQ7YsuqgmNfpm6L3SAchXGZKcSKdWqP4dFci",
+    "at": 1794545750052.172,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #5)"
+   },
+   {
+    "hash": "8kUQtKKq5gop7ex8B1wcQV3UZx3sTj6HTeoZaNXPr36",
+    "at": 1794545737046.768,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #5)"
+   },
+   {
+    "hash": "BrYLR4V7YsMo5Wmoe6QUjQ2AkSkkTUEHRpFLn3WLM9vF",
+    "at": 1794545724534.8794,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #4)"
+   },
+   {
+    "hash": "FXEDUKxGKcZEkekRwMfkksC9gXm2GrZkDwhuSbgJR5gA",
+    "at": 1794545709290.5447,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #4)"
+   },
+   {
+    "hash": "GGkKGaXddiDNkAP6CMLLXTde2eWsMRsmmMroURUQS9vN",
+    "at": 1794545697620.6626,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #3)"
+   },
+   {
+    "hash": "EUoZH52C8MC2ay3ia35vb8qP7BNcFvvM3SWSJMJDaTbn",
+    "at": 1794545683524.86,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #3)"
+   },
+   {
+    "hash": "FA5DvQQ3wwQRFZi2oMXegUovmj1ifw5bCrHoZusRP4oS",
+    "at": 1794545651858.6584,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #2)"
+   },
+   {
+    "hash": "FPMJ6WbMo4Tr4nUktK3cWZnDdcTJsfEYGW4C3m11LuYU",
+    "at": 1794545640559.2163,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #2)"
+   },
+   {
+    "hash": "6hiJyY62DWexKpyyujJtFAmHkVU4Vyt3VR1tzD33zvtX",
+    "at": 1794545589612.4502,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "1000000000000000000000",
+    "summary": "seller paid critic 0.001 NEAR for the appraisal (job #1)"
+   },
+   {
+    "hash": "AUWKAGoTZKXjYaHsbFE1iFSTXVrnjP7KYmFkEjG7ZAoC",
+    "at": 1794545574699.4285,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid curator 0.002 NEAR for the brief (job #1)"
+   }
+  ],
+  "mints": [
+   {
+    "hash": "FJwQdqCwRfTWkqqXaKZKuR7K4dB9yz4ooBSk8JhnbqKv",
+    "at": 1794666980618.414,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #22"
+   },
+   {
+    "hash": "7o9oL3u8FfJtub2BwYcmc2ZBouimFTwk24JoLvFgdTEB",
+    "at": 1794666734289.5312,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #21"
+   },
+   {
+    "hash": "8YKfsTN4EZ41HMCJLi4Rfa1txVaC4w89wir6Pd2A6Ln1",
+    "at": 1794666149279.0942,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #20"
+   },
+   {
+    "hash": "HJAFBTM6SetUkrzRaYBpwHNkCE1Cxgfk8QkrsMHGy6QM",
+    "at": 1794665866337.2432,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #19"
+   },
+   {
+    "hash": "8v8WSLXYLZ68RidNzrkXaNcDxBZqSeSCZFCuK9RBFFac",
+    "at": 1794659321012.5002,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #17"
+   },
+   {
+    "hash": "BNULgRvM35gfULRzZkTeAMqPHGXngZuEXHZLi7kQu8cc",
+    "at": 1794654204417.957,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #16"
+   },
+   {
+    "hash": "5TEMfVo3Z5buEUFvP8vfWJtjTdSiGk2Ltn27rp72yjb4",
+    "at": 1794646388986.113,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #15"
+   },
+   {
+    "hash": "2waNzjJAmmUkQiT7sBRr6zdriMEHoHigkEP8oLWL2382",
+    "at": 1794638431748.968,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #14"
+   },
+   {
+    "hash": "GuubbNb7gzDTdUF5SK9g3YVSWsZL9BR73EiQstd8iqx6",
+    "at": 1794630837316.2583,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #13"
+   },
+   {
+    "hash": "HLaBHyBpRGGwbZqb4WzTZ9LWbkxUpco4UvA8MBQNeQp5",
+    "at": 1794554515622.1868,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #10"
+   },
+   {
+    "hash": "2g4sFGoWM7Kt1BRHbDseKGSWMwTKhV3fDweNMG6uXLSi",
+    "at": 1794552689825.103,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #9"
+   },
+   {
+    "hash": "kVmKQaWbo8UiXzao4cWTUKuFabcc8uVcbs1CmSQUutc",
+    "at": 1794552024006.1829,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #8"
+   },
+   {
+    "hash": "7sGbsvFANxQ9yaBYiD8x75yTWCTdDeoyB9Z49CrF3F2b",
+    "at": 1794548483336.657,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #7"
+   },
+   {
+    "hash": "5ZHAqWiZPJAE4kmXgqnpnBBpNf6s1p394JmrPVhve6om",
+    "at": 1794547503269.8345,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #6"
+   },
+   {
+    "hash": "5jKUomjqw3X2PXZ81cKqwa2oxsnncsmxFYVnZHGqeQLW",
+    "at": 1794545744961.366,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #5"
+   },
+   {
+    "hash": "J1ykVzuVf9rVDMsPG8BhYdNBwz2PaiXMJ8UTTt6PZaz1",
+    "at": 1794545719135.1057,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #4"
+   },
+   {
+    "hash": "2e7tSZiHEvwxzf8Wt7E1uJ91VFiTq4Fasf5tS5s26Ti2",
+    "at": 1794545692189.9402,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #3"
+   },
+   {
+    "hash": "DghhugBxzXtyS6h5bv9Adv1SjcqcoQh5FUnSmDJgeBp5",
+    "at": 1794545647870.9563,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #2"
+   },
+   {
+    "hash": "B1J2RsSk6fxebaNbLcTqWDKwyw7LaPCt1CTgHnZyPqE7",
+    "at": 1794545583969.7817,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "summary": "Critic approved and minted NFT #1"
+   }
+  ],
+  "listings": [
+   {
+    "hash": "Dum5XDtAQ1AeLSKBvB7o9KJNAq2MGJ7wndgGZy1ykgPf",
+    "at": 1794666984859.9824,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #22 for 0.05 NEAR"
+   },
+   {
+    "hash": "J2WXFTXVvUEGmiW8UHHfQ3a56hNMxWemea8qBYue7AHg",
+    "at": 1794666739919.722,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #21 for 0.05 NEAR"
+   },
+   {
+    "hash": "52N8ptnBFK3cPPJZPRkStG3ye4JwitKUqVhhuMqPdWLw",
+    "at": 1794666154503.1636,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #20 for 0.05 NEAR"
+   },
+   {
+    "hash": "4rKFkRiM8sHTfnRDMbhoRqLaeVpbG7M1fZwJ7APZCNju",
+    "at": 1794665872469.5867,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #19 for 0.05 NEAR"
+   },
+   {
+    "hash": "EdWUw8wdNahbncTg6JCKoLUXeSyAM6Led33NcSXNNTr2",
+    "at": 1794659326019.7769,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #17 for 0.05 NEAR"
+   },
+   {
+    "hash": "AWSmvuiMcK3uMyJHp86wXqwWy76WMr7juJYxo5fvg1Qy",
+    "at": 1794654208459.5872,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #16 for 0.05 NEAR"
+   },
+   {
+    "hash": "8gdZgLdEZkz7LEjTY6G4DYj82DUuZcpoJgCDibzeKk2f",
+    "at": 1794646393348.5076,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #15 for 0.05 NEAR"
+   },
+   {
+    "hash": "4qRv1h764Kxdu6AUDzsUSJymXxNMyaB3i6TxD8ALiDnG",
+    "at": 1794638436705.85,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #14 for 0.05 NEAR"
+   },
+   {
+    "hash": "3KkugWQ1i1X7Rzp11aTNRQ81zwamWt2wiMyUXH6aCk6q",
+    "at": 1794630841760.2476,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #13 for 0.05 NEAR"
+   },
+   {
+    "hash": "63bWbAafWSgGzJXk2qA4v77kvrLgx8XHtXpFDHoY51w9",
+    "at": 1794554520256.7,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #10 for 0.05 NEAR"
+   },
+   {
+    "hash": "GJWLeet9akFdY68sA4nweLv1TcZP8QpMrU5XaNGYpDrc",
+    "at": 1794552695825.9507,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #9 for 0.05 NEAR"
+   },
+   {
+    "hash": "CwaBtQTjSAGpijUwZaDPRhmnq3fxejDqfU5Zf7JpnD7D",
+    "at": 1794552028022.4404,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #8 for 0.05 NEAR"
+   },
+   {
+    "hash": "89LiEb5F7vzfDLUCENwM7T2vdBbyKxZQtPrHuQAmXKwE",
+    "at": 1794548488373.259,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #7 for 0.05 NEAR"
+   },
+   {
+    "hash": "B6QwzxX2EPU6dvyE3pZdpxRvfDfmvNPT4bniKbdRCmAx",
+    "at": 1794547508567.7139,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #6 for 0.05 NEAR"
+   },
+   {
+    "hash": "5DfxRDP7pQ7YsuqgmNfpm6L3SAchXGZKcSKdWqP4dFci",
+    "at": 1794545750052.172,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #5 for 0.05 NEAR"
+   },
+   {
+    "hash": "BrYLR4V7YsMo5Wmoe6QUjQ2AkSkkTUEHRpFLn3WLM9vF",
+    "at": 1794545724534.8794,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #4 for 0.05 NEAR"
+   },
+   {
+    "hash": "GGkKGaXddiDNkAP6CMLLXTde2eWsMRsmmMroURUQS9vN",
+    "at": 1794545697620.6626,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "50000000000000000000000",
+    "summary": "Seller listed NFT #3 for 0.05 NEAR"
+   },
+   {
+    "hash": "FA5DvQQ3wwQRFZi2oMXegUovmj1ifw5bCrHoZusRP4oS",
+    "at": 1794545651858.6584,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "80000000000000000000000",
+    "summary": "Seller listed NFT #2 for 0.08 NEAR"
+   },
+   {
+    "hash": "6hiJyY62DWexKpyyujJtFAmHkVU4Vyt3VR1tzD33zvtX",
+    "at": 1794545589612.4502,
+    "signer": "seller.hlpok1lad.tg",
+    "method": "seller_list",
+    "amount": "175000000000000000000000",
+    "summary": "Seller listed NFT #1 for 0.175 NEAR"
+   }
+  ],
+  "aiFees": [
+   {
+    "hash": "FJwQdqCwRfTWkqqXaKZKuR7K4dB9yz4ooBSk8JhnbqKv",
+    "at": 1794666980618.414,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "F5f2XF5M43HAQoWmwS4QqpTM625bzKPwbi16HkdfnGnc",
+    "at": 1794666974059.5754,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3715170000000000000000",
+    "summary": "painter paid a 0.00371 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "9dS2cegwQNuRKtbSC4QbkyBRfLVe4QbyunJe6GaBqb89",
+    "at": 1794666969897.7834,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "7o9oL3u8FfJtub2BwYcmc2ZBouimFTwk24JoLvFgdTEB",
+    "at": 1794666734289.5312,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "6WJg58YUcQK5qXXT6nr2RQFT5Cas3f2toLba8ix6DTyo",
+    "at": 1794666719336.1685,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3715170000000000000000",
+    "summary": "painter paid a 0.00371 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "2XV65ZjMbDdsfZPUTQ3BdW64CaX2b5uBR3AkdDfAa2TK",
+    "at": 1794666715797.134,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "8YKfsTN4EZ41HMCJLi4Rfa1txVaC4w89wir6Pd2A6Ln1",
+    "at": 1794666149279.0942,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "EjMy9dpemTf614oxeTRXqCwx8jBL3Ykuhdg6U2NSEG5B",
+    "at": 1794666132717.059,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3669725000000000000000",
+    "summary": "painter paid a 0.00366 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "AA6a7vuDB153n1gGwjnHur6TzzvpW8Z1uUBrmy8wdtXQ",
+    "at": 1794666128729.8062,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "HJAFBTM6SetUkrzRaYBpwHNkCE1Cxgfk8QkrsMHGy6QM",
+    "at": 1794665866337.2432,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "2Fk6FU2BmtoLKgip79Pqxi9SMRSAUN3Z3qTB9jGkJEZ4",
+    "at": 1794665851418.8218,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3669725000000000000000",
+    "summary": "painter paid a 0.00366 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "13agHGPfbATaDatfK58axpQAXEw1e1KcozjpPrZ88EbD",
+    "at": 1794665847285.857,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "6VPx5vMvos8wQFWB582jpK5V3Zawh6ZnmW5s3NbVZBGn",
+    "at": 1794660395097.7705,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "CUJhYVuDkzaKAtmYasSt4fNPoAQGSmgZc8W2DtmoMYAb",
+    "at": 1794660378024.5906,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3592814000000000000000",
+    "summary": "painter paid a 0.00359 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "EyEdiDMteWoKWgM6szo4zCmbYumJmoAgkLiRoquLMKp4",
+    "at": 1794660374287.4412,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "8v8WSLXYLZ68RidNzrkXaNcDxBZqSeSCZFCuK9RBFFac",
+    "at": 1794659321012.5002,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "5c3CGhCHB3C6ZKB3XPdr8rAEK9LqqYmQBMWgpKsJtSgv",
+    "at": 1794659281791.8662,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3592814000000000000000",
+    "summary": "painter paid a 0.00359 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "2pgMSa9FJDg8cH999g9gMCsNFt9XFV2fTcJJu9oipDzN",
+    "at": 1794659278107.768,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "BNULgRvM35gfULRzZkTeAMqPHGXngZuEXHZLi7kQu8cc",
+    "at": 1794654204417.957,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "4sRoXrrRvQfUD7zTunjTLktzrfr2FjoHkYEDRJMtD41S",
+    "at": 1794654194176.9478,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3603604000000000000000",
+    "summary": "painter paid a 0.0036 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "BcCAMKgY5kwnzFKWPJgQiuXARJxVJ1cM5XjobKofy2at",
+    "at": 1794654190854.4573,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "5TEMfVo3Z5buEUFvP8vfWJtjTdSiGk2Ltn27rp72yjb4",
+    "at": 1794646388986.113,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "FGL8PcSETc65rWZEcgii2LjoTKGWhny8Vjtsh3ZYPVRX",
+    "at": 1794646379872.0112,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3614458000000000000000",
+    "summary": "painter paid a 0.00361 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "BeX9we3eyPscSeTX2FVmaJaML3befoY7TbGQuu6t1U5D",
+    "at": 1794646376331.741,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "2waNzjJAmmUkQiT7sBRr6zdriMEHoHigkEP8oLWL2382",
+    "at": 1794638431748.968,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "CgE4xnFzrj9iJekV7iqvi5ixeP9mpDzV9EGUVVLjrhHy",
+    "at": 1794638422757.731,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3560831000000000000000",
+    "summary": "painter paid a 0.00356 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "CJzZ4G16dJ9DEvd6HPS18DgXE4nPcKKPx2h3mKwWjcBc",
+    "at": 1794638418477.5542,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "GuubbNb7gzDTdUF5SK9g3YVSWsZL9BR73EiQstd8iqx6",
+    "at": 1794630837316.2583,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "Dita1E8QFEoyE1tfTyZ1mnHCA8nscQ6L8oNEmwLpTM8z",
+    "at": 1794630828261.807,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3603604000000000000000",
+    "summary": "painter paid a 0.0036 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "EA3YiUs1CMA5eRXWJSpuoagfB3ysPqr8GgHr99DRWxfA",
+    "at": 1794630824776.522,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "3PkbUspWHA8FmnM3sXnJo11t8pw3FZPNGwfdM6QYveAE",
+    "at": 1794623510425.4358,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "CFKrrEfpFZH6851DnE7kidQd3gSzMTuz6bXWqfCGVivY",
+    "at": 1794623500302.3208,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3560831000000000000000",
+    "summary": "painter paid a 0.00356 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "7djYfsaEaMZRkoGQq9iMHcB985S3dCA18ieeUdo3qff5",
+    "at": 1794623496722.6243,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "7EAtpXRSNqfjQViCmp62kB7HaBvGky5XJRjCPVzA2FPD",
+    "at": 1794616653851.4988,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "1000000000000000000000",
+    "summary": "critic paid a 0.001 NEAR AI fee to the treasury (fallback-critic)"
+   },
+   {
+    "hash": "BJrrBZ2QrFC2ZPAZ3yNfEraounEseLhKDRGx8Gqste7K",
+    "at": 1794616646169.6038,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "2000000000000000000000",
+    "summary": "painter paid a 0.002 NEAR AI fee to the treasury (fallback-lowpoly-painter)"
+   },
+   {
+    "hash": "8AJnpgQHrBqcCJZTE7VvJR3aFNHRvNSiHNCSoCaLgBTP",
+    "at": 1794616642743.412,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "HLaBHyBpRGGwbZqb4WzTZ9LWbkxUpco4UvA8MBQNeQp5",
+    "at": 1794554515622.1868,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "64UnSWiZiV2jurJCLnnrCqQy91BcmLXgnB5WJEuZj4My",
+    "at": 1794554502405.192,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3389831000000000000000",
+    "summary": "painter paid a 0.00338 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "H7Pn9xFaoMMwv4aUrU3CYbdYsWqq5gJqqp8DBFKrjmTJ",
+    "at": 1794554497927.39,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "2g4sFGoWM7Kt1BRHbDseKGSWMwTKhV3fDweNMG6uXLSi",
+    "at": 1794552689825.103,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "G8gt5Hv4iKVqTHKEchWqP2aksbWMgagCVqvU6AkvhNBC",
+    "at": 1794552172741.9343,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3478261000000000000000",
+    "summary": "painter paid a 0.00347 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "8gazunF9Secg1Mu2PwKRmLVqfLJmKir13b93u9SCk1m6",
+    "at": 1794552138132.5862,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "kVmKQaWbo8UiXzao4cWTUKuFabcc8uVcbs1CmSQUutc",
+    "at": 1794552024006.1829,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "2442hxEJ1o1nNRd2PbexMwiq2stkEmWGRLju9tfKAeFZ",
+    "at": 1794552014665.9978,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3478261000000000000000",
+    "summary": "painter paid a 0.00347 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "3hZYHa474mBesyjD3JYKjTWmhtkgDahsNFQmDkMNd1PH",
+    "at": 1794552010332.9622,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "7sGbsvFANxQ9yaBYiD8x75yTWCTdDeoyB9Z49CrF3F2b",
+    "at": 1794548483336.657,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "JAqcUtgmg8sZnk49F3s9UmGaXm4imCWfFQaEdW5VkoLC",
+    "at": 1794548474928.844,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3614458000000000000000",
+    "summary": "painter paid a 0.00361 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "BsE6nH45hEBscMNs4HrCoDEC9EUqDcRpBrY2S9Sghocf",
+    "at": 1794548465455.4954,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "5ZHAqWiZPJAE4kmXgqnpnBBpNf6s1p394JmrPVhve6om",
+    "at": 1794547503269.8345,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "67bwBAnxWym2ZaXyUJBkmBg35CMixWTCLFdAWTCxrgvY",
+    "at": 1794547491842.0503,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3625378000000000000000",
+    "summary": "painter paid a 0.00362 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "3E3ey2q1DndNbkCXGPm5tvEfH3cECcaVkAeCLdHUMzNc",
+    "at": 1794547484595.4543,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "5jKUomjqw3X2PXZ81cKqwa2oxsnncsmxFYVnZHGqeQLW",
+    "at": 1794545744961.366,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "8kUQtKKq5gop7ex8B1wcQV3UZx3sTj6HTeoZaNXPr36",
+    "at": 1794545737046.768,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3658537000000000000000",
+    "summary": "painter paid a 0.00365 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "5F7F56TehM59Mv9A6g2yxXC8WAgKCBpKBkKvm6m2mGaC",
+    "at": 1794545730638.8103,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "J1ykVzuVf9rVDMsPG8BhYdNBwz2PaiXMJ8UTTt6PZaz1",
+    "at": 1794545719135.1057,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "FXEDUKxGKcZEkekRwMfkksC9gXm2GrZkDwhuSbgJR5gA",
+    "at": 1794545709290.5447,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3658537000000000000000",
+    "summary": "painter paid a 0.00365 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "5BKVzW1Ep3qVW8894K8sg8t21PxXcuWuF2JzW8Zx4R4M",
+    "at": 1794545703000.9695,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "2e7tSZiHEvwxzf8Wt7E1uJ91VFiTq4Fasf5tS5s26Ti2",
+    "at": 1794545692189.9402,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "EUoZH52C8MC2ay3ia35vb8qP7BNcFvvM3SWSJMJDaTbn",
+    "at": 1794545683524.86,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3658537000000000000000",
+    "summary": "painter paid a 0.00365 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "7koXmDrQHsGSs7ckY556842qH5TXgjtup1XU5pZDPWtv",
+    "at": 1794545675858.6343,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "DghhugBxzXtyS6h5bv9Adv1SjcqcoQh5FUnSmDJgeBp5",
+    "at": 1794545647870.9563,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "FPMJ6WbMo4Tr4nUktK3cWZnDdcTJsfEYGW4C3m11LuYU",
+    "at": 1794545640559.2163,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3658537000000000000000",
+    "summary": "painter paid a 0.00365 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "BpGHZ6bpDPxFDdpv6uCj5VfeftTnVfP73uGo7LDoGWdo",
+    "at": 1794545633909.5334,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   },
+   {
+    "hash": "B1J2RsSk6fxebaNbLcTqWDKwyw7LaPCt1CTgHnZyPqE7",
+    "at": 1794545583969.7817,
+    "signer": "critic.hlpok1lad.tg",
+    "method": "critic_review",
+    "amount": "100000000000000000000",
+    "summary": "critic paid a 0.0001 NEAR AI fee to the treasury (Qwen3-VL-30B-A3B-Instruct)"
+   },
+   {
+    "hash": "AUWKAGoTZKXjYaHsbFE1iFSTXVrnjP7KYmFkEjG7ZAoC",
+    "at": 1794545574699.4285,
+    "signer": "painter.hlpok1lad.tg",
+    "method": "painter_submit",
+    "amount": "3669725000000000000000",
+    "summary": "painter paid a 0.00366 NEAR AI fee to the treasury (FLUX.2-klein-4B)"
+   },
+   {
+    "hash": "CYXKJvo3NdRJRjzM55qupx98GnhDcGb2bRofG1FkkB76",
+    "at": 1794545567480.4958,
+    "signer": "curator.hlpok1lad.tg",
+    "method": "curator_open_job",
+    "amount": "100000000000000000000",
+    "summary": "curator paid a 0.0001 NEAR AI fee to the treasury (Qwen3.6-35B-A3B-FP8)"
+   }
+  ],
+  "sales": [],
+  "ownerTransfers": [
+   {
+    "hash": "7vW8k78ys9Xof1KQmE94tcTrvSDEtrK3wnvQNDp7B144",
+    "at": 1794586995670.4622,
+    "signer": "hlpok1lad.tg",
+    "receiver": "bounty.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "23500000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.023 NEAR to bounty.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "9ZxrDwtyEJARocJapSQtRXTH1BCkPfoxMfXWJfTxvF4z",
+    "at": 1794545555858.5107,
+    "signer": "hlpok1lad.tg",
+    "receiver": "seller.hlpok1lad.tg",
+    "method": "transfer",
+    "amount": "70000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.07 NEAR to seller.hlpok1lad.tg"
+   },
+   {
+    "hash": "HKu3c2ktLzQGLpjALWfqmcA3WQ2f9mdMPxDb5tf6yjP7",
+    "at": 1794545268783.8252,
+    "signer": "hlpok1lad.tg",
+    "receiver": "guardian.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "20000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.02 NEAR to guardian.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "BHzNrRbgUdzAvUyou1id1678RmJHqE7oxQnFcuRmyioX",
+    "at": 1794545265404.6821,
+    "signer": "hlpok1lad.tg",
+    "receiver": "treasury.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "10000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.01 NEAR to treasury.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "EVXwt8Jnp4AZy4NjynFMNbrpmCXcv2R7GqQDsLHBuqAQ",
+    "at": 1794545262130.3035,
+    "signer": "hlpok1lad.tg",
+    "receiver": "seller.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "50000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.05 NEAR to seller.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "BBmCQM2CLZ2p9P1xfpHASqcwsvdodnhkAhypCqjUqP85",
+    "at": 1794545258751.6858,
+    "signer": "hlpok1lad.tg",
+    "receiver": "critic.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "50000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.05 NEAR to critic.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "9J7hdniZZHbKurE9MDSbeipNRgsZNysrdjdCWqegias5",
+    "at": 1794545255202.286,
+    "signer": "hlpok1lad.tg",
+    "receiver": "painter.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "50000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.05 NEAR to painter.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "6zG1jHwBBAjrhhwvpHia7iq9kruLdpziEUzoqrpbd2pR",
+    "at": 1794545251572.663,
+    "signer": "hlpok1lad.tg",
+    "receiver": "curator.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "50000000000000000000000",
+    "summary": "hlpok1lad.tg sent 0.05 NEAR to curator.hlpok1lad.tg (account creation)"
+   },
+   {
+    "hash": "5N5CTPXxC2efTyvGSkuy2KttiPoCDZTFCb6sa64cyRyb",
+    "at": 1794545248308.4856,
+    "signer": "hlpok1lad.tg",
+    "receiver": "swarm.hlpok1lad.tg",
+    "method": "create_account",
+    "amount": "4100000000000000000000000",
+    "summary": "hlpok1lad.tg sent 4.1 NEAR to swarm.hlpok1lad.tg (account creation)"
+   }
+  ]
+ },
+ "verifiedTxs": 99
+}

@@ -440,3 +440,14 @@ html[data-theme=dark] .price-chip{background:rgba(255,255,255,.16)}
 .ledger-wrap{padding:6px;max-height:calc(100dvh - 320px);overflow:auto;overscroll-behavior:contain;mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%)}
 .ledger-wrap table.tx thead th{position:sticky;top:0;background:var(--surface,#fff);z-index:1}
 html[data-theme=dark] .ledger-wrap table.tx thead th{background:var(--surface)}
+
+/* /proof — mainnet evidence */
+.proof-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin: 20px 0 8px; }
+.proof-stats .stat { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; }
+.proof-stats .stat b { font-size: 1.6rem; line-height: 1.1; }
+.proof-stats .stat span { font-weight: 600; }
+.proof-stats .stat i { font-style: normal; font-size: .85rem; }
+.proof-sec { margin-top: 16px; overflow-x: auto; }
+.proof-sec h2 { margin: 0 0 6px; font-size: 1.15rem; }
+.proof-sec > p.k { margin: 0 0 10px; }
+.proof .pill.ok { margin-left: 6px; }

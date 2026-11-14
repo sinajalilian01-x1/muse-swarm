@@ -9,7 +9,7 @@ import Reasoning from "./Reasoning";
 import { track } from "@/lib/track";
 
 interface Latest { img: string; title: string; price: string | number; status: "listed" | "sold"; buyer?: string; tokenId?: string | null; jobId?: string; priceY?: string }
-interface Board { hours: number; days: number; revenue: number; outsideRevenue: number; testRevenue: number; realBuyers: number; realCommissions: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; ai?: { nearAi: boolean; provider: string }; links: Record<string, string> }
+interface Board { hours: number; days: number; txs: number; minted: number; funded: number; revenue: number; outsideRevenue: number; testRevenue: number; realBuyers: number; realCommissions: number; jobs: number; sold: number; agentPayments: number; agentPaid: number; treasury: number; delivered: number; marketSales: number; ai?: { nearAi: boolean; provider: string }; links: Record<string, string> }
 interface FeedTx { hash: string; signer: string; method?: string; ok: boolean; error?: string; fresh?: boolean }
 
 let mounted = false;
@@ -184,7 +184,7 @@ export default function Home() {
         setStatus(res?.rejected ? "The Critic rejected that one. The Painter is trying again for you…" : res?.delivered ? "Delivered the commission queued before yours. Now yours…" : "Still working on your piece…");
       }
       if (c?.status === "delivered") setCDone({ ok: true, hash: res?.sale?.hash, text: `Delivered! NFT #${c.token_id} is in your wallet. The robots hired each other on-chain and the contract split your ${toNear(c.amount, 3)} NEAR.` });
-      else setCDone({ ok: false, text: c?.status === "open" ? "Still working on it. Your commission stays open; the robots retry, and you can cancel for a full refund after 30 minutes." : "Something went wrong. Check the ledger." });
+      else setCDone({ ok: false, text: c?.status === "open" ? "Still working on it. Your commission stays open; the robots retry, and after 30 minutes you can cancel for a refund of your payment minus the small storage fee the contract kept (about 0.005 NEAR)." : "Something went wrong. Check the ledger." });
   };
   /** NEAR Intents (mainnet): get a real 1Click deposit address, then watch the swap; when it lands, the contract opened the commission. */
   const payAnyToken = async () => {
@@ -265,8 +265,10 @@ export default function Home() {
         <div className="board" aria-live="polite">
           <p className="eyebrow">{board ? <>No humans · ran itself for {board.days >= 1 ? `${board.days} days` : `${board.hours} h`} · {board.jobs} jobs · {board.agentPayments} agent payments</> : "AI swarm art studio on NEAR"} <i></i></p>
           <div className="chips">
-            <a href="/robots" title="Sales to real outside wallets. Our own test buys are excluded."><b>{board ? board.outsideRevenue : "…"}</b> NEAR from real buyers ({board ? board.realBuyers : "…"})</a>
-            <a href={board?.links.contract || "/ledger"} target="_blank" rel="noreferrer" title="Buys by our own test wallets, shown separately"><b>{board ? board.testRevenue.toFixed(2) : "…"}</b> NEAR test buys ↗</a>
+            <a href="/proof" title="Every transaction the robots and the owner sent to the swarm contract on NEAR mainnet, with nearblocks links"><b>{board ? board.txs : "…"}</b> mainnet txs · <b>{board ? board.minted : "…"}</b> NFTs minted</a>
+            {board && board.outsideRevenue > 0
+              ? <a href="/robots" title="Sales to real outside wallets. Our own test buys are excluded."><b>{board.outsideRevenue}</b> NEAR from outside buyers ({board.realBuyers})</a>
+              : <a href="/proof" title="Real NEAR the owner put into the robots' on-chain budgets (fund). No outside sales yet: every listed work is still for sale."><b>{board ? board.funded.toFixed(2) : "…"}</b> NEAR funded on-chain · first sale open</a>}
             <a href="/robots" title="Robots paying robots for briefs and appraisals"><b>{board ? board.agentPayments : "…"}</b> agent→agent payments</a>
             <a href={board?.links.treasury || "/robots"} target="_blank" rel="noreferrer" title="AI fees the robots paid into the treasury"><b>{board ? board.treasury.toFixed(2) : "…"}</b> NEAR treasury ↗</a>
             <a href="/how#real" title={board?.ai?.nearAi ? "Curator brief, Painter image, Critic review and Seller pricing + marketing run on NEAR AI Cloud. A labeled fallback takes over only if a call fails." : "No NEAR AI key: labeled local fallback brains"}>{board ? (board.ai?.nearAi ? <><b>NEAR AI Cloud</b> brains</> : <>AI: <b>fallback</b></>) : "…"}</a>
@@ -293,7 +295,7 @@ export default function Home() {
             {NETWORK === "mainnet" && anyTok.q && !anyTok.q.depositAddress && !anyTok.loading && <button className="btn-sm" onClick={payAnyToken}>{acct ? `Pay with ${anyTok.q.asset}` : "Connect wallet to pay"}</button>}
             {anyTok.q?.depositAddress && <span className="dep">Send exactly <b>{anyTok.q.amountIn} {anyTok.q.asset.split(" ")[0]}</b> ({anyTok.q.asset}) to <code style={{ wordBreak: "break-all" }}>{anyTok.q.depositAddress}</code> <button className="btn-sm ghost" onClick={() => navigator.clipboard?.writeText(anyTok.q.depositAddress).then(() => toast("Deposit address copied"))}>Copy</button><br />Your NFT goes to {short(acct || "", 24)}. Refunds go to your NEAR Intents balance. {anyTok.swap}</span>}
           </div>}
-          <p className="c-note">You pay first; the contract holds it. The robots brief, paint, judge and mint it, then the Seller delivers the NFT to you and the payment is split on-chain. Not delivered in 30 min? Cancel for a full refund.</p>
+          <p className="c-note">You pay first; the contract holds it. The robots brief, paint, judge and mint it, then the Seller delivers the NFT to you and the payment is split on-chain. Not delivered in 30 min? Cancel for a refund (minus ~0.005 NEAR storage).</p>
         </div>}
         {cDone && <p className={`c-done ${cDone.ok ? "ok" : ""}`}>{cDone.text} {cDone.hash && <a href={txLink(cDone.hash)} target="_blank" rel="noreferrer">tx ↗</a>} <a href="/gallery">gallery →</a></p>}
         {!cOpen && !cDone && NETWORK !== "mainnet" && <label className="auto"><input type="checkbox" checked={autoSell} onChange={(e) => setAutoSell(e.target.checked)} /> Free cycle: if no wallet buys within 12 s, the demo collector buys it · <a href="#" onClick={(e) => { e.preventDefault(); setFocus(true); }}>watch them work</a></label>}
