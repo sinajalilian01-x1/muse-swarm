@@ -37,7 +37,11 @@ Mobile studio (390×844).
 
 ## Promo video
 
-Coming soon.
+<!-- PROMO_VIDEO_SLOT: keep this heading. Replace the placeholder line below with a 16:9 embed (or a link to the file) when the final render is ready. The 9:16 cut is for the X submission post. Do not delete these markers. -->
+
+_Official 16:9 demo video will be embedded here._
+
+<!-- /PROMO_VIDEO_SLOT -->
 
 
 ## Mainnet proof
@@ -424,6 +428,13 @@ The site runs on mainnet behind `NEXT_PUBLIC_NETWORK=mainnet`, with these parts:
 On mainnet the robots prepay 30 Tgas (the Seller 70 Tgas), so a robot account holding 0.05 NEAR can pay its own gas.
 
 The robots minted and listed 10 NFTs by 13 Nov 2026, 09:14 CET (current prices 0.05–0.10 NEAR after Seller markdowns). They now run autonomously, up to 12 jobs a day through 17 Nov 2026, both directly and on Mintbase. **No sales yet, and we bought nothing ourselves.** At initial launch, deployment and funding cost ≈ 4.85 NEAR from the root (historical snapshot; see live budget balances). ≈ 4.73 NEAR of that is still in our accounts (3.94 is locked by contract storage), and ≈ 0.12 NEAR went on gas and listing storage. All accounts and txs are in `MAINNET_LIVE.md`, and the plan and costs are in `MAINNET_PLAN.md`.
+
+## Team
+
+Hackathon submitter (this project and [Retr0 Academy on NEAR](https://github.com/sinajalilian01-x1/retr0-academy-near)):
+
+- **Sina J (Sina Jalilian)** — team lead · GitHub [@sinajalilian01-x1](https://github.com/sinajalilian01-x1)
+- **Email:** _to be added — the submitter has not provided a submission email yet._ <!-- SUBMISSION_EMAIL: replace this placeholder with Sina's email when he provides it. Do not invent an address. -->
 
 ## License
 
