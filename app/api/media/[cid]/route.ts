@@ -12,7 +12,15 @@ import { sniffImage, mediaHeaders, MEDIA_MAX_BYTES } from "@/lib/guards";
 let known: { t: number; set: Set<string> } | null = null;
 async function swarmMedia(fresh = false): Promise<Set<string>> {
   if (!fresh && known && Date.now() - known.t < 60_000) return known.set;
-  const jobs = await getJobs(undefined, 100);
+  // get_jobs returns at most 50 per page: walk back through every job (bounded to 20 pages).
+  const jobs: Awaited<ReturnType<typeof getJobs>> = [];
+  let before: string | undefined;
+  for (let i = 0; i < 20; i++) {
+    const page = await getJobs(before, 50);
+    jobs.push(...page);
+    if (page.length < 50) break;
+    before = page[page.length - 1].id;
+  }
   const set = new Set(jobs.map((j) => (j.media || "").replace(/^ipfs:\/\//, "").replace(/^https?:\/\/[^/]+\/ipfs\//, "")).filter(Boolean));
   known = { t: Date.now(), set };
   return set;
