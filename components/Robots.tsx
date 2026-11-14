@@ -89,7 +89,10 @@ export default function Robots() {
                 <span>Track record</span><span>{repLine(r, d.reputation)}</span>
                 <span>Agent-to-agent</span><span>{gigLine(r, d.gigs)}</span>
               </div>
-              <KeyList keys={a?.keys || []} />
+              <details className="key-fold">
+                <summary>{(a?.keys || []).length} function-call key{(a?.keys || []).length === 1 ? "" : "s"}</summary>
+                <KeyList keys={a?.keys || []} />
+              </details>
               <div className="btn-row"><button className="btn-sm ghost" disabled={backing === r} onClick={() => back(r)} title="Calls the contract's payable fund(role) from your wallet">{backing === r ? "Confirm in your wallet…" : `Back the ${m.name} with 0.1 NEAR`}</button></div>
             </div>); })}
         </div>

@@ -416,11 +416,14 @@ html[data-theme=dark] .price-chip{background:rgba(255,255,255,.16)}
 @media (max-width:340px){body.home .run-row{grid-template-columns:1fr}}
 
 /* Four agent cards in one row at desktop so Seller is not cut off at 1440x900. */
-.robots-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.robots-lede{max-width:none}
-.robots-grid .card{padding:14px 14px 12px}
-.robots-grid .kv{font-size:12.5px;gap:4px 8px}
-.robots-grid .k{font-size:11.5px}
+.robots-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.robots-lede{max-width:none;font-size:15px!important;margin-top:8px!important}
+.robots-grid .card{padding:12px 12px 10px}
+.robots-grid .kv{font-size:12px;gap:3px 8px}
+.robots-grid .k{font-size:11px}
+.robots-grid .key-fold{margin-top:8px;font-size:12px}
+.robots-grid .key-fold>summary{cursor:pointer;font-weight:650;color:var(--muted)}
+.robots-grid .btn-row{margin-top:8px}
 @media (max-width:1100px){.robots-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:700px){.robots-grid{grid-template-columns:1fr}}
 
@@ -434,6 +437,6 @@ html[data-theme=dark] .price-chip{background:rgba(255,255,255,.16)}
 }
 
 /* Ledger table scrolls inside the card so the last visible row is not sliced by the viewport. */
-.ledger-wrap{padding:6px;max-height:calc(100dvh - 250px);overflow:auto;overscroll-behavior:contain}
+.ledger-wrap{padding:6px;max-height:calc(100dvh - 320px);overflow:auto;overscroll-behavior:contain;mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 18px),transparent 100%)}
 .ledger-wrap table.tx thead th{position:sticky;top:0;background:var(--surface,#fff);z-index:1}
 html[data-theme=dark] .ledger-wrap table.tx thead th{background:var(--surface)}
