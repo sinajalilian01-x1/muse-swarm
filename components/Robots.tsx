@@ -66,12 +66,12 @@ export default function Robots() {
   return (
     <div className="page">
       <h1 className="t">The robots</h1>
-      <p className="sub">Agents that hire each other: on every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal, budget to budget inside the contract. Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
+      <p className="sub robots-lede">Agents that hire each other: on every job the Painter pays the Curator for the brief and the Seller pays the Critic for the appraisal, budget to budget inside the contract. Four NEAR accounts that only hold <b>function-call keys</b>: each key can call just its own method on <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a> (plus refueling gas from its own budget). They can&apos;t transfer NEAR, deploy code or touch each other. The contract enforces the owner&apos;s rules on every call.</p>
       {receipt && <p className="notice" role="status" style={{ marginTop: 14 }}>{receipt.text} {receipt.hash && <a className="lnk" href={txUrl(receipt.hash)} target="_blank" rel="noreferrer">View tx ↗</a>}</p>}
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load chain data: {err} <button className="btn-sm ghost" onClick={load}>Retry</button></p>}
       {!d && !err && <p className="sub">Reading accounts and keys from {NET_NAME}…</p>}
       {d && <>
-        <div className="grid g2 sec">
+        <div className="grid robots-grid sec">
           {ROLES.map((r, i) => { const m = ROBOT_META[r], rb = s.robots[i], a = acc(rb.account_id); return (
             <div className="card" key={r}>
               <div className="robot-h"><div className="av" style={{ background: m.color }}>{m.name[0]}</div><div><b style={{ fontSize: 18 }}>{m.name}</b><div className="k">{m.job}</div></div></div>
