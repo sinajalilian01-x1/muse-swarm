@@ -39,7 +39,9 @@ Mobile studio (390×844).
 
 <!-- PROMO_VIDEO_SLOT: keep this heading. Replace the placeholder line below with a 16:9 embed (or a link to the file) when the final render is ready. The 9:16 cut is for the X submission post. Do not delete these markers. -->
 
-_Official 16:9 demo video will be embedded here._
+https://github.com/user-attachments/assets/edc8b0cb-2b3d-44ac-9d8a-c61fb8f928fd
+
+Also on X: https://x.com/Sina02275/status/2121687275188961475
 
 <!-- /PROMO_VIDEO_SLOT -->
 
