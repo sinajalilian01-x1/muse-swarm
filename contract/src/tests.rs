@@ -717,3 +717,117 @@ fn wnear_is_wrap_near_for_any_mainnet_suffix() {
     let left = c.ft_on_transfer(a("intents.near"), U128(100 * MILLI), r#"{"brief":"a kite","patron":"buyer.near"}"#.into());
     assert_eq!(left.0, 0);
 }
+
+// ---------------------------------------------------------------- red-team r1 regressions
+/// Market sale on a swarm whose robot budgets are all above the cap (the MS-01 trigger).
+fn over_cap_market_sale(c: &mut Contract) -> (Payout, Payout, u128) {
+    approvals_on(c);
+    let id = open(c); paint(c, id); review(c, id, 85);
+    ctx(seller(), 0);
+    c.seller_list(U64(id), U128(50 * MILLI), None, Some(MB.parse().unwrap()));
+    // Force every budget far above the cap (as a pre-fix public fund() or a lowered cap could).
+    let cap = c.rules.budget_cap.0;
+    for r in c.robots.iter_mut() { r.budget = U128(cap + NEAR); }
+    let bal = 50 * MILLI * 975 / 1000;
+    let view = c.nft_payout("1".into(), U128(bal), Some(10));
+    ctx(a(MB), 1);
+    let p = c.nft_transfer_payout(buyer(), "1".into(), 1, None, U128(bal), Some(10));
+    (view, p, bal)
+}
+
+#[test]
+fn ms01_market_sale_with_over_cap_budgets_does_not_underflow() {
+    let mut c = setup();
+    let (_, p, bal) = over_cap_market_sale(&mut c);
+    assert_eq!(p.payout.values().map(|v| v.0).sum::<u128>(), bal, "payout adds up to the balance");
+    assert!(p.payout[&owner()].0 <= bal);
+    assert_eq!(c.nft_token("1".into()).unwrap().owner_id, buyer());
+}
+
+#[test]
+fn ms12_nft_payout_view_matches_transfer_payout_with_sweep() {
+    let mut c = setup();
+    let (view, p, _) = over_cap_market_sale(&mut c);
+    assert_eq!(view.payout, p.payout, "view mirrors the settlement including the sweep");
+}
+
+#[test]
+#[should_panic(expected = "above the owner's budget cap")]
+fn ms01_public_fund_cannot_pass_budget_cap() {
+    let mut c = setup(); // cap 2 NEAR, each robot holds ~1 NEAR
+    ctx(buyer(), 2 * NEAR);
+    c.fund(Some("seller".into()));
+}
+
+#[test]
+fn ms01_fund_below_cap_still_works() {
+    let mut c = setup();
+    let before = c.get_swarm().robots[SELLER].budget.0;
+    ctx(buyer(), 100 * MILLI);
+    c.fund(Some("seller".into()));
+    assert_eq!(c.get_swarm().robots[SELLER].budget.0, before + 100 * MILLI);
+}
+
+#[test]
+fn ms01_budget_cap_rules_are_validated() {
+    let mut c = setup();
+    let mut r = rules();
+    r.budget_cap = U128(0);
+    ctx(owner(), 0);
+    assert!(panics(|| { c.update_rules(r.clone()); }), "zero cap rejected");
+    r.budget_cap = U128(NEAR / 2); // robots hold ~1 NEAR each
+    ctx(owner(), 0);
+    assert!(panics(|| { c.update_rules(r.clone()); }), "cap below a current budget rejected");
+    r.budget_cap = U128(5 * NEAR);
+    ctx(owner(), 0);
+    c.update_rules(r);
+}
+
+#[test]
+fn ms05_guardian_cannot_extend_or_chain_pauses() {
+    let mut c = setup();
+    ctx_at(guardian(), 0, T0);
+    c.guardian_pause(45);
+    ctx_at(guardian(), 0, T0 + 30 * 1_000_000_000);
+    assert!(panics(|| { c.guardian_pause(45); }), "no extension while paused");
+    ctx_at(guardian(), 0, T0 + 60 * 1_000_000_000);
+    assert!(panics(|| { c.guardian_pause(45); }), "cooldown after a pause");
+    ctx_at(guardian(), 0, T0 + 45 * 1_000_000_000 + GUARDIAN_COOLDOWN_NS);
+    c.guardian_pause(45);
+    // The owner is not limited.
+    ctx_at(owner(), 0, T0 + 46 * 1_000_000_000 + GUARDIAN_COOLDOWN_NS);
+    c.guardian_pause(600);
+}
+
+#[test]
+fn ms08_stale_job_expires_even_when_daily_job_cap_is_reached() {
+    let mut r = rules();
+    r.max_jobs_per_day = 1;
+    let mut c = setup_with(r);
+    let id = open(&mut c);
+    ctx_at(curator(), 0, T0 + (JOB_TIMEOUT_MS + 1) * 1_000_000);
+    let j = c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None);
+    assert_eq!(j.id.0, id);
+    assert_eq!(j.status, "expired");
+    assert!(c.get_swarm().active_job.is_none(), "the swarm is unstuck");
+    assert_eq!(c.get_swarm().stats.expired, 1);
+}
+
+#[test]
+fn ms09_minted_job_is_not_expired_and_owner_can_recover_it() {
+    let mut c = setup();
+    let id = open(&mut c); paint(&mut c, id); review(&mut c, id, 85);
+    ctx_at(curator(), 0, T0 + (JOB_TIMEOUT_MS + 1) * 1_000_000);
+    assert!(panics(|| { c.curator_open_job("t".into(), "s".into(), "b".into(), U128(0), "m".into(), None); }), "minted job is not expired");
+    ctx(buyer(), NEAR);
+    assert!(panics(|| { c.owner_list(U64(id), U128(100 * MILLI)); }), "owner only");
+    ctx(owner(), 0);
+    assert!(panics(|| { c.owner_list(U64(id), U128(MILLI)); }), "below floor");
+    ctx(owner(), 50 * MILLI);
+    let j = c.owner_list(U64(id), U128(100 * MILLI));
+    assert_eq!(j.status, "listed");
+    assert!(c.get_swarm().active_job.is_none());
+    ctx(buyer(), 100 * MILLI);
+    c.buy("1".into());
+    assert_eq!(c.nft_token("1".into()).unwrap().owner_id, buyer());
+}

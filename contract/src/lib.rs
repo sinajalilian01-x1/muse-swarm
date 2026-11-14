@@ -38,6 +38,9 @@ use std::collections::HashMap;
 pub const NS_PER_DAY: u64 = 86_400_000_000_000;
 pub const JOB_TIMEOUT_MS: u64 = 10 * 60 * 1000;
 pub const GUARDIAN_MAX_PAUSE_SECS: u32 = 120;
+/// MS-05: after a guardian pause ends, the guardian must wait this long before pausing again
+/// (a pause can never be extended or chained by the public demo key).
+pub const GUARDIAN_COOLDOWN_NS: u64 = 10 * 60 * 1_000_000_000;
 pub const MIN_FLOOR: u128 = 10_000_000_000_000_000_000_000; // 0.01 NEAR
 pub const MAX_REFUEL: u128 = 500_000_000_000_000_000_000_000; // 0.5 NEAR per call
 /// Agents hire each other: the Painter pays the Curator for each brief it paints from,
@@ -314,6 +317,20 @@ pub fn split_sale(price: u128, split: &Split) -> (u128, [u128; 4]) {
     (price - sum, robots)
 }
 
+/// MS-01: how much of each robot's share of a sale is swept to the owner because it would take that
+/// robot's budget above `cap`. A robot never gives up more than its own share of *this* sale, so the
+/// owner's total (owner share + sweeps) can never exceed the sale price and settlement cannot underflow,
+/// even if a budget is already above the cap (public `fund` before the fix, or the owner lowering the cap).
+pub fn sweep_for(budgets: [u128; 4], shares: &[u128; 4], cap: u128) -> [u128; 4] {
+    let mut swept = [0u128; 4];
+    for i in 0..4 {
+        let b = budgets[i].saturating_add(shares[i]);
+        let over = b.saturating_sub(cap);
+        swept[i] = over.min(shares[i]);
+    }
+    swept
+}
+
 pub fn validate_rules(r: &Rules) {
     let s = &r.split;
     let total = s.owner as u32 + s.curator as u32 + s.painter as u32 + s.critic as u32 + s.seller as u32;
@@ -323,6 +340,7 @@ pub fn validate_rules(r: &Rules) {
     require!(r.score_threshold <= 100, "Score threshold is 0-100");
     require!(r.fee_cap.0 <= r.daily_cap.0, "Fee cap must be <= daily cap");
     require!(r.max_jobs_per_day >= 1, "At least one job per day");
+    require!(r.budget_cap.0 > 0, "Budget cap must be above 0");
 }
 
 #[near]
@@ -401,16 +419,22 @@ impl Contract {
     pub fn fund(&mut self, role: Option<String>) -> Vec<Robot> {
         let amount = env::attached_deposit().as_yoctonear();
         require!(amount > 0, "Attach NEAR to fund the swarm");
+        // MS-01: a public top-up may never leave a robot budget above the owner's budget cap.
+        let cap = self.rules.budget_cap.0;
         match role {
             Some(r) => {
                 let i = Self::role_index(&r);
-                self.robots[i].budget = U128(self.robots[i].budget.0 + amount);
+                let b = self.robots[i].budget.0 + amount;
+                require!(b <= cap, "Funding would take this robot above the owner's budget cap");
+                self.robots[i].budget = U128(b);
             }
             None => {
                 let each = amount / 4;
                 for i in 0..4 {
                     let extra = if i == 0 { amount - each * 4 } else { 0 };
-                    self.robots[i].budget = U128(self.robots[i].budget.0 + each + extra);
+                    let b = self.robots[i].budget.0 + each + extra;
+                    require!(b <= cap, "Funding would take a robot above the owner's budget cap");
+                    self.robots[i].budget = U128(b);
                 }
             }
         }
@@ -423,6 +447,9 @@ impl Contract {
     pub fn update_rules(&mut self, rules: Rules) -> Rules {
         self.assert_owner();
         validate_rules(&rules);
+        // MS-01: never lower the cap below a budget the robots already hold (withdraw first).
+        let top = self.robots.iter().map(|r| r.budget.0).max().unwrap_or(0);
+        require!(rules.budget_cap.0 >= top, "Budget cap is below a current robot budget; withdraw first");
         self.rules = rules;
         emit("rules_updated", json!({"rules": self.rules}));
         self.rules.clone()
@@ -447,6 +474,12 @@ impl Contract {
         require!(is_owner || caller == self.guardian_id, "Guardian or owner only");
         let max = if is_owner { 86_400 } else { GUARDIAN_MAX_PAUSE_SECS };
         require!(seconds >= 1 && seconds <= max, "Pause too long");
+        if !is_owner {
+            // MS-05: the guardian cannot extend a running pause or chain pauses back to back.
+            let now = env::block_timestamp();
+            require!(now >= self.paused_until_ns, "Already paused");
+            require!(self.paused_until_ns == 0 || now >= self.paused_until_ns + GUARDIAN_COOLDOWN_NS, "Guardian pause is cooling down");
+        }
         self.paused_until_ns = env::block_timestamp() + seconds as u64 * 1_000_000_000;
         let until = U64(self.paused_until_ns / 1_000_000);
         emit("paused", json!({"by": caller, "seconds": seconds, "until_ms": until}));
@@ -494,8 +527,15 @@ impl Contract {
         if let Some(id) = self.active_job {
             let j = self.jobs.get(&id).cloned().unwrap();
             require!(now_ms() >= j.updated_at_ms.0 + JOB_TIMEOUT_MS, "Another job is in progress");
+            // MS-09: a minted job holds a token; it is never expired (that would strand the NFT).
+            // The Seller lists it, or the owner recovers it with owner_list.
+            require!(j.status == "briefed" || j.status == "painted", "The active job holds a minted token; list it first");
             self.close_job(id, "expired");
             self.stats.expired += 1;
+            // MS-08: if the daily job cap is reached, keep the expiry (do not revert it) and stop here.
+            if self.stats.jobs_today >= self.rules.max_jobs_per_day {
+                return self.jobs.get(&id).cloned().unwrap();
+            }
         }
         require!(self.stats.jobs_today < self.rules.max_jobs_per_day, "Daily job cap reached");
         require!(!trend.trim().is_empty(), "Empty trend");
@@ -736,6 +776,36 @@ impl Contract {
         false
     }
 
+    /// MS-09: owner recovery for a minted token whose job was closed without a listing (or a minted job
+    /// that is stuck as the active job). Lists it directly at a price inside floor..max. The owner attaches
+    /// the storage deposit; any excess is refunded.
+    #[payable]
+    pub fn owner_list(&mut self, job_id: U64, price: U128) -> Job {
+        self.assert_owner();
+        require!(price.0 >= self.rules.floor.0 && price.0 <= self.rules.max_price.0, "Price must be within floor and max");
+        let mut j = self.jobs.get(&job_id.0).cloned().unwrap_or_else(|| env::panic_str("Unknown job"));
+        let token_id = j.token_id.clone().unwrap_or_else(|| env::panic_str("Job has no token"));
+        require!(j.status == "minted" || j.status == "expired", "Only minted or expired jobs with a token can be recovered");
+        require!(j.buyer.is_none() && self.listings.get(&token_id).is_none(), "Already listed or sold");
+        require!(self.tokens.owner_by_id.get(&token_id) == Some(env::current_account_id()), "Token is not held by the swarm");
+        require!(job_commission().get(&job_id.0).is_none(), "Commissioned work is delivered by the Seller");
+        let before = env::storage_usage();
+        j.price = price;
+        j.status = "listed".into();
+        j.updated_at_ms = U64(now_ms());
+        self.listings.insert(token_id.clone(), price.0);
+        self.listings.flush();
+        self.jobs.insert(job_id.0, j);
+        self.jobs.flush();
+        if self.active_job == Some(job_id.0) { self.active_job = None; }
+        let storage = self.storage_cost_since(before);
+        let deposit = env::attached_deposit().as_yoctonear();
+        require!(deposit >= storage, "Attach enough NEAR for the listing storage");
+        if deposit > storage { pay(&self.owner_id.clone(), deposit - storage); }
+        emit("listed", json!({"job_id": job_id, "token_id": token_id, "price": price, "floor": self.rules.floor, "by": self.owner_id, "recovered": true}));
+        self.jobs.get(&job_id.0).cloned().unwrap()
+    }
+
     /// Owner, once after upgrading from v2: turn on NEP-178 approvals (needed for marketplace listings).
     pub fn enable_approvals(&mut self) -> bool {
         self.assert_owner();
@@ -804,21 +874,19 @@ impl Contract {
         let token_id = token_id.clone();
         let buyer = buyer.clone();
         let (owner_share, robot_shares) = split_sale(price, &self.rules.split);
+        let budgets = [self.robots[0].budget.0, self.robots[1].budget.0, self.robots[2].budget.0, self.robots[3].budget.0];
+        let swept = sweep_for(budgets, &robot_shares, self.rules.budget_cap.0);
         let mut to_owner = owner_share;
-        let mut swept = [0u128; 4];
-        let cap = self.rules.budget_cap.0;
         for i in 0..4 {
             let r = &mut self.robots[i];
             r.earned_total = U128(r.earned_total.0 + robot_shares[i]);
-            let mut b = r.budget.0 + robot_shares[i];
-            if b > cap {
-                swept[i] = b - cap;
-                b = cap;
+            r.budget = U128(r.budget.0 + robot_shares[i] - swept[i]);
+            if swept[i] > 0 {
                 r.swept_total = U128(r.swept_total.0 + swept[i]);
                 to_owner += swept[i];
             }
-            r.budget = U128(b);
         }
+        require!(to_owner <= price, "Settlement exceeds the sale price");
         let job_id = self.token_job.get(&token_id).copied().unwrap_or(0);
         if let Some(j) = self.jobs.get(&job_id).cloned() {
             let mut j = j;
@@ -858,7 +926,7 @@ impl Contract {
         let (to_owner, _) = self.settle(&token_id, &receiver_id, balance.0, &venue);
         let mut payout = HashMap::new();
         payout.insert(self.owner_id.clone(), U128(to_owner));
-        let to_swarm = balance.0 - to_owner;
+        let to_swarm = balance.0.checked_sub(to_owner).unwrap_or_else(|| env::panic_str("Payout exceeds the sale balance"));
         if to_swarm > 0 {
             payout.insert(env::current_account_id(), U128(to_swarm));
         }
@@ -867,11 +935,16 @@ impl Contract {
 
     /// NEP-199 view: how a sale of `balance` would be paid out.
     pub fn nft_payout(&self, token_id: TokenId, balance: U128, max_len_payout: Option<u32>) -> Payout {
-        let _ = (token_id, max_len_payout);
+        let _ = token_id;
+        require!(max_len_payout.unwrap_or(10) >= 2, "Payout needs 2 recipients");
+        // MS-12: mirror nft_transfer_payout exactly, including the budget-cap sweep.
         let (owner_share, shares) = split_sale(balance.0, &self.rules.split);
-        let robots: u128 = shares.iter().sum();
+        let budgets = [self.robots[0].budget.0, self.robots[1].budget.0, self.robots[2].budget.0, self.robots[3].budget.0];
+        let swept: u128 = sweep_for(budgets, &shares, self.rules.budget_cap.0).iter().sum();
+        let to_owner = owner_share + swept;
+        let robots = balance.0 - to_owner;
         let mut payout = HashMap::new();
-        payout.insert(self.owner_id.clone(), U128(owner_share));
+        payout.insert(self.owner_id.clone(), U128(to_owner));
         if robots > 0 {
             payout.insert(env::current_account_id(), U128(robots));
         }
