@@ -9,7 +9,11 @@ Live app: [muse-swarm.vercel.app](https://muse-swarm.vercel.app). Captured 14 No
 
 <p align="center"><img src="docs/screenshots/studio.webp" alt="Muse Swarm studio home with the 3D workshop, live scoreboard, and robot reasoning feed" width="900"></p>
 
-Studio home on NEAR mainnet: the 3D workshop, live scoreboard (22 jobs, 41 agent-to-agent payments), commission / free demo cycle, and the robots' reasoning feed.
+Studio home on NEAR mainnet: the 3D workshop, live scoreboard (107 mainnet txs, 19 NFTs minted, 22 jobs, 41 agent-to-agent payments, 1.30 NEAR funded on-chain), commission / free demo cycle, and the robots' reasoning feed.
+
+<p align="center"><img src="docs/screenshots/proof.webp" alt="Mainnet proof page with live on-chain counts, the agent accounts and nearblocks links" width="900"></p>
+
+[Mainnet proof](https://muse-swarm.vercel.app/proof): live counts read from NEAR mainnet, the contract and agent accounts with balances, and every agent payment, mint, listing, AI fee and owner funding tx linked to nearblocks.io.
 
 <p align="center"><img src="docs/screenshots/gallery.webp" alt="Gallery of minted Muse Swarm NFTs with critic scores and list prices" width="900"></p>
 
@@ -36,6 +40,29 @@ Mobile studio (390×844).
 Coming soon.
 
 
+## Mainnet proof
+
+**Live page: [muse-swarm.vercel.app/proof](https://muse-swarm.vercel.app/proof)** (JSON: [/api/proof](https://muse-swarm.vercel.app/api/proof)). It is rebuilt from public chain data (NEAR RPC + the FastNEAR tx indexer) every minute, lists only successful transactions, and links each one to nearblocks.io. A fallback snapshot (`lib/proof-snapshot.json`) is regenerated with `npm run proof:snapshot`, which re-checks every listed tx on a mainnet archival RPC (99 txs verified, 14 Nov 2026 17:3x CET).
+
+What the chain shows as of 14 Nov 2026, 17:30 CET:
+
+| Evidence | Mainnet |
+|---|---|
+| Transactions on the swarm contract | **107**, 0 failed, on 13 and 14 Nov |
+| Jobs run by the four robots | **22** (19 approved and minted, 3 rejected by the Critic) |
+| NEP-171 NFTs minted / listed for sale | **19 / 19** |
+| Agent→agent payments | **41** (0.063 NEAR: the Painter pays the Curator per brief, the Seller pays the Critic per appraisal) |
+| AI fees paid on-chain to the treasury | **0.083 NEAR** across 66 charged steps, plus 0.382 NEAR of storage |
+| Owner funding of robot budgets (`fund`) | **1.30 NEAR** in 5 txs, e.g. [FekCGnWj…](https://nearblocks.io/txns/FekCGnWjPcD1sShp1UbtoKAbQiphePvZKGrKYV1fnKGQ) (0.4 NEAR to all four), [2MDGduLY…](https://nearblocks.io/txns/2MDGduLYSo3P4YMPMfWrLxWqUnBhRWeDnWbZNpNrkEJb) (0.47 NEAR to the Seller) |
+| Owner transfers to the swarm's accounts | 9 txs (account creation and gas top-ups) |
+| Sales | **None yet.** All 19 works are listed at the 0.05 NEAR floor; the first sale is open |
+
+Real agent work on mainnet, for example: a mint [5jKUomjq…](https://nearblocks.io/txns/5jKUomjqw3X2PXZ81cKqwa2oxsnncsmxFYVnZHGqeQLW), a listing [5DfxRDP7…](https://nearblocks.io/txns/5DfxRDP7pQ7YsuqgmNfpm6L3SAchXGZKcSKdWqP4dFci), and job #10's curator → painter → mint → list chain [H7Pn9xFa…](https://nearblocks.io/txns/H7Pn9xFaoMMwv4aUrU3CYbdYsWqq5gJqqp8DBFKrjmTJ), [64UnSWiZ…](https://nearblocks.io/txns/64UnSWiZiV2jurJCLnnrCqQy91BcmLXgnB5WJEuZj4My), [HLaBHyBp…](https://nearblocks.io/txns/HLaBHyBpRGGwbZqb4WzTZ9LWbkxUpco4UvA8MBQNeQp5), [63bWbAaf…](https://nearblocks.io/txns/63bWbAafWSgGzJXk2qA4v77kvrLgx8XHtXpFDHoY51w9). The live page always has the newest ones.
+
+## Security
+
+An owner-authorized private red-team review (r1, 14 Nov 2026) found **no Critical or High issues** and 3 Medium, 5 Low and 9 Info findings. All of them are addressed: see **[docs/security/muse-swarm-r1-fixes.md](docs/security/muse-swarm-r1-fixes.md)** for each finding's root cause, fix, commit, regression test and status. The web-app fixes are live; the contract-side fixes are merged and tested (57/57) and wait for an in-place redeploy of `swarm.hlpok1lad.tg`, with a live mitigation in place meanwhile.
+
 ## Live on NEAR Mainnet
 
 - **Live app:** https://muse-swarm.vercel.app
@@ -48,7 +75,7 @@ Coming soon.
   - token page: [nearblocks.io/nft-token/swarm.hlpok1lad.tg/5](https://nearblocks.io/nft-token/swarm.hlpok1lad.tg/5).
 - **Contract deploy:** [4DWzVfi3…](https://nearblocks.io/txns/4DWzVfi3DR4aGLeYp6UZs3gKMqxUGSCMQ4pvx6Lc3tW3). Every mainnet tx is in `MAINNET_LIVE.md` and on the [Ledger](https://muse-swarm.vercel.app/ledger).
 
-**Status (13 Nov 2026, 09:14 CET):** 10 jobs, 10 NFTs minted and listed on NEAR Mainnet. Current prices are 0.05–0.10 NEAR after Seller markdowns (initial NEAR AI Cloud prices were 0.05–0.175 NEAR). The robots now run on their own, up to 12 jobs a day through 17 Nov 2026, so the live count on the site and the Ledger will be higher. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
+**Status (14 Nov 2026, 17:30 CET):** 22 jobs, 19 NFTs minted and listed on NEAR Mainnet, 41 agent-to-agent payments and 107 contract transactions (see [Mainnet proof](https://muse-swarm.vercel.app/proof)). After the Seller's markdowns every listing is at the 0.05 NEAR floor (initial NEAR AI Cloud prices were 0.05–0.175 NEAR). The robots run on their own, up to 12 jobs a day through 17 Nov 2026, so the live count on the site and the Ledger will be higher. They are for sale directly and on Mintbase's mainnet market. **There have been no outside sales so far.** The 30/10/30/15/15 sale split is proven on testnet during development; on mainnet it is pending its first buyer.
 
 **Development history (testnet):** [`swarm.museswarm.testnet`](https://testnet.nearblocks.io/address/swarm.museswarm.testnet) holds 33 earlier jobs and every tested money path (see "Development history" below).
 
@@ -72,7 +99,7 @@ The submission pack includes **`muse-swarm-demo.mp4`** (88.47 s, 1920×1080, 30 
 | Do | See |
 |----|-----|
 | Open https://muse-swarm.vercel.app | The header badge reads **Live on NEAR · Mainnet**. The top of the page is a live **"No humans · ran itself for N h · jobs · agent→agent payments"** scoreboard. Each chip links to the explorer. Revenue from real outside buyers and our own **test** buys are counted separately. |
-| Press **Commission a piece · 0.06 NEAR**, type a brief, **Pay** with a NEAR wallet (or **Pay in wNEAR**) | This is real NEAR on mainnet. You pay first, and the contract holds the money. The robots brief, paint, judge and mint *your* piece, and the Seller delivers the NFT to your wallet (`commission_delivered`). The split is paid on-chain. A rejected piece is retried automatically. You can cancel for a full refund after 30 min. About 1–2 min. |
+| Press **Commission a piece · 0.06 NEAR**, type a brief, **Pay** with a NEAR wallet (or **Pay in wNEAR**) | This is real NEAR on mainnet. You pay first, and the contract holds the money. The robots brief, paint, judge and mint *your* piece, and the Seller delivers the NFT to your wallet (`commission_delivered`). The split is paid on-chain. A rejected piece is retried automatically. After 30 min you can cancel for a refund of your payment minus the small storage fee the contract kept (~0.005 NEAR). About 1–2 min. |
 | Open **Any token ▾** in the commission panel and press **Pay with …** | A live **NEAR Intents 1Click** quote (e.g. 0.0025 SOL ≈ $0.20 → 0.06 wNEAR, ~22 s) and a real deposit address with swap status. The swapped wNEAR pays the contract via `ft_on_transfer`. Refunds go to your own Intents balance. |
 | Or press **Free demo cycle** (mainnet: 2 per visitor per hour, 3 per hour overall) | Four robots act in the 3D studio, and four mainnet transactions (`curator_open_job` → `painter_submit` → `critic_review` → `seller_list`) appear in **Live on-chain activity**. The new NFT is then listed for sale. There is no demo collector on mainnet. |
 | In the [Gallery](https://muse-swarm.vercel.app/gallery), open **Sales & marketing** on a listed work | The venues (Muse Swarm direct, the **Mintbase market contract**, any NEAR wallet) and the Seller's **marketing plan**: pitch, audience, channel and time, hashtags, and X post drafts with a Copy button. The app never posts. **Buy via Mintbase** buys through Mintbase's market, which calls our NEP-199 `nft_transfer_payout`, and the same split is paid. |
@@ -184,8 +211,8 @@ The aurora is drawn small and scaled up, so the blur costs nothing. It runs at 3
 
 - **Named sub-accounts per agent:** `curator/painter/critic/seller/guardian/treasury.hlpok1lad.tg` on mainnet.
 - **Function-call access keys:** each robot key can call only its own method plus `robot_refuel`. Full keys of robots and guardian were deleted. The [Robots](https://muse-swarm.vercel.app/robots) page reads them live from RPC.
-- **Smart contract (Rust, near-sdk 5):** rules, budgets, spend caps, job state machine, kill switch, guardian pause, on-chain revenue split. Tests: `cargo test` gives **49 passed**.
-- **NEP-171 / 177 / 178 / 181 / 199 NFTs** minted by the contract itself, with the Critic's score as the gate. NEP-178 approvals and NEP-199 payouts let **Mintbase's market** sell them with the swarm's split.
+- **Smart contract (Rust, near-sdk 5):** rules, budgets, spend caps, job state machine, kill switch, guardian pause, on-chain revenue split. Tests: `cargo test` gives **57 passed** (49 + 8 red-team regressions); `npm test` runs the web-side regression tests.
+- **NEP-171 / 177 / 178 / 181 / 199 NFTs** minted by the contract itself, with the Critic's score as the gate. NEP-178 approvals and NEP-199 payouts let **Mintbase's market** sell them with the swarm's split. Approvals are granted only by the Seller robot, only to allow-listed markets; there is no public `nft_approve`, so a holder cannot approve a market for a token they bought.
 - **NEP-141 wNEAR** (`ft_on_transfer`) and **NEAR Intents 1Click** for "pay in any token" commissions.
 - **NEP-297 events** (`job_opened`, `painted`, `listed`, `agent_paid`, `repriced`, `sold`, `split_paid`, `refueled`, `funded`, `paused`, … plus standard `nft_mint`/`nft_transfer`), which drive the 3D studio's story.
 - **NEAR Connect** (`@hot-labs/near-connect`), the connector NEAR recommends in place of the deprecated Wallet Selector, for buying and funding.
@@ -222,7 +249,10 @@ The aurora is drawn small and scaled up, so the blur costs nothing. It runs at 3
 
 - **No budget drain.** On mainnet, free cycles are limited to 2 per visitor IP per hour and paced swarm-wide to 3 per hour from on-chain job timestamps (the testnet build allowed 4 per IP and 12 overall per 10 min), which holds across every serverless instance with no extra database. Only one job runs at a time (enforced by the contract), and jobs per day plus daily spend per robot are capped on-chain.
 - **Driver tokens.** An HMAC token lets only the visitor who opened a job drive it. Anyone can take over after 90 s of inactivity and is handed the token, so a job never gets stuck.
-- **Kill switch + guardian.** The owner's `set_kill_switch` stops everything. The public pause button uses the guardian key, capped at 120 s by the contract.
+- **Kill switch + guardian.** The owner's `set_kill_switch` stops everything. The public pause button uses the guardian key, capped at 120 s by the contract, and is refused while paused and for 10 minutes after each pause.
+- **Pacing can't be skipped.** The free-cycle limits apply whenever a job would actually be opened, whatever the request contains, and nothing runs after the owner's end date (18 Nov 2026 00:00 CET), from the cron, the site or the bounty judge.
+- **No paid retries.** Before any paid AI call or IPFS pin the robot's on-chain budget is re-checked, a failed step is retried at most twice, and a job's image is never paid for twice.
+- **Known limitation.** View/click signals and trend text can be gamed by a determined visitor. They only steer style and topic; prices always stay inside the owner's on-chain floor and max.
 - **Honest P&L.** Revenue from our own accounts is shown apart from outside revenue. On mainnet there is no demo collector.
 - **No secrets in the client.** Robot, guardian and collector keys live only in server env vars. The client bundle and git history were scanned for every secret value (0 hits).
 
@@ -237,14 +267,14 @@ Init: `new(owner_id, treasury_id, guardian_id, curator_id, painter_id, critic_id
 | Markets / tokens | `nft_approve`-style approvals (Seller-granted to allow-listed markets only), `nft_transfer_payout` (NEP-199, allow-listed markets only), `nft_payout`, `nft_is_approved`, `ft_on_transfer` (wNEAR only) |
 | Owner (v3+) | `enable_approvals`, `patch_metadata(token_ids)` |
 | Robots (FC keys) | `curator_open_job`, `painter_submit`, `critic_review`, `seller_list`, `robot_refuel` |
-| Guardian (FC key) | `guardian_pause(seconds ≤ 120)`: auto-releases, so a demo visitor can't freeze the swarm |
+| Guardian (FC key) | `guardian_pause(seconds ≤ 120)`: auto-releases. The public pause button is refused while paused and for 10 minutes after each pause (read from the contract), so visitors can't keep the swarm frozen; the new contract adds the same cooldown on-chain |
 | Views | `get_swarm`, `get_job`, `get_jobs(before, limit)`, `get_listings`, `get_commission`, `get_commissions`, `nft_token`, `nft_tokens`, `nft_metadata`, … |
 
 Rules on mainnet:
 - Price floor 0.05 NEAR and max price 0.5 NEAR.
 - Mint threshold 7.0.
 - Daily spend cap 0.2 NEAR per robot (raised from 0.1 on 13 Nov with the owner's `update_rules`), and a fee cap of 0.01 NEAR per call.
-- Budget cap 0.5 NEAR, with anything above it swept to the owner.
+- Budget cap 5 NEAR (raised from 0.5 on 14 Nov as the live mitigation for review finding MS-01, [tx](https://nearblocks.io/txns/2ntohqkB3fsQY9VRJdPqqzBo4Y3zQWuchzT67Hb1pcSN)); a robot's share of a sale above the cap is swept to the owner.
 - 12 jobs per day.
 - Sale split: owner 30, curator 10, painter 30, critic 15, seller 15 (%).
 
