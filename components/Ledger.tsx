@@ -49,7 +49,7 @@ export default function Ledger() {
       <h1 className="t">Ledger</h1>
       <p className="sub">Every transaction sent to <a className="lnk" href={accountUrl(CONTRACT_ID)} target="_blank" rel="noreferrer">{CONTRACT_ID}</a>, rebuilt from {NET_NAME} chain data (FastNear tx API), with the contract&apos;s own NEP-297 events. {total ? `${total} transactions so far, failed ones included.` : ""}</p>
       {err && <p className="notice" style={{ marginTop: 16 }}>Could not load the ledger right now: {err}</p>}
-      <div className="card sec" style={{ padding: 6, overflowX: "auto" }}>
+      <div className="card sec ledger-wrap">
         <table className="tx" aria-label="On-chain transactions">
           <thead><tr><th>When</th><th>Who</th><th>What</th><th>Events</th><th>Gas</th><th>Tx</th></tr></thead>
           <tbody>
