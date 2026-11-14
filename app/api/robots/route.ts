@@ -1,7 +1,7 @@
 import { accountBalance, accessKeys } from "@/lib/near";
 import { getSwarm, getJobs } from "@/lib/swarm";
 import { ledger } from "@/lib/ledger";
-import { json } from "@/lib/ratelimit";
+import { json, readLimited } from "@/lib/ratelimit";
 import { BOUNTY_ID, COLLECTOR_ID, CONTRACT_ID, GUARDIAN_ID, OWNER_ID, ROBOT_IDS, ROLES, TREASURY_ID, isTestBuyer } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 const acctCache = new Map<string, { t: number; v: { id: string; balance: string; keys: Awaited<ReturnType<typeof accessKeys>> } }>();
 
 /** Robot accounts, their on-chain access keys and balances, and the swarm's P&L (including gas the robots burned). */
-export async function GET() {
+export async function GET(req: Request) {
+  const limited = readLimited(req); if (limited) return limited;
   try {
     const [swarm, led, jobs] = await Promise.all([getSwarm(), ledger(100, 0), getJobs(undefined, 50)]);
     const accounts = [...ROLES.map((r) => ROBOT_IDS[r]), GUARDIAN_ID, TREASURY_ID, OWNER_ID, COLLECTOR_ID, CONTRACT_ID, BOUNTY_ID];

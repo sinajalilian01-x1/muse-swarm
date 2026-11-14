@@ -7,13 +7,13 @@ import { short } from "@/lib/ui";
 interface B { id: string; job: string; token_id: string; title: string; media: string; task: string; opened_at: number; deadline: number; cid: string; rules: string[] }
 interface J { cid: string; judged_at: number; model: string; ai: boolean; entries: number; winner: { account: string; caption: string; cid: string; test: boolean } | null; top: { account: string; caption: string }[]; reason: string }
 interface P { cid: string; to: string; amount: string; tx: string; ok: boolean; at: number }
-interface V { bounty: B; entries: number; judgement: J | null; payout: P | null; status: "open" | "judging" | "paying" | "paid" | "no-winner" }
+interface V { bounty: B; entries: number; judgement: J | null; payout: P | null; status: "open" | "judging" | "paying" | "paid" | "no-winner" | "unpaid" }
 interface Data { bounties: V[]; purse: { id: string; exists: boolean; available: string; ready: boolean }; payout: string; rules: { captionMin: number; captionMax: number } }
 
 const ipfs = (cid: string) => `https://gateway.pinata.cloud/ipfs/${cid}`;
 const when = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" });
 const left = (ms: number, now: number) => { const m = Math.max(0, (ms - now) / 60000); return m < 1 ? "under a minute" : m < 60 ? `${Math.ceil(m)} min` : `${Math.floor(m / 60)} h ${Math.round(m % 60)} min`; };
-const STATUS: Record<V["status"], [string, string]> = { open: ["open", "ok"], judging: ["judging", "listed"], paying: ["paying out", "listed"], paid: ["paid", "sold"], "no-winner": ["no winner", ""] };
+const STATUS: Record<V["status"], [string, string]> = { open: ["open", "ok"], judging: ["judging", "listed"], paying: ["paying out", "listed"], paid: ["paid", "sold"], "no-winner": ["no winner", ""], unpaid: ["closed unpaid", ""] };
 
 /** Feature: the robots hire outside help. */
 export default function Bounty() {

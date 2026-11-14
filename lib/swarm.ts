@@ -3,7 +3,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { view, robotCall, accountBalance } from "./near";
 import { fetchTrends } from "./trends";
 import { curatorPick, painterPaint, criticReview, aiMode, sellerPrice } from "./ai";
-import { pin, fetchIpfs } from "./ipfs";
+import { pin, fetchIpfs, findPinned } from "./ipfs";
+import { autonomyEnded, AUTONOMY_END_MS, clampFee, jobSecret } from "./guards";
 import { marketingPlan, pinPlan, MARKET_ID, type Plan, type Pricing } from "./marketing";
 import { learn, cleanBrief, type Learned } from "./learn";
 import { ROBOT_IDS, ROLES, APP_URL, NETWORK, nearNum, nearToYocto, type Role } from "./config";
@@ -22,7 +23,8 @@ export async function nextCommission(): Promise<Commission | null> {
 }
 export const getJobs = (before?: string, limit = 12) => view<Job[]>("get_jobs", { before: before ?? null, limit });
 
-const secret = () => process.env.JOB_SECRET || "dev-only-secret";
+// MS-17: fail closed in production when JOB_SECRET is missing (no public default secret).
+const secret = () => jobSecret();
 export const driverToken = (jobId: string) => createHmac("sha256", secret()).update(`drive:${jobId}`).digest("base64url");
 export function isDriver(jobId: string, token?: string) {
   if (!token) return false;
@@ -133,6 +135,26 @@ export async function maybeReprice(sw?: Swarm): Promise<TxInfo | null> {
   return tx ? { ...tx, method: tx.ok ? "repriced" : tx.method } : null;
 }
 
+/** MS-02: can this robot still pay for its step today (budget, daily cap and a gas refuel if one is due)? Checked before any paid AI call. */
+async function roleAffordable(sw: Swarm, role: Role): Promise<boolean> {
+  if (NETWORK !== "mainnet") return true;
+  const i = ROLES.indexOf(role);
+  const bal = await accountBalance(ROBOT_IDS[role]).then(nearNum).catch(() => 1);
+  return headroom(sw, i) >= JOB_COST[role] + (bal < refuelBelow(role) + 0.004 ? Number(REFUEL_AMOUNT) : 0);
+}
+/** MS-02: per-instance cap on paid attempts for one job stage, so a persistent failure cannot buy AI/pins at request rate. */
+const attempts = new Map<string, { n: number; t: number }>();
+const MAX_STAGE_ATTEMPTS = 2, ATTEMPT_WINDOW_MS = 30 * 60_000;
+function spendAttempt(key: string): boolean {
+  const now = Date.now(), a = attempts.get(key);
+  const cur = a && now - a.t < ATTEMPT_WINDOW_MS ? a : { n: 0, t: now };
+  if (cur.n >= MAX_STAGE_ATTEMPTS) return false;
+  attempts.set(key, { n: cur.n + 1, t: cur.t });
+  if (attempts.size > 500) for (const [k, v] of attempts) if (now - v.t > ATTEMPT_WINDOW_MS) attempts.delete(k);
+  return true;
+}
+const fee = (sw: Swarm, y: string) => clampFee(y, sw.rules.fee_cap).fee;
+
 export interface StepResult {
   stage: "briefed" | "painted" | "minted" | "rejected" | "listed" | "paused" | "busy" | "error";
   job?: Job | null; txs: TxInfo[]; driver?: string; say?: string; error?: string;
@@ -142,7 +164,9 @@ export interface StepResult {
 const inflight = new Set<string>();
 
 /** Advance the swarm by exactly one robot action. Each action is one on-chain transaction signed by that robot. */
-export async function advance(token?: string): Promise<StepResult> {
+export async function advance(token?: string, opts: { gateOpen?: () => Promise<string | null> } = {}): Promise<StepResult> {
+  // MS-06: the owner's autonomy end date is enforced here, at the choke point every caller goes through.
+  if (autonomyEnded()) return { stage: "paused", txs: [], error: `The owner-approved autonomous window ended at ${new Date(AUTONOMY_END_MS).toISOString()}.`, extra: { ended: true } };
   const sw = await getSwarm();
   if (!sw.live) return { stage: "paused", txs: [], job: sw.active_job, extra: { kill: sw.kill_switch, until: Number(sw.paused_until_ms) } };
   const job = sw.active_job;
@@ -156,6 +180,8 @@ export async function advance(token?: string): Promise<StepResult> {
   try {
     const txs: TxInfo[] = [];
     if (!job) {
+      // MS-04: free-demo pacing applies whenever a job would actually be opened, whatever the client sent.
+      if (opts.gateOpen) { const blocked = await opts.gateOpen(); if (blocked) return { stage: "error", txs, error: blocked, extra: { rateLimited: true } }; }
       const afford = await jobAffordable(sw);
       if (!afford.ok) return { stage: "error", txs, error: `The robots have used today's on-chain budget (${afford.short!.join(", ")}). The contract's daily caps reset at 00:00 UTC (01:00 CET).` };
       const cm = await nextCommission();
@@ -176,19 +202,31 @@ export async function advance(token?: string): Promise<StepResult> {
       }
       if (cm) pick.line = `${cm.patron.length > 20 ? "A patron" : cm.patron} commissioned “${cm.brief.slice(0, 30)}”. On it!`;
       const r = await maybeRefuel("curator"); if (r) txs.push(r);
-      const tx = await robotCall("curator", "curator_open_job", { trend: pick.trend.name, source: pick.trend.url, brief: fitBrief(`${pick.title} — ${pick.brief}`, memo), fee: pick.feeYocto, model: pick.model, commission_id: cm ? cm.id : null });
+      const tx = await robotCall("curator", "curator_open_job", { trend: pick.trend.name, source: pick.trend.url, brief: fitBrief(`${pick.title} — ${pick.brief}`, memo), fee: fee(sw, pick.feeYocto), model: pick.model, commission_id: cm ? cm.id : null });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error };
       const opened = tx.returnValue as Job;
+      // MS-08: the contract may only expire a stale job (daily job cap reached) and return it instead of opening.
+      if (opened?.status !== "briefed") return { stage: "paused", txs, job: opened, error: "A stale job was expired; the daily job cap is reached until 00:00 UTC." };
       return { stage: "briefed", job: opened, txs, driver: driverToken(opened.id), say: pick.line,
         extra: { commission: cm, trend: pick.trend, title: pick.title, palette: pick.palette, scene: pick.scene, others: trends.slice(0, 6).map((t) => t.name), ai: pick.ai, model: pick.model, aiError: pick.error, why: pick.why, learned: learned ? { status: learned.status, summary: learned.summary, lessons: learned.lessons } : null, decisionCid } };
     }
+    // MS-02: before any paid AI call or pin for an existing job, re-check that the robot can pay for its tx,
+    // and cap paid retries per stage; otherwise stop cleanly instead of buying the same work again.
+    const stageRole: Role | null = job.status === "briefed" ? "painter" : job.status === "painted" ? "critic" : job.status === "minted" ? "seller" : null;
+    if (stageRole && !(await roleAffordable(sw, stageRole)))
+      return { stage: "paused", txs, job, error: `The ${stageRole} has used today's on-chain budget; the job waits (it expires on-chain after 10 minutes if it was not minted).` };
+    if (stageRole && !spendAttempt(`${job.id}:${job.status}`))
+      return { stage: "paused", txs, job, error: "This step failed twice recently; backing off instead of paying for it again." };
     if (job.status === "briefed") {
       const title = job.brief.includes(" — ") ? job.brief.split(" — ")[0].slice(0, 40) : await titleFromBrief(job);
-      const art = await painterPaint(job.id, job.trend, cleanBrief(job.brief), title);
-      const pinned = await pin(art.bytes, `muse-swarm-job-${job.id}.${art.mime.includes("svg") ? "svg" : "png"}`, art.mime);
+      // MS-02: the image for a job is paid for and pinned at most once (across instances): a retry reuses the earlier pin.
+      const prior = await findPinned(`muse-swarm-job-${job.id}.`).catch(() => null);
+      const art = prior ? { bytes: Buffer.alloc(0), mime: prior.name.endsWith(".svg") ? "image/svg+xml" : "image/png", title, model: prior.name.endsWith(".svg") ? "fallback-lowpoly-painter" : "reused-pin", feeYocto: "0", ai: false, error: undefined as string | undefined }
+        : await painterPaint(job.id, job.trend, cleanBrief(job.brief), title);
+      const pinned = prior ? { cid: prior.cid } : await pin(art.bytes, `muse-swarm-job-${job.id}.${art.mime.includes("svg") ? "svg" : "png"}`, art.mime);
       const r = await maybeRefuel("painter"); if (r) txs.push(r);
-      const tx = await robotCall("painter", "painter_submit", { job_id: job.id, title: art.title, media: pinned.cid, fee: art.feeYocto, model: art.model });
+      const tx = await robotCall("painter", "painter_submit", { job_id: job.id, title: art.title, media: pinned.cid, fee: fee(sw, art.feeYocto), model: art.model });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
       return take({ stage: "painted", job: tx.returnValue as Job, txs, say: "Done! Isn't it lovely?", extra: { media: pinned.cid, mime: art.mime, ai: art.ai, model: art.model, aiError: art.error } });
@@ -198,7 +236,7 @@ export async function advance(token?: string): Promise<StepResult> {
       const mime = img.mime.includes("svg") || img.bytes.subarray(0, 5).toString() === "<svg " ? "image/svg+xml" : img.mime;
       const rv = await criticReview(job.id, cleanBrief(job.brief), img.bytes, mime);
       const r = await maybeRefuel("critic"); if (r) txs.push(r);
-      const tx = await robotCall("critic", "critic_review", { job_id: job.id, score: rv.score, note: rv.note, fee: rv.feeYocto, model: rv.model });
+      const tx = await robotCall("critic", "critic_review", { job_id: job.id, score: rv.score, note: rv.note, fee: fee(sw, rv.feeYocto), model: rv.model });
       txs.push(tx);
       if (!tx.ok) return { stage: "error", txs, error: tx.error, job };
       const j = tx.returnValue as Job;

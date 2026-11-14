@@ -1,3 +1,4 @@
+import { readLimited } from "@/lib/ratelimit";
 import { view, viewOn } from "@/lib/near";
 import { readPlan } from "@/lib/marketing";
 import { CONTRACT_ID, MARKET_ID, MARKET_NAME, EXPLORER } from "@/lib/config";
@@ -13,6 +14,7 @@ interface MbListing { nft_token_id: string; nft_approval_id: number; price: stri
  * GET /api/market?tokens=17,18,19
  */
 export async function GET(req: Request) {
+  const limited = readLimited(req); if (limited) return limited;
   const ids = (new URL(req.url).searchParams.get("tokens") || "").split(",").map((s) => s.trim()).filter((s) => /^\d{1,8}$/.test(s)).slice(0, 30);
   const out = await Promise.all(ids.map(async (id) => {
     const [tok, mb] = await Promise.all([

@@ -93,10 +93,11 @@ export default function Robots() {
                 <summary>{(a?.keys || []).length} function-call key{(a?.keys || []).length === 1 ? "" : "s"}</summary>
                 <KeyList keys={a?.keys || []} />
               </details>
-              <div className="btn-row"><button className="btn-sm ghost" disabled={backing === r} onClick={() => back(r)} title="Calls the contract's payable fund(role) from your wallet">{backing === r ? "Confirm in your wallet…" : `Back the ${m.name} with 0.1 NEAR`}</button></div>
+              {(() => { const full = !!rules && BigInt(rb.budget) + 100_000_000_000_000_000_000_000n > BigInt(rules.budget_cap); return (
+              <div className="btn-row"><button className="btn-sm ghost" disabled={backing === r || full} onClick={() => back(r)} title={full ? "This robot is at the owner's budget cap; the contract refuses top-ups above it" : "Calls the contract's payable fund(role) from your wallet"}>{backing === r ? "Confirm in your wallet…" : full ? `${m.name} is at its budget cap` : `Back the ${m.name} with 0.1 NEAR`}</button></div>); })()}
             </div>); })}
         </div>
-        <p className="foot2">Anyone can be a patron: <span className="mono">fund(role)</span> is payable and public, so your NEAR goes straight into that robot&apos;s on-chain budget, which it spends on AI fees, storage and gas within the owner&apos;s caps.</p>
+        <p className="foot2">Anyone can be a patron: <span className="mono">fund(role)</span> is payable and public, so your NEAR goes straight into that robot&apos;s on-chain budget, which it spends on AI fees, storage and gas within the owner&apos;s caps. Top-ups that would take a robot above the owner&apos;s budget cap are refused.</p>
 
         <section className="sec">
           <h2>Swarm P&amp;L <span className="pill">honest numbers</span></h2>

@@ -2,6 +2,7 @@ import { advance, maybeReprice, maybeMarketBacklog } from "@/lib/swarm";
 import { json } from "@/lib/ratelimit";
 import { hasRobotKeys } from "@/lib/near";
 import { tick as bountyTick } from "@/lib/bounty";
+import { AUTONOMY_END_MS } from "@/lib/guards";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -11,7 +12,7 @@ export const maxDuration = 120;
  * Nothing runs from 18 Nov 2026 00:00 CET (= 17 Nov 23:00 UTC) without a new go-ahead.
  * AUTONOMY_END (ISO timestamp) can only move it earlier or later by a redeploy with a new env value.
  */
-const AUTONOMY_END_MS = Date.parse(process.env.AUTONOMY_END || "2026-11-18T00:00:00+01:00");
+// The same end date is enforced inside advance() and the bounty tick (MS-06); this is the cheap short-circuit.
 
 /**
  * Autonomous mode: Vercel Cron calls this 12 times a day (one slot every 2 hours, see vercel.json),

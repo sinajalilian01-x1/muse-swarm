@@ -29,7 +29,7 @@ const jwt = () => process.env.PINATA_JWT || "";
 const purseKey = () => (process.env.BOUNTY_KEY || "").trim();
 export const CAPTION_MIN = 3, CAPTION_MAX = 140, MAX_ENTRIES = 60;
 const HOURS = Math.min(72, Math.max(1, Number(process.env.BOUNTY_HOURS) || 24));
-const AUTONOMY_END_MS = Date.parse(process.env.AUTONOMY_END || "2026-11-18T00:00:00+01:00");
+import { AUTONOMY_END_MS, autonomyEnded, bountyStatus, isUnsettled, isPermanentRefusal, instructionLike, isImplicit, jobSecret, type BountyStatus } from "./guards";
 const GAS_RESERVE = 1_000_000_000_000_000_000_000n; // 0.001 NEAR for the transfer's own gas
 const DAY_MS = 86_400_000;
 
@@ -39,7 +39,7 @@ const NAME: Record<Kind, string> = { bounty: "muse-swarm-bounty", "bounty-entry"
 export interface Bounty { app: string; kind: "bounty"; net: string; id: string; job: string; token_id: string; title: string; media: string; task: string; payout: string; payer: string; poster: "critic"; opened_at: number; deadline: number; rules: string[] }
 export interface Entry { app: string; kind: "bounty-entry"; net: string; bounty: string; account: string; caption: string; at: number; v: string }
 export interface Judgement { app: string; kind: "bounty-result"; net: string; bounty: string; judged_at: number; model: string; ai: boolean; entries: number; entryCids: string[]; winner: { account: string; caption: string; cid: string; test: boolean } | null; top: { account: string; caption: string }[]; reason: string }
-export interface Payout { app: string; kind: "bounty-payout"; net: string; bounty: string; to: string; amount: string; tx: string; ok: boolean; at: number; recovered?: boolean; guard: { criticSpentToday: string; bountyPaidToday: string; dailyCap: string } }
+export interface Payout { app: string; kind: "bounty-payout"; net: string; bounty: string; to: string; amount: string; tx: string; ok: boolean; at: number; recovered?: boolean; final?: boolean; reason?: string; guard: { criticSpentToday: string; bountyPaidToday: string; dailyCap: string } }
 
 interface PinRow { ipfs_pin_hash: string; date_pinned: string; metadata?: { name?: string; keyvalues?: Record<string, string> } }
 
@@ -94,14 +94,15 @@ export async function purse() {
   return { id: BOUNTY_ID, exists: true, available: (available > 0n ? available : 0n).toString(), ready: !!purseKey() && available >= BOUNTY_PAYOUT + GAS_RESERVE, configured: !!purseKey() };
 }
 async function accountExists(id: string) {
-  if (/^[0-9a-f]{64}$/.test(id)) return true; // implicit account: created by the transfer itself
+  // MS-07/MS-10: implicit (64-hex) accounts are no longer accepted blind; like named accounts they must exist on chain.
+  void isImplicit;
   const r = await rpc({ request_type: "view_account", account_id: id });
   if (r.ok) return true;
   if ("missing" in r && r.missing) return false;
   throw new Error("Could not reach NEAR to check that account. Try again in a minute.");
 }
 
-export interface BountyView { bounty: Bounty & { cid: string }; entries: number; judgement: (Judgement & { cid: string }) | null; payout: (Payout & { cid: string }) | null; status: "open" | "judging" | "paying" | "paid" | "no-winner" }
+export interface BountyView { bounty: Bounty & { cid: string }; entries: number; judgement: (Judgement & { cid: string }) | null; payout: (Payout & { cid: string }) | null; status: BountyStatus }
 let cache: { t: number; v: BountyView[] } | null = null;
 let loading: Promise<BountyView[]> | null = null;
 const localEntries = new Map<string, { account: string; at: number }[]>(); // entries pinned by this instance, until Pinata lists them
@@ -129,7 +130,7 @@ export async function bounties(fresh = false): Promise<BountyView[]> {
           for (const l of localEntries.get(b.id) || []) accts.add(l.account);
           entries = accts.size;
         }
-        const status = !j ? (Date.now() < b.deadline ? "open" : "judging") : !j.winner ? "no-winner" : p?.ok ? "paid" : "paying";
+        const status = bountyStatus(Date.now(), b.deadline, j, p);
         return { bounty: { ...b, cid: row.ipfs_pin_hash }, entries, judgement: j && jr ? { ...j, cid: jr.ipfs_pin_hash } : null, payout: p && pr ? { ...p, cid: pr.ipfs_pin_hash } : null, status };
       }));
       const out = views.filter((v): v is BountyView => !!v);
@@ -140,11 +141,11 @@ export async function bounties(fresh = false): Promise<BountyView[]> {
   return loading;
 }
 /** The one bounty that is not settled yet (open, judging or waiting to pay), if any. */
-export const current = async (fresh = false) => (await bounties(fresh)).find((b) => b.status === "open" || b.status === "judging" || b.status === "paying") || null;
+export const current = async (fresh = false) => (await bounties(fresh)).find((b) => isUnsettled(b.status)) || null;
 
 const NEAR_ACCOUNT = /^(?=.{2,64}$)(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
 const LINK = /(https?:\/\/|www\.|\b[a-z0-9-]{2,}\.(com|io|xyz|net|org|app|gg|ly|me|co)\b)/i;
-export const visitorOf = (ip: string) => createHash("sha256").update(`${process.env.JOB_SECRET || "dev"}:bounty:${ip}`).digest("base64url").slice(0, 16);
+export const visitorOf = (ip: string) => createHash("sha256").update(`${jobSecret()}:bounty:${ip}`).digest("base64url").slice(0, 16);
 const perVisitor = new Map<string, number>();
 
 export function cleanCaption(s: unknown) {
@@ -158,6 +159,7 @@ export async function submit(rawAccount: unknown, rawCaption: unknown, ip: strin
   if (!NEAR_ACCOUNT.test(account)) throw new Error("Enter a valid NEAR account (for example alice.near).");
   if (caption.length < CAPTION_MIN || caption.length > CAPTION_MAX) throw new Error(`Captions are ${CAPTION_MIN}–${CAPTION_MAX} characters.`);
   if (LINK.test(caption)) throw new Error("No links in captions, please.");
+  if (instructionLike(caption)) throw new Error("Captions describe the artwork; instructions to the judge are not allowed.");
   if ([...Object.values(ROBOT_IDS), CONTRACT_ID, BOUNTY_ID, GUARDIAN_ID, TREASURY_ID].includes(account)) throw new Error("The swarm's own accounts cannot enter.");
   const cur = await current(true);
   if (!cur || cur.status !== "open") throw new Error("No bounty is open right now.");
@@ -203,6 +205,8 @@ let judging = false;
 /** At the deadline: the Critic judges, then the purse pays. Safe to call often (cron, page loads). */
 export async function tick(opts: { open?: boolean; deadline?: number } = {}): Promise<Record<string, unknown>> {
   if (judging) return { busy: true };
+  // MS-06: no paid judging, payouts or new bounties after the owner's autonomy window.
+  if (autonomyEnded()) return { skipped: "the autonomous window has ended" };
   judging = true;
   try {
     const out: Record<string, unknown> = {};
@@ -225,7 +229,7 @@ async function judge(cur: BountyView) {
     const e = await readDoc<Entry>(r.ipfs_pin_hash, "bounty-entry");
     if (!e || e.bounty !== b.id || e.at > b.deadline || seen.has(e.account)) continue;
     const caption = cleanCaption(e.caption);
-    if (caption.length < CAPTION_MIN || caption.length > CAPTION_MAX || LINK.test(caption) || !NEAR_ACCOUNT.test(e.account)) continue;
+    if (caption.length < CAPTION_MIN || caption.length > CAPTION_MAX || LINK.test(caption) || instructionLike(caption) || !NEAR_ACCOUNT.test(e.account)) continue;
     seen.add(e.account);
     entries.push({ ...e, caption, cid: r.ipfs_pin_hash });
     if (entries.length >= MAX_ENTRIES) break;
@@ -291,14 +295,22 @@ async function pay(cur: BountyView) {
     return { cid: await pinDoc(doc, "bounty-payout", b.id), tx: hash, ok };
   };
   if (prior) return record(prior.hash, true, prior.at, true);
+  // MS-07: a refusal that can never clear closes the bounty as "unpaid" (pinned record), so it stops blocking the next one.
+  const closeUnpaid = async (reason: string) => {
+    if (!isPermanentRefusal(reason)) return { refused: reason };
+    const doc: Payout = { app: APP, kind: "bounty-payout", net: NETWORK, bounty: b.id, to, amount: "0", tx: "", ok: false, final: true, reason, at: Date.now(), guard };
+    return { refused: reason, closed: await pinDoc(doc, "bounty-payout", b.id) };
+  };
   // 2. the owner's rules still hold
   if (sw.kill_switch || !sw.live) return { refused: "the swarm is paused or the kill switch is on" };
-  if (Date.now() >= AUTONOMY_END_MS) return { refused: "the autonomous window has ended" };
+  if (Date.now() >= AUTONOMY_END_MS) return closeUnpaid("the autonomous window has ended");
   if (criticToday + paidToday + BOUNTY_PAYOUT > BigInt(sw.rules.daily_cap)) return { refused: "would pass the Critic's daily spend cap; retrying tomorrow" };
   // 3. the purse holds one payout plus gas, never more
   const p = await purse();
   if (!p.ready) return { refused: "purse cannot cover one payout" };
-  if (!(await accountExists(to).catch(() => false))) return { refused: "winner account not found" };
+  const exists = await accountExists(to).catch(() => null);
+  if (exists === false) return closeUnpaid("winner account not found");
+  if (exists === null) return { refused: "could not check the winner account; retrying later" };
   const acct = new Account(BOUNTY_ID, provider(), KeyPairSigner.fromSecretKey(purseKey() as `ed25519:${string}`));
   let res: any;
   try {

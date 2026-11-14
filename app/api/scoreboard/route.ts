@@ -1,7 +1,7 @@
 import { getSwarm, getJobs, getCommissions, aiMode } from "@/lib/swarm";
 import { accountBalance, view } from "@/lib/near";
 import { ledger } from "@/lib/ledger";
-import { json } from "@/lib/ratelimit";
+import { json, readLimited } from "@/lib/ratelimit";
 import { CONTRACT_ID, TREASURY_ID, EXPLORER, nearNum, isTestBuyer } from "@/lib/config";
 import type { Job } from "@/lib/types";
 
@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 let cache: { t: number; v: unknown } | null = null;
 
 /** "A business with no humans": live numbers rebuilt from chain, each with an explorer link. */
-export async function GET() {
+export async function GET(req: Request) {
+  const limited = readLimited(req); if (limited) return limited;
   if (cache && Date.now() - cache.t < 10_000) return json(cache.v);
   try {
     const [sw, jobs, treasury, first, cms, led] = await Promise.all([

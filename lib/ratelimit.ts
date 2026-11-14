@@ -35,3 +35,8 @@ export function intParam(v: string | null, def: number, min: number, max: number
   return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
 }
 export const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "cache-control": "no-store" } });
+/** MS-17: shared per-IP limit for the expensive public read endpoints (upstream RPC / indexer / Pinata amplification). */
+export function readLimited(req: Request, max = 300, windowMs = 60_000): Response | null {
+  const rl = rateLimit(req, "read", max, windowMs);
+  return rl.ok ? null : Response.json({ error: "Too many requests, slow down." }, { status: 429, headers: { "retry-after": String(rl.retryAfter), "cache-control": "no-store" } });
+}

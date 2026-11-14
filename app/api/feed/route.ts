@@ -1,10 +1,11 @@
 import { thoughts } from "@/lib/reasoning";
 import { current } from "@/lib/bounty";
-import { json, intParam } from "@/lib/ratelimit";
+import { json, intParam, readLimited } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const limited = readLimited(req); if (limited) return limited;
   try {
     const [items, cur] = await Promise.all([thoughts(intParam(new URL(req.url).searchParams.get("limit"), 12, 1, 30)), current().catch(() => null)]);
     const b = cur?.status === "open" ? cur.bounty : null;

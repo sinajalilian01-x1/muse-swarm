@@ -1,9 +1,10 @@
 import { ledger } from "@/lib/ledger";
-import { json, intParam } from "@/lib/ratelimit";
+import { json, intParam, readLimited } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const limited = readLimited(req); if (limited) return limited;
   const u = new URL(req.url);
   const limit = intParam(u.searchParams.get("limit"), 60, 1, 100);
   const offset = intParam(u.searchParams.get("offset"), 0, 0, 100_000);

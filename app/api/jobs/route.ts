@@ -1,9 +1,10 @@
 import { getJobs } from "@/lib/swarm";
-import { json, intParam } from "@/lib/ratelimit";
+import { json, intParam, readLimited } from "@/lib/ratelimit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const limited = readLimited(req); if (limited) return limited;
   const u = new URL(req.url);
   const before = u.searchParams.get("before") || undefined;
   try {

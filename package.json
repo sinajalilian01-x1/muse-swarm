@@ -10,7 +10,9 @@
     "test:contract": "cd contract && cargo test",
     "smoke": "node scripts/e2e/hosted-cycle.mjs",
     "cycle": "NODE_OPTIONS=--conditions=react-server tsx scripts/cycle.mts",
-    "market-backlog": "NODE_OPTIONS=--conditions=react-server tsx scripts/market-backlog.mts"
+    "market-backlog": "NODE_OPTIONS=--conditions=react-server tsx scripts/market-backlog.mts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hot-labs/near-connect": "^0.12.0",
