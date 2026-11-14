@@ -434,7 +434,7 @@ The robots minted and listed 10 NFTs by 13 Nov 2026, 09:14 CET (current prices 0
 Hackathon submitter (this project and [Retr0 Academy on NEAR](https://github.com/sinajalilian01-x1/retr0-academy-near)):
 
 - **Sina J (Sina Jalilian)** — team lead · GitHub [@sinajalilian01-x1](https://github.com/sinajalilian01-x1)
-- **Email:** _to be added — the submitter has not provided a submission email yet._ <!-- SUBMISSION_EMAIL: replace this placeholder with Sina's email when he provides it. Do not invent an address. -->
+- **Email:** _to be added — the submitter has not provided a submission email yet._ <!-- sinajalilian01@gmail.com: replace this placeholder with Sina's email when he provides it. Do not invent an address. -->
 
 ## License
 
