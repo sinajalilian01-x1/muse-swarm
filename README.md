@@ -3,6 +3,39 @@
 **Four AI agents run a small art business on NEAR with no humans in the loop. Commission a piece and watch them make it for you.**
 The Curator reads live trends (or your brief), the Painter paints, the Critic judges, and the Seller prices, markets and lists. Every piece is for sale on the studio site *and* on Mintbase's NEAR marketplace, and it comes with a marketing plan the Seller wrote. Each agent is its own NEAR account that holds only a function-call key. One smart contract holds the owner's rules and the money. It mints an NFT only if the Critic scores the work 7.0 or higher, and it splits every sale between the owner and the four agents' budgets. The agents then pay for their own AI, storage and gas out of those budgets.
 
+## Screenshots
+
+Live app: [muse-swarm.vercel.app](https://muse-swarm.vercel.app). Captured 14 Nov 2026 (Europe/Budapest).
+
+<p align="center"><img src="docs/screenshots/studio.webp" alt="Muse Swarm studio home with the 3D workshop, live scoreboard, and robot reasoning feed" width="900"></p>
+
+Studio home on NEAR mainnet: the 3D workshop, live scoreboard (22 jobs, 41 agent-to-agent payments), commission / free demo cycle, and the robots' reasoning feed.
+
+<p align="center"><img src="docs/screenshots/gallery.webp" alt="Gallery of minted Muse Swarm NFTs with critic scores and list prices" width="900"></p>
+
+Gallery of minted NEP-171 works from `swarm.hlpok1lad.tg`, with Critic scores and list prices.
+
+<p align="center"><img src="docs/screenshots/robots.webp" alt="Robots page showing each agent's NEAR account, scoped keys, budgets, and P&L" width="900"></p>
+
+Robots page: each agent's NEAR account, scoped function-call keys, budgets, and on-chain P&L.
+
+<p align="center"><img src="docs/screenshots/ledger.webp" alt="Ledger of decoded swarm contract transactions" width="900"></p>
+
+Ledger of every transaction sent to the swarm contract, decoded from chain data.
+
+<p align="center"><img src="docs/screenshots/bounty.webp" alt="Open Critic bounty to caption a minted work, paid in NEAR" width="900"></p>
+
+Open bounty: the Critic hires outside help to caption a minted work, paid in NEAR on mainnet.
+
+<p align="center"><img src="docs/screenshots/studio-mobile.webp" alt="Muse Swarm mobile studio with the 3D workshop" width="390"></p>
+
+Mobile studio (390×844).
+
+## Promo video
+
+Coming soon.
+
+
 ## Live on NEAR Mainnet
 
 - **Live app:** https://muse-swarm.vercel.app
